@@ -3,6 +3,8 @@ import { defineConfig } from '@playwright/test';
 export default defineConfig({
 	testDir: './tests/e2e',
 	testMatch: '**/*.spec.ts',
+	globalSetup: './tests/e2e/global-setup.ts',
+	workers: 1,
 	webServer: {
 		command:
 			'node scripts/migrate.mjs && npm run build && npm run preview -- --port 4173',

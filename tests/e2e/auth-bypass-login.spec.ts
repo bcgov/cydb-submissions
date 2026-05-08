@@ -1,11 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { resetUsers } from './fixtures/db-helpers';
 
 test.describe.serial('auth bypass shim', () => {
-	test.beforeAll(() => {
-		resetUsers();
-	});
-
 	test('admin bypass can reach /admin', async ({ page, context }) => {
 		await context.clearCookies();
 		await page.goto('/?bypass=admin@test');

@@ -4,10 +4,10 @@ export default defineConfig({
 	testDir: './tests/e2e',
 	testMatch: '**/*.spec.ts',
 	webServer: {
-		command: 'npm run dev -- --port 4173',
+		command: 'npm run build && npm run preview -- --port 4173',
 		port: 4173,
 		reuseExistingServer: !process.env.CI,
-		timeout: 60_000
+		timeout: 240_000
 	},
 	use: {
 		baseURL: 'http://localhost:4173'

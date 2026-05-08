@@ -5,10 +5,10 @@
   import { OPTIONS } from '$lib/form/options';
   import type { FormState } from '$lib/form/store.svelte';
 
-  let { state }: { state: FormState } = $props();
+  let { form }: { form: FormState } = $props();
 
-  const language = $derived((state.get('childInfo.primaryLanguage') as string) ?? '');
-  const dob = $derived((state.get('childInfo.dateOfBirth') as string) ?? '');
+  const language = $derived((form.get('childInfo.primaryLanguage') as string) ?? '');
+  const dob = $derived((form.get('childInfo.dateOfBirth') as string) ?? '');
 </script>
 
 <section class="space-y-4 mb-8" aria-labelledby="childInfo-h">
@@ -21,7 +21,7 @@
       type="date"
       required
       value={dob}
-      oninput={(e) => state.set('childInfo.dateOfBirth', (e.currentTarget as HTMLInputElement).value)}
+      oninput={(e) => form.set('childInfo.dateOfBirth', (e.currentTarget as HTMLInputElement).value)}
     />
   </div>
 
@@ -30,7 +30,7 @@
     <Select.Root
       type="single"
       value={language}
-      onValueChange={(v) => state.set('childInfo.primaryLanguage', v)}
+      onValueChange={(v) => form.set('childInfo.primaryLanguage', v)}
     >
       <Select.Trigger id="primaryLanguage" class="w-full">
         {OPTIONS.primaryLanguage.find((o) => o.value === language)?.label ?? 'Select…'}

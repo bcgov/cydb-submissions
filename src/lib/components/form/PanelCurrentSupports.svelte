@@ -7,9 +7,7 @@
 
   let { form }: { form: FormState } = $props();
 
-  let weeklyHours = $state<string>(
-    form.get('currentSupports.weeklyHours') == null ? '' : String(form.get('currentSupports.weeklyHours'))
-  );
+  let weeklyHours = $state<string>('');
   $effect(() => {
     weeklyHours = form.get('currentSupports.weeklyHours') == null
       ? ''

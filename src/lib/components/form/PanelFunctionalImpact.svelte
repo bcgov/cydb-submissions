@@ -13,9 +13,7 @@
     { key: 'behaviouralConcerns', label: 'Behavioural regulation concerns' }
   ] as const;
 
-  let bound = $state<Record<string, string>>(
-    Object.fromEntries(fields.map((f) => [f.key, (form.get(`functionalImpact.${f.key}`) as string) ?? '']))
-  );
+  let bound = $state<Record<string, string>>({});
   $effect(() => {
     bound = Object.fromEntries(
       fields.map((f) => [f.key, (form.get(`functionalImpact.${f.key}`) as string) ?? ''])

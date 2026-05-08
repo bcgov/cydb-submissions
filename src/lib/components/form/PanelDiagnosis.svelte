@@ -12,10 +12,10 @@
     const v = form.get('diagnosis.hasFormalDiagnosis');
     return v === true ? 'true' : v === false ? 'false' : '';
   }
-  let hfdBound = $state(hfdString());
+  let hfdBound = $state('');
   $effect(() => { hfdBound = hfdString(); });
 
-  let dxStatus = $state((form.get('diagnosis.diagnosticStatus') as string) ?? '');
+  let dxStatus = $state('');
   $effect(() => { dxStatus = (form.get('diagnosis.diagnosticStatus') as string) ?? ''; });
 
   function toggleTool(value: string, checked: boolean) {

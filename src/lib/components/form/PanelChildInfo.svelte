@@ -7,10 +7,10 @@
 
   let { form }: { form: FormState } = $props();
 
-  let dob = $state((form.get('childInfo.dateOfBirth') as string) ?? '');
+  let dob = $state('');
   $effect(() => { dob = (form.get('childInfo.dateOfBirth') as string) ?? ''; });
 
-  let language = $state((form.get('childInfo.primaryLanguage') as string) ?? '');
+  let language = $state('');
   $effect(() => { language = (form.get('childInfo.primaryLanguage') as string) ?? ''; });
 </script>
 

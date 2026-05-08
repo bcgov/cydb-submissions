@@ -13,10 +13,10 @@
     return v === true ? 'true' : v === false ? 'false' : '';
   }
 
-  let dcBound = $state(dcString());
+  let dcBound = $state('');
   $effect(() => { dcBound = dcString(); });
 
-  let ageBound = $state((form.get('developmentalHistory.ageOfFirstConcern') as string) ?? '');
+  let ageBound = $state('');
   $effect(() => { ageBound = (form.get('developmentalHistory.ageOfFirstConcern') as string) ?? ''; });
 
   const showAge = $derived(

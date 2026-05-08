@@ -37,7 +37,7 @@ describe('submissionSchema', () => {
   });
 
   it('requires ageOfFirstConcern when developmentalConcerns is true', () => {
-    const bad = structuredClone(baseValid);
+    const bad = structuredClone(baseValid) as any;
     delete bad.developmentalHistory.ageOfFirstConcern;
     bad.developmentalHistory.developmentalConcerns = true;
     expect(submissionSchema.safeParse(bad).success).toBe(false);

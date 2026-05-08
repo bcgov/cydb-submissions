@@ -3,11 +3,32 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { env } from '$env/dynamic/private';
 import * as schema from './schema';
 
-if (!env.DATABASE_URL) throw new Error('DATABASE_URL is not set');
+type DrizzleDb = ReturnType<typeof drizzle<typeof schema>>;
 
-const sqlite = new Database(env.DATABASE_URL);
-sqlite.pragma('journal_mode = WAL');
-sqlite.pragma('foreign_keys = ON');
+let _sqlite: Database.Database | null = null;
+let _db: DrizzleDb | null = null;
 
-export const db = drizzle(sqlite, { schema });
-export { sqlite };
+function ensure(): DrizzleDb {
+	if (_db) return _db;
+	if (!env.DATABASE_URL) throw new Error('DATABASE_URL is not set');
+	_sqlite = new Database(env.DATABASE_URL);
+	_sqlite.pragma('journal_mode = WAL');
+	_sqlite.pragma('foreign_keys = ON');
+	_db = drizzle(_sqlite, { schema });
+	return _db;
+}
+
+// Proxy so the connection is opened lazily on first use, not at module load.
+// This lets `vite build` analyse server modules without a DB env.
+export const db = new Proxy({} as DrizzleDb, {
+	get(_target, prop, receiver) {
+		const target = ensure();
+		const value = Reflect.get(target, prop, receiver);
+		return typeof value === 'function' ? value.bind(target) : value;
+	}
+});
+
+export function sqlite(): Database.Database {
+	ensure();
+	return _sqlite!;
+}

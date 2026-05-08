@@ -8,6 +8,13 @@
       "when": 1778174042699,
       "tag": "0000_unknown_tomas",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1778222706095,
+      "tag": "0001_heavy_luckman",
+      "breakpoints": true
     }
   ]
 }

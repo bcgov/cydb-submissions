@@ -1,5 +1,18 @@
-import { sqliteTable, text, integer, real, index } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, index, uniqueIndex, check } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
+import { user } from './auth.schema';
+
+export const SUBMISSION_STATUSES = [
+  'submitted',
+  'OCR queued',
+  'OCR Error',
+  'OCR processed',
+  'ready for review',
+  'ready for clinician',
+  'reviewed',
+  'invalid'
+] as const;
+export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number];
 
 // One row per accepted submission. Every leaf form field gets its own column,
 // AND we also store the raw JSON payload for forensic / re-validation use.
@@ -9,6 +22,7 @@ export const submissions = sqliteTable('submissions', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   submissionUuid: text('submission_uuid').notNull().unique(),
   status: text('status').notNull().default('submitted'),
+  submitterSurname: text('submitter_surname'),
   // Form fields — childInfo
   dateOfBirth: text('dateOfBirth'),
   primaryLanguage: text('primaryLanguage'),
@@ -37,7 +51,12 @@ export const submissions = sqliteTable('submissions', {
   updatedAt: text('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`)
 }, (t) => ({
   byStatus: index('submissions_status_idx').on(t.status),
-  byCreated: index('submissions_created_idx').on(t.createdAt)
+  byCreated: index('submissions_created_idx').on(t.createdAt),
+  bySurname: index('submissions_surname_idx').on(t.submitterSurname),
+  statusCheck: check(
+    'submissions_status_check',
+    sql`${t.status} IN ('submitted','OCR queued','OCR Error','OCR processed','ready for review','ready for clinician','reviewed','invalid')`
+  )
 }));
 
 export const submissionMetadata = sqliteTable('submission_metadata', {
@@ -71,6 +90,19 @@ export const submissionAttachments = sqliteTable('submission_attachments', {
   uploadedAt: text('uploaded_at').notNull().default(sql`CURRENT_TIMESTAMP`)
 }, (t) => ({
   bySubmission: index('attachments_submission_idx').on(t.submissionId)
+}));
+
+export const userRoles = sqliteTable('user_roles', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  role: text('role').notNull(),
+  createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`)
+}, (t) => ({
+  uniqByUserRole: uniqueIndex('user_roles_unique').on(t.userId, t.role),
+  roleCheck: check(
+    'user_roles_role_check',
+    sql`${t.role} IN ('admin','cfd_worker','clinician')`
+  )
 }));
 
 // Submissions that fail server-side validation are kept here for defect review.

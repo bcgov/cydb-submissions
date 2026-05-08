@@ -41,7 +41,7 @@ npm run build
 podman build -t cydb-submissions:dev .
 podman run --rm -p 3000:3000 \
   -e BETTER_AUTH_SECRET=$(openssl rand -hex 32) \
-  -e ADMIN_BOOTSTRAP_EMAIL=admin@local \
+  -e ADMIN_BOOTSTRAP_EMAIL=admin@local.test \
   -e ADMIN_BOOTSTRAP_PASSWORD=ChangeThisNow12345 \
   cydb-submissions:dev
 ```

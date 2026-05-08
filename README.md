@@ -43,12 +43,18 @@ podman run --rm -p 3000:3000 \
   -e BETTER_AUTH_SECRET=$(openssl rand -hex 32) \
   -e ADMIN_BOOTSTRAP_EMAIL=admin@local \
   -e ADMIN_BOOTSTRAP_PASSWORD=ChangeThisNow12345 \
-  -e ORIGIN=http://localhost:3000 \
   cydb-submissions:dev
 ```
 
 The container's CMD chains `migrate → seed-admin → server`. The admin is seeded
 only once (when the user table is empty) using better-auth's password hashing.
+
+The Containerfile defaults `ORIGIN=http://localhost:3000` so the simplest local
+run "just works". Override `-e ORIGIN=https://your.deployed.host` for any other
+deployment URL — adapter-node uses ORIGIN to validate cross-site form POSTs, and
+a mismatch produces a 403 on `/login`. In production behind a TLS-terminating
+proxy, you can leave ORIGIN unset and rely on `PROTOCOL_HEADER=x-forwarded-proto`
++ `HOST_HEADER=x-forwarded-host` (also defaulted in the Containerfile).
 
 ## OpenShift
 

@@ -12,7 +12,7 @@ RUN npm run build && npm prune --omit=dev
 
 FROM node:22-alpine AS runtime
 WORKDIR /app
-ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000 DATABASE_URL=/data/local.db ATTACHMENTS_DIR=/data/attachments
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000 DATABASE_URL=/data/local.db ATTACHMENTS_DIR=/data/attachments ORIGIN=http://localhost:3000 PROTOCOL_HEADER=x-forwarded-proto HOST_HEADER=x-forwarded-host
 COPY --from=build /app/build ./build
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json

@@ -6,6 +6,7 @@
   import PanelFunctionalImpact from '$lib/components/form/PanelFunctionalImpact.svelte';
   import PanelCoOccurringConditions from '$lib/components/form/PanelCoOccurringConditions.svelte';
   import PanelCurrentSupports from '$lib/components/form/PanelCurrentSupports.svelte';
+  import FileUpload from '$lib/components/form/FileUpload.svelte';
   import { createFormState } from '$lib/form/store.svelte';
 
   const form = createFormState();
@@ -19,4 +20,5 @@
   <PanelFunctionalImpact {form} />
   <PanelCoOccurringConditions {form} />
   <PanelCurrentSupports {form} />
+  <FileUpload />
 </form>

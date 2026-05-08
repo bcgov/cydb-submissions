@@ -1,22 +1,32 @@
-# CYDB Submissions (Phase 1)
+# CYDB Submissions (Phases 1 + 2)
 
-Public-facing CYDB application form. Renders the Form.io schema (`../cydb_form_schema.json`)
+Public-facing CYDB application form (Phase 1) plus staff submissions table & viewer
+(Phase 2). Renders the Form.io schema (`src/lib/form/cydb_form_schema.json`)
 as native Svelte components on shadcn-svelte, validates submissions server-side, and
-persists to SQLite + a PVC-backed attachments directory.
+persists to SQLite + a PVC-backed attachments directory. Phase 2 adds email/password
+staff auth (better-auth) with three roles (admin, cfd_worker, clinician), a
+sortable/filterable submissions table, a friendly per-submission read-only viewer
+with attachment preview, role-gated routes, audit-style logging, and OpenShift
+readiness/liveness probes.
 
 ## Local development
 
 ```bash
 cp .env.example .env
+# set BETTER_AUTH_SECRET to a 32+ character secret in .env
 npm install
 npm run db:migrate         # apply schema to local.db
 npm run dev                # http://localhost:5173
 ```
 
+To skip the password step locally, set `DEV_AUTH_BYPASS=email:role[,…]` in `.env`,
+then visit `/?bypass=email` — the shim creates the user + role row in the DB and
+sets a `cydb_bypass` cookie. The shim is hard-disabled when `NODE_ENV=production`.
+
 ## Tests
 
 ```bash
-npm run test:unit -- --run                       # vitest server suite
+./node_modules/.bin/vitest run                   # full unit + browser suites
 ./node_modules/.bin/playwright install chromium  # one-time
 npm run test:e2e                                 # builds + previews + runs Playwright
 ```
@@ -28,8 +38,21 @@ pulls a different version that does not honour the `--project server` filter.
 
 ```bash
 npm run build
-podman build -t cydb-submissions:dev .   # or docker buildx build
+podman build -t cydb-submissions:dev .
+podman run --rm -p 3000:3000 \
+  -e BETTER_AUTH_SECRET=$(openssl rand -hex 32) \
+  -e ADMIN_BOOTSTRAP_EMAIL=admin@local \
+  -e ADMIN_BOOTSTRAP_PASSWORD=ChangeThisNow12345 \
+  -e ORIGIN=http://localhost:3000 \
+  cydb-submissions:dev
 ```
+
+The container's CMD chains `migrate → seed-admin → server`. The admin is seeded
+only once (when the user table is empty) using better-auth's password hashing.
+
+## OpenShift
+
+`openshift/` ships templates only — not applied. See `openshift/README.md`.
 
 ## Environment
 
@@ -43,14 +66,39 @@ podman build -t cydb-submissions:dev .   # or docker buildx build
 | `RATE_LIMIT_PER_IP` | Anonymous submissions per window per IP (default 3) |
 | `RATE_LIMIT_WINDOW_MS` | Rate-limit window in milliseconds (default 900000 = 15 min) |
 | `LOG_LEVEL` | pino log level (default info) |
-| `BETTER_AUTH_SECRET` | Reserved for Phase 4; unused in Phase 1 |
+| `BETTER_AUTH_SECRET` | **Required (Phase 2+).** 32+ characters. Auth is disabled when missing — the app boots but `/login` returns 503. |
+| `DEV_AUTH_BYPASS` | Dev/CI shim. Format: `email:role[+role][,email:role…]`. Refused when `NODE_ENV=production`. |
+| `ADMIN_BOOTSTRAP_EMAIL` | First-deploy admin email (only seeded when no users exist). |
+| `ADMIN_BOOTSTRAP_PASSWORD` | First-deploy admin password (min 12 chars). Rotate immediately after first login. |
+
+## Routes
+
+Public:
+- `/` — submission form
+- `/login`, `/logout` — staff sign-in
+- `/healthz`, `/readyz` — process / dependency probes
+
+Role-gated (`admin` | `cfd_worker`):
+- `/submissions` — sortable, paginated table
+- `/submissions/[uuid]` — read-only detail view with inline PDF/image preview
+- `/attachments/[id]` — streamed file (inline preview by default; `?download=1` forces attachment disposition)
+
+Role-gated (`admin`):
+- `/admin` — Phase 2 stub; admin tooling lands in Phases 3–4
+
+Role-gated (`clinician`):
+- `/clinician` — Phase 2 stub; assignment workflows land in Phase 4
 
 ## Notes
 
-- The Phase-1 rate limiter is in-process. Multi-pod horizontal scaling will require
-  an external store (Redis or a SQLite-backed counter) — plan a swap before scaling
-  beyond a single OpenShift pod.
-- All submissions are anonymous in Phase 1. Phase 2 introduces BC Gov SSO (OIDC)
-  for staff routes and Phase 4 introduces local username+password for clinicians
-  via the already-scaffolded better-auth dependency.
+- The Phase-1 rate limiter is in-process. The Phase-2 bypass shim also assumes a
+  single pod (its synthesised user/role rows are persisted in the DB but the
+  cookie association is per-pod). Multi-pod horizontal scaling needs both
+  rethought.
+- OIDC integration (BC Gov SSO) is **deferred** to a later phase. It will slot
+  into `src/lib/server/auth.ts` as a `genericOAuth` plugin alongside the existing
+  `emailAndPassword` config.
+- The `submissions.submitter_surname` column is **reserved** for a future
+  BCeID/BC Services Card identity capture on the public-form submitter side;
+  Phase 2 displays it when present, never populates it.
 - Demo notice on the home page makes it clear that Phase 1 is non-production data.

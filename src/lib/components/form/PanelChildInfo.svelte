@@ -7,8 +7,11 @@
 
   let { form }: { form: FormState } = $props();
 
-  const language = $derived((form.get('childInfo.primaryLanguage') as string) ?? '');
-  const dob = $derived((form.get('childInfo.dateOfBirth') as string) ?? '');
+  let dob = $state((form.get('childInfo.dateOfBirth') as string) ?? '');
+  $effect(() => { dob = (form.get('childInfo.dateOfBirth') as string) ?? ''; });
+
+  let language = $state((form.get('childInfo.primaryLanguage') as string) ?? '');
+  $effect(() => { language = (form.get('childInfo.primaryLanguage') as string) ?? ''; });
 </script>
 
 <section class="space-y-4 mb-8" aria-labelledby="childInfo-h">
@@ -20,7 +23,7 @@
       id="dateOfBirth"
       type="date"
       required
-      value={dob}
+      bind:value={dob}
       oninput={(e) => form.set('childInfo.dateOfBirth', (e.currentTarget as HTMLInputElement).value)}
     />
   </div>
@@ -29,8 +32,8 @@
     <Label for="primaryLanguage">Primary language spoken at home</Label>
     <Select.Root
       type="single"
-      value={language}
-      onValueChange={(v) => form.set('childInfo.primaryLanguage', v)}
+      bind:value={language}
+      onValueChange={(v: string) => form.set('childInfo.primaryLanguage', v)}
     >
       <Select.Trigger id="primaryLanguage" class="w-full">
         {OPTIONS.primaryLanguage.find((o) => o.value === language)?.label ?? 'Select…'}

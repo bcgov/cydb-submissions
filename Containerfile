@@ -12,7 +12,11 @@ RUN npm run build && npm prune --omit=dev
 
 FROM node:22-alpine AS runtime
 WORKDIR /app
-ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000 DATABASE_URL=/data/local.db ATTACHMENTS_DIR=/data/attachments ORIGIN=http://localhost:3000 PROTOCOL_HEADER=x-forwarded-proto HOST_HEADER=x-forwarded-host
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000 DATABASE_URL=/data/local.db ATTACHMENTS_DIR=/data/attachments PROTOCOL_HEADER=x-forwarded-proto HOST_HEADER=x-forwarded-host
+# Note: ORIGIN is intentionally NOT set here. Behind a TLS-terminating proxy
+# (OpenShift Route, nginx, etc.) adapter-node derives the origin from the
+# x-forwarded-* headers above. For local podman dev with no proxy, pass
+# `-e ORIGIN=http://localhost:3000` (or whichever host/port is exposed).
 COPY --from=build /app/build ./build
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json

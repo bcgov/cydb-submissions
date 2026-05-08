@@ -5,12 +5,33 @@ import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
 import { db } from '$lib/server/db';
 
-export const auth = betterAuth({
-	baseURL: env.ORIGIN,
-	secret: env.BETTER_AUTH_SECRET,
-	database: drizzleAdapter(db, { provider: 'sqlite' }),
-	emailAndPassword: { enabled: true },
-	plugins: [
-		sveltekitCookies(getRequestEvent) // make sure this is the last plugin in the array
-	]
+type Auth = ReturnType<typeof betterAuth>;
+
+let _auth: Auth | null = null;
+
+// Lazy: only construct the better-auth instance when BETTER_AUTH_SECRET
+// is set. Phase 1 ships without auth, so production containers without
+// the secret env should not crash at module load.
+export function getAuth(): Auth | null {
+	if (_auth) return _auth;
+	if (!env.BETTER_AUTH_SECRET) return null;
+	_auth = betterAuth({
+		baseURL: env.ORIGIN,
+		secret: env.BETTER_AUTH_SECRET,
+		database: drizzleAdapter(db, { provider: 'sqlite' }),
+		emailAndPassword: { enabled: true },
+		plugins: [sveltekitCookies(getRequestEvent)]
+	});
+	return _auth;
+}
+
+// Backwards-compat re-export. Tools that read this at config time (e.g.
+// `better-auth generate`) need a constructed instance, so we throw if
+// the secret is missing — but only on access, not on module load.
+export const auth = new Proxy({} as Auth, {
+	get(_, prop) {
+		const a = getAuth();
+		if (!a) throw new Error('BETTER_AUTH_SECRET is not set; auth is disabled');
+		return Reflect.get(a, prop);
+	}
 });

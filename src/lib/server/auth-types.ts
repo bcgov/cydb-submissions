@@ -13,6 +13,7 @@ export const AUDIT_EVENTS = [
   'attachment_downloaded',
   'role_denied',
   'auth_bypass_applied',
-  'admin_seeded'
+  'admin_seeded',
+  'admin_cleared'
 ] as const;
 export type AuditEvent = (typeof AUDIT_EVENTS)[number];

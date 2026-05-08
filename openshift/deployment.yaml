@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cydb-submissions
+  labels:
+    app: cydb-submissions
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: cydb-submissions
+  template:
+    metadata:
+      labels:
+        app: cydb-submissions
+    spec:
+      containers:
+        - name: app
+          image: image-registry.openshift-image-registry.svc:5000/cydb/cydb-submissions:latest
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - secretRef:
+                name: cydb-submissions-secrets
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: HOST
+              value: 0.0.0.0
+            - name: PORT
+              value: "3000"
+            - name: DATABASE_URL
+              value: /data/local.db
+            - name: ATTACHMENTS_DIR
+              value: /data/attachments
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: cydb-submissions-data

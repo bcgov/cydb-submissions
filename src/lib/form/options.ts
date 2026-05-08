@@ -1,4 +1,4 @@
-import schemaJson from '../../../../cydb_form_schema.json' with { type: 'json' };
+import schemaJson from './cydb_form_schema.json' with { type: 'json' };
 
 export interface Option { value: string; label: string; }
 type FormioComponent = {

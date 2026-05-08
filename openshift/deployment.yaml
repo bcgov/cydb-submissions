@@ -16,6 +16,13 @@ spec:
       labels:
         app: cydb-submissions
     spec:
+      # fsGroup ensures the PVC mount at /data is owned by the supplemental
+      # group the container runs in, so the arbitrary OpenShift UID can
+      # write the SQLite file and attachment subdirs. The Restricted SCC
+      # would normally pick this up automatically, but stating it makes the
+      # intent explicit and works on platforms with stricter defaults.
+      securityContext:
+        fsGroup: 0
       containers:
         - name: app
           image: image-registry.openshift-image-registry.svc:5000/cydb/cydb-submissions:latest

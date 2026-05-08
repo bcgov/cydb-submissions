@@ -18,8 +18,14 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/src/lib/server/db/migrations ./migrations
 COPY --from=build /app/scripts ./scripts
-RUN mkdir -p /data && chown -R node:node /data /app
+# OpenShift's Restricted SCC overrides the image USER with an arbitrary high UID
+# and adds it to GID 0. Make /data and /app owned by root group with group-write
+# so the container can run as either `node` (local podman/docker) or an arbitrary
+# OpenShift UID. See https://docs.openshift.com/container-platform/latest/openshift_images/create-images.html#use-uid_create-images
+RUN mkdir -p /data /app/attachments && \
+    chown -R node:0 /data /app && \
+    chmod -R g=u /data /app
 EXPOSE 3000
-USER node
+USER 1000
 VOLUME ["/data"]
 CMD ["sh", "-c", "node scripts/migrate.mjs && node scripts/seed-admin.mjs && node build"]

@@ -19,7 +19,16 @@ export function getAuth(): Auth | null {
 		baseURL: env.ORIGIN,
 		secret: env.BETTER_AUTH_SECRET,
 		database: drizzleAdapter(db, { provider: 'sqlite' }),
-		emailAndPassword: { enabled: true },
+		emailAndPassword: {
+			enabled: true,
+			minPasswordLength: 12,
+			autoSignIn: true,
+			requireEmailVerification: false
+		},
+		session: {
+			expiresIn: 8 * 60 * 60,
+			updateAge: 60 * 60
+		},
 		plugins: [sveltekitCookies(getRequestEvent)]
 	});
 	return _auth;

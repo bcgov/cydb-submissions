@@ -12,9 +12,25 @@ let _auth: Auth | null = null;
 // Lazy: only construct the better-auth instance when BETTER_AUTH_SECRET
 // is set. Phase 1 ships without auth, so production containers without
 // the secret env should not crash at module load.
+let _warnedNoSecret = false;
 export function getAuth(): Auth | null {
 	if (_auth) return _auth;
-	if (!env.BETTER_AUTH_SECRET) return null;
+	if (!env.BETTER_AUTH_SECRET) {
+		if (!_warnedNoSecret) {
+			_warnedNoSecret = true;
+			console.warn(
+				'auth: BETTER_AUTH_SECRET is not set — staff login will return "Auth Unavailable". ' +
+					'Set it via the cydb-submissions-secrets Secret on OpenShift, or -e BETTER_AUTH_SECRET=… on podman.'
+			);
+		}
+		return null;
+	}
+	if (env.BETTER_AUTH_SECRET.length < 32) {
+		console.warn(
+			`auth: BETTER_AUTH_SECRET is only ${env.BETTER_AUTH_SECRET.length} chars; better-auth requires 32+. Auth disabled.`
+		);
+		return null;
+	}
 	_auth = betterAuth({
 		baseURL: env.ORIGIN,
 		secret: env.BETTER_AUTH_SECRET,

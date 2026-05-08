@@ -40,7 +40,13 @@ export const actions: Actions = {
 
 		const auth = getAuth();
 		if (!auth) {
-			return fail(503, { error: 'Auth unavailable' });
+			locals.logger.error(
+				{ event: 'login_failed', reason: 'auth_unconfigured' },
+				'login attempted but BETTER_AUTH_SECRET is not set'
+			);
+			return fail(503, {
+				error: 'Auth is not configured on the server. Set BETTER_AUTH_SECRET (32+ chars) and redeploy.'
+			});
 		}
 
 		let userId: string;

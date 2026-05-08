@@ -23,3 +23,7 @@ export function attachmentsDirOk(dir: string): boolean {
 		return false;
 	}
 }
+
+export function authConfigured(secret: string | undefined): boolean {
+	return Boolean(secret && secret.length >= 32);
+}

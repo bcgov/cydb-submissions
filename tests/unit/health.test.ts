@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import path from 'node:path';
 import os from 'node:os';
 import { mkdtempSync, rmSync } from 'node:fs';
-import { dbPing, attachmentsDirOk } from '$lib/server/health';
+import { dbPing, attachmentsDirOk, authConfigured } from '$lib/server/health';
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 
@@ -25,5 +25,17 @@ describe('health probes', () => {
 
   it('attachmentsDirOk returns false when the dir does not exist', () => {
     expect(attachmentsDirOk('/this/path/does/not/exist')).toBe(false);
+  });
+
+  it('authConfigured rejects undefined / empty / too-short secrets', () => {
+    expect(authConfigured(undefined)).toBe(false);
+    expect(authConfigured('')).toBe(false);
+    expect(authConfigured('short')).toBe(false);
+    expect(authConfigured('a'.repeat(31))).toBe(false);
+  });
+
+  it('authConfigured accepts a 32+-character secret', () => {
+    expect(authConfigured('a'.repeat(32))).toBe(true);
+    expect(authConfigured('x'.repeat(64))).toBe(true);
   });
 });

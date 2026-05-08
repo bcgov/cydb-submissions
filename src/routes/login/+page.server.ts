@@ -43,12 +43,16 @@ export const actions: Actions = {
 			return fail(503, { error: 'Auth unavailable' });
 		}
 
+		let userId: string;
 		try {
-			await auth.api.signInEmail({
+			const result = await auth.api.signInEmail({
 				body: { email: parsed.data.email, password: parsed.data.password },
-				headers: request.headers,
-				asResponse: true
+				headers: request.headers
 			});
+			if (!result?.user?.id) {
+				return fail(401, { error: 'Invalid credentials', email: parsed.data.email });
+			}
+			userId = result.user.id;
 		} catch {
 			auditLog(
 				'login_failed',
@@ -62,15 +66,11 @@ export const actions: Actions = {
 			return fail(401, { error: 'Invalid credentials', email: parsed.data.email });
 		}
 
-		const session = await auth.api.getSession({ headers: request.headers });
-		if (!session?.user) {
-			return fail(500, { error: 'Session not established' });
-		}
-		const roles = await getUserRoles(db, session.user.id);
+		const roles = await getUserRoles(db, userId);
 		auditLog(
 			'login_succeeded',
 			{
-				actorUserId: session.user.id,
+				actorUserId: userId,
 				route: url.pathname,
 				requestId: locals.requestId
 			},

@@ -60,8 +60,19 @@ const verification = sqliteTable('verification', {
 
 const authSchema = { user, session, account, verification };
 
+/**
+ * @param {{
+ *   db: import('drizzle-orm/better-sqlite3').BetterSQLite3Database<any>;
+ *   email: string;
+ *   password: string;
+ *   secret: string;
+ *   baseURL?: string;
+ * }} opts
+ */
 export async function seedAdmin({ db, email, password, secret, baseURL = 'http://localhost' }) {
-	const countRow = (await db.all(sql`SELECT count(*) as count FROM "user"`))[0];
+	const countRow = /** @type {{ count: number } | undefined} */ (
+		(await db.all(sql`SELECT count(*) as count FROM "user"`))[0]
+	);
 	const count = Number(countRow?.count ?? 0);
 	if (count > 0) return { skipped: true, reason: 'users already exist' };
 
@@ -74,7 +85,9 @@ export async function seedAdmin({ db, email, password, secret, baseURL = 'http:/
 	await auth.api.signUpEmail({
 		body: { email, password, name: email.split('@')[0] }
 	});
-	const created = (await db.all(sql`SELECT id FROM "user" WHERE email = ${email}`))[0];
+	const created = /** @type {{ id: string } | undefined} */ (
+		(await db.all(sql`SELECT id FROM "user" WHERE email = ${email}`))[0]
+	);
 	if (!created) return { skipped: false, error: 'user creation did not persist' };
 	await db.run(sql`INSERT INTO user_roles (user_id, role) VALUES (${created.id}, 'admin')`);
 	return { skipped: false, id: created.id };

@@ -25,3 +25,8 @@ vite.config.ts.timestamp-*
 test-results
 # SQLite
 *.db
+*.db-shm
+*.db-wal
+
+# Runtime PVC mount (E2E + local dev write here)
+/attachments

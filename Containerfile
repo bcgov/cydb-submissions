@@ -22,4 +22,4 @@ RUN mkdir -p /data && chown -R node:node /data /app
 EXPOSE 3000
 USER node
 VOLUME ["/data"]
-CMD ["sh", "-c", "node scripts/migrate.mjs && node build"]
+CMD ["sh", "-c", "node scripts/migrate.mjs && node scripts/seed-admin.mjs && node build"]

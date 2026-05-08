@@ -1,5 +1,20 @@
 import { describe, it, expect } from 'vitest';
-import { parseBypassConfig } from '$lib/server/dev-bypass';
+import path from 'node:path';
+import Database from 'better-sqlite3';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import * as schema from '$lib/server/db/schema';
+import { parseBypassConfig, applyBypass } from '$lib/server/dev-bypass';
+
+function freshDb() {
+  const sqlite = new Database(':memory:');
+  sqlite.pragma('foreign_keys = ON');
+  const db = drizzle(sqlite, { schema });
+  migrate(db, {
+    migrationsFolder: path.resolve(__dirname, '../../src/lib/server/db/migrations')
+  });
+  return { sqlite, db };
+}
 
 describe('parseBypassConfig', () => {
   it('returns null for empty / undefined', () => {
@@ -33,5 +48,39 @@ describe('parseBypassConfig', () => {
 
   it('throws on a malformed entry', () => {
     expect(() => parseBypassConfig('not-a-pair')).toThrow(/malformed/);
+  });
+});
+
+describe('applyBypass', () => {
+  it('creates a synthetic user + role row on first invocation', async () => {
+    const { sqlite, db } = freshDb();
+    const result = await applyBypass(db as never, [{ email: 'a@x', roles: ['admin'] }], 'a@x');
+    expect(result).not.toBeNull();
+    expect(result!.user.email).toBe('a@x');
+    const rolesRow = sqlite
+      .prepare(`SELECT role FROM user_roles WHERE user_id = ?`)
+      .all(result!.user.id);
+    expect(rolesRow).toEqual([{ role: 'admin' }]);
+  });
+
+  it('is idempotent on repeated calls', async () => {
+    const { sqlite, db } = freshDb();
+    const id1 = (await applyBypass(db as never, [{ email: 'a@x', roles: ['admin'] }], 'a@x'))!.user.id;
+    const id2 = (await applyBypass(db as never, [{ email: 'a@x', roles: ['admin'] }], 'a@x'))!.user.id;
+    expect(id1).toBe(id2);
+    const count = sqlite.prepare(`SELECT count(*) as n FROM user_roles WHERE user_id = ?`).get(id1) as { n: number };
+    expect(count.n).toBe(1);
+  });
+
+  it('returns null when the requested email is not in the configured identities', async () => {
+    const { db } = freshDb();
+    const result = await applyBypass(db as never, [{ email: 'a@x', roles: ['admin'] }], 'b@y');
+    expect(result).toBeNull();
+  });
+
+  it('falls back to the first identity when no email is requested', async () => {
+    const { db } = freshDb();
+    const result = await applyBypass(db as never, [{ email: 'a@x', roles: ['admin'] }], undefined);
+    expect(result?.user.email).toBe('a@x');
   });
 });

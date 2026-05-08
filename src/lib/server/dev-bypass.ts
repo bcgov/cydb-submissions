@@ -1,8 +1,17 @@
+import { eq } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
 import { ROLES, type Role } from './auth-types';
+import { user, userRoles } from './db/schema';
+import type { DrizzleDb } from './roles';
 
 export interface BypassIdentity {
   email: string;
   roles: Role[];
+}
+
+export interface BypassResult {
+  user: { id: string; email: string; name: string };
+  roles: Set<Role>;
 }
 
 export function parseBypassConfig(raw: string | undefined | null): BypassIdentity[] | null {
@@ -17,4 +26,42 @@ export function parseBypassConfig(raw: string | undefined | null): BypassIdentit
     }
     return { email, roles };
   });
+}
+
+export async function applyBypass(
+  db: DrizzleDb,
+  identities: BypassIdentity[],
+  requestedEmail: string | undefined
+): Promise<BypassResult | null> {
+  const target =
+    identities.find((i) => i.email === requestedEmail) ??
+    (requestedEmail ? null : identities[0]);
+  if (!target) return null;
+
+  const existing = await db.select().from(user).where(eq(user.email, target.email)).limit(1);
+  let row = existing[0];
+  if (!row) {
+    const id = nanoid();
+    await db.insert(user).values({
+      id,
+      email: target.email,
+      name: target.email.split('@')[0],
+      emailVerified: false
+    });
+    const created = await db.select().from(user).where(eq(user.id, id)).limit(1);
+    row = created[0];
+  }
+
+  const present = await db.select().from(userRoles).where(eq(userRoles.userId, row.id));
+  const have = new Set(present.map((r) => r.role));
+  for (const role of target.roles) {
+    if (!have.has(role)) {
+      await db.insert(userRoles).values({ userId: row.id, role });
+    }
+  }
+
+  return {
+    user: { id: row.id, email: row.email, name: row.name },
+    roles: new Set(target.roles)
+  };
 }

@@ -1,6 +1,8 @@
 import path from 'node:path';
 import type { OcrProvider } from './types';
 import { StubProvider, type StubMode } from './provider-stub';
+import { KongMsDiProvider } from './provider-kong-msdi';
+import { KongTokenCache } from './kong-token';
 
 export interface ProviderEnv {
 	OCR_PROVIDER?: string;
@@ -25,9 +27,21 @@ export function selectProvider(env: ProviderEnv): OcrProvider {
 		});
 	}
 	if (id === 'kong-ms-di') {
-		// Real provider lands in Task 15; keep this branch unreachable until then so
-		// misconfigured environments surface a clear error instead of silently using the stub.
-		throw new Error('OCR_PROVIDER=kong-ms-di is not yet implemented (Task 15)');
+		const baseUrl = env.KONG_BASE_URL;
+		const tokenUrl = env.KONG_TOKEN_URL;
+		const clientId = env.KONG_CLIENT_ID;
+		const clientSecret = env.KONG_CLIENT_SECRET;
+		if (!baseUrl) throw new Error('KONG_BASE_URL is required for OCR_PROVIDER=kong-ms-di');
+		if (!tokenUrl || !clientId || !clientSecret) {
+			throw new Error('KONG_TOKEN_URL, KONG_CLIENT_ID, KONG_CLIENT_SECRET are required for OCR_PROVIDER=kong-ms-di');
+		}
+		const tokenCache = new KongTokenCache({ tokenUrl, clientId, clientSecret });
+		return new KongMsDiProvider({
+			baseUrl,
+			modelId: env.OCR_MODEL_ID ?? 'prebuilt-read',
+			apiVersion: env.AZURE_DI_API_VERSION ?? '2024-11-30',
+			tokenCache
+		});
 	}
 	throw new Error(`unknown OCR_PROVIDER: ${id}`);
 }

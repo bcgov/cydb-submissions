@@ -14,7 +14,12 @@ export default defineConfig({
 		env: {
 			DEV_AUTH_BYPASS:
 				process.env.DEV_AUTH_BYPASS ??
-				'admin@test:admin,worker@test:cfd_worker,clinic@test:clinician'
+				'admin@test:admin,worker@test:cfd_worker,clinic@test:clinician',
+			OCR_WORKER_ENABLED: '1',
+			OCR_PROVIDER: 'stub',
+			OCR_STUB_FIXTURES: 'tests/fixtures/ocr',
+			OCR_POLL_INTERVAL_MS: '200',
+			OCR_MAX_CONCURRENCY: '2'
 		}
 	},
 	use: {

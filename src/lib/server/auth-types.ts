@@ -14,6 +14,17 @@ export const AUDIT_EVENTS = [
   'role_denied',
   'auth_bypass_applied',
   'admin_seeded',
-  'admin_cleared'
+  'admin_cleared',
+  'ocr_job_enqueued',
+  'ocr_request_sent',
+  'ocr_request_polled',
+  'ocr_succeeded',
+  'ocr_attempt_failed',
+  'ocr_terminal_failed',
+  'queue_halted',
+  'queue_resumed',
+  'ocr_job_requeued',
+  'keyword_hits_recorded',
+  'mail_logged'
 ] as const;
 export type AuditEvent = (typeof AUDIT_EVENTS)[number];

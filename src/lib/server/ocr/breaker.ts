@@ -26,16 +26,27 @@ interface HaltState {
 export class Breaker {
 	private failedJobIds: number[] = [];
 	private lastErrorClass: string | null = null;
+	private wasTripped = false;
 
 	constructor(private opts: BreakerOpts) {
 		// Rehydrate as tripped if a sentinel was left behind by an earlier process.
 		if (getSystemState(opts.db, 'ocr.halted')) {
 			this.failedJobIds = new Array(opts.threshold).fill(-1);
+			this.wasTripped = true;
 		}
 	}
 
 	isTripped(): boolean {
-		return getSystemState(this.opts.db, 'ocr.halted') !== null;
+		const tripped = getSystemState(this.opts.db, 'ocr.halted') !== null;
+		// Detect external clear (admin pressed Resume on /admin/ocr): drop stale
+		// rehydrated counters so a single subsequent failure doesn't immediately
+		// re-trip the breaker.
+		if (this.wasTripped && !tripped) {
+			this.failedJobIds = [];
+			this.lastErrorClass = null;
+		}
+		this.wasTripped = tripped;
+		return tripped;
 	}
 
 	recordSuccess(): void {

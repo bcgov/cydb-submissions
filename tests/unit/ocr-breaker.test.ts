@@ -104,6 +104,46 @@ describe('Breaker', () => {
 		expect(sends).toHaveLength(1); // still one
 	});
 
+	it('detects external clear and drops stale rehydrated counters', async () => {
+		const log = createLogger({ level: 'silent' });
+		const sends: unknown[] = [];
+		const mailer = { send: async (m: unknown) => { sends.push(m); } };
+		// Pre-seed the halt sentinel so the second Breaker rehydrates as tripped.
+		const seed = new Breaker({
+			db,
+			mailer: new LogMailer(log),
+			logger: log,
+			threshold: 2,
+			recipients: [],
+			from: 'cydb@test'
+		});
+		await seed.recordFailure({ jobId: 1, errorClass: 'X' });
+		await seed.recordFailure({ jobId: 2, errorClass: 'X' });
+
+		// Fresh Breaker (simulates a worker process started after a halt was set).
+		const b = new Breaker({
+			db,
+			mailer,
+			logger: log,
+			threshold: 2,
+			recipients: ['ops@test'],
+			from: 'cydb@test'
+		});
+		expect(b.isTripped()).toBe(true);
+
+		// Admin clears the sentinel externally (different Breaker instance / DB action).
+		// Use the public API rather than reaching into clearSystemState directly so the
+		// test mirrors what /admin/ocr does.
+		seed.clear();
+
+		// Next isTripped() reads false and resets the in-memory counter.
+		expect(b.isTripped()).toBe(false);
+		// One real failure should NOT re-trip — the counter is fresh.
+		await b.recordFailure({ jobId: 3, errorClass: 'X' });
+		expect(b.isTripped()).toBe(false);
+		expect(sends).toHaveLength(0);
+	});
+
 	it('rehydrates as tripped from a pre-existing halt sentinel', async () => {
 		const log = createLogger({ level: 'silent' });
 		const b1 = new Breaker({

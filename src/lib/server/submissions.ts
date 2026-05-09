@@ -1,8 +1,10 @@
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
+import { eq } from 'drizzle-orm';
 import * as schema from './db/schema';
 import type { SubmissionMetadata } from './metadata';
 import type { SavedAttachment } from './storage';
 import type { SubmissionInput } from '../form/schema';
+import { enqueueAttachments } from './ocr/enqueue';
 
 export interface WriteValidArgs {
   submissionUuid: string;
@@ -68,6 +70,14 @@ export async function writeValidSubmission(
         sha256: a.sha256
       }).run();
     }
+
+    const attachmentIds = tx
+      .select({ id: schema.submissionAttachments.id })
+      .from(schema.submissionAttachments)
+      .where(eq(schema.submissionAttachments.submissionId, submissionId))
+      .all()
+      .map((r) => r.id);
+    enqueueAttachments(tx, attachmentIds);
 
     return { submissionId };
   });

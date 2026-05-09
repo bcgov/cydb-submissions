@@ -13,6 +13,10 @@ import { parseBypassConfig, applyBypass } from '$lib/server/dev-bypass';
 import { getUserRoles } from '$lib/server/roles';
 import { auditLog } from '$lib/server/audit';
 import type { Role } from '$lib/server/auth-types';
+import { selectProvider } from '$lib/server/ocr/select-provider';
+import { selectMailer } from '$lib/server/mail/select-mailer';
+import { loadKeywords } from '$lib/server/ocr/keywords';
+import { startWorker, type WorkerHandle } from '$lib/server/ocr/worker';
 
 // Surface crashes that would otherwise produce the bare
 // 'triggerUncaughtException' line with no stack. SvelteKit's adapter-node
@@ -40,9 +44,78 @@ const rl = createRateLimiter({
 	windowMs: Number(env.RATE_LIMIT_WINDOW_MS ?? 900_000)
 });
 
+let workerHandle: WorkerHandle | null = null;
+let workerStarted = false;
+
+async function maybeStartOcrWorker() {
+	if (workerStarted) return;
+	workerStarted = true;
+	if (env.OCR_WORKER_ENABLED !== '1') {
+		logger.info(
+			{ event: 'queue_resumed', enabled: false },
+			'OCR_WORKER_ENABLED is not set; worker not started'
+		);
+		return;
+	}
+	try {
+		const provider = selectProvider({
+			OCR_PROVIDER: env.OCR_PROVIDER,
+			OCR_STUB_FIXTURES: env.OCR_STUB_FIXTURES,
+			OCR_STUB_FLAKY_FAILURES: env.OCR_STUB_FLAKY_FAILURES,
+			KONG_BASE_URL: env.KONG_BASE_URL,
+			KONG_TOKEN_URL: env.KONG_TOKEN_URL,
+			KONG_CLIENT_ID: env.KONG_CLIENT_ID,
+			KONG_CLIENT_SECRET: env.KONG_CLIENT_SECRET,
+			OCR_MODEL_ID: env.OCR_MODEL_ID,
+			AZURE_DI_API_VERSION: env.AZURE_DI_API_VERSION
+		});
+		const mailer = selectMailer(
+			{
+				MAIL_TRANSPORT: env.MAIL_TRANSPORT,
+				SMTP_HOST: env.SMTP_HOST,
+				SMTP_PORT: env.SMTP_PORT,
+				SMTP_USER: env.SMTP_USER,
+				SMTP_PASS: env.SMTP_PASS
+			},
+			logger
+		);
+		const keywords = await loadKeywords();
+		workerHandle = startWorker({
+			db,
+			provider,
+			mailer,
+			keywords,
+			logger,
+			breakerThreshold: Number(env.OCR_FAILURE_BREAKER ?? 4),
+			alertRecipients: (env.OCR_ALERT_RECIPIENTS ?? '')
+				.split(',')
+				.map((s) => s.trim())
+				.filter(Boolean),
+			alertFrom: env.OCR_ALERT_FROM ?? 'cydb-noreply@gov.bc.ca',
+			pollIntervalMs: Number(env.OCR_POLL_INTERVAL_MS ?? 1000),
+			maxConcurrency: Number(env.OCR_MAX_CONCURRENCY ?? 1)
+		});
+	} catch (e) {
+		logger.error(
+			{ event: 'queue_halted', errorClass: (e as Error).name, message: (e as Error).message },
+			'OCR worker failed to start'
+		);
+	}
+}
+
+if (!building) {
+	for (const sig of ['SIGINT', 'SIGTERM'] as const) {
+		process.once(sig, async () => {
+			await workerHandle?.stop();
+			process.exit(0);
+		});
+	}
+}
+
 const CSRF_COOKIE = 'cydb_csrf';
 
 const handlePhase1: Handle = async ({ event, resolve }) => {
+	await maybeStartOcrWorker();
 	event.locals.requestId = nanoid(12);
 	event.locals.roles = new Set<Role>();
 

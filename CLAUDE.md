@@ -14,6 +14,16 @@
 - The `submissions.submitter_surname` column is **reserved** for a future BCeID/BC Services Card identity capture on the public-form submitter side; Phase 2 displays it when present, never populates it.
 - All audit events go to stdout via pino with the strict allow-list in `src/lib/server/auth-types.ts` (`AUDIT_EVENTS`). Use `auditLog(event, payload, logger)` — passing an unknown event throws.
 
+## OCR worker (Phase 3)
+
+- **In-process** worker started from `hooks.server.ts` when `OCR_WORKER_ENABLED=1`. `setInterval` polls `ocr_jobs` and uses an atomic `UPDATE … WHERE status='queued'` lease so two pollers cannot grab the same row. Concurrency capped at 4 by `OCR_MAX_CONCURRENCY`.
+- **Provider** selected by `OCR_PROVIDER`: `stub` / `stub-fail` / `stub-flaky` (dev/CI/tests; reads fixtures from `tests/fixtures/ocr/<filename-stem>.txt`) or `kong-ms-di` (BC Gov Kong gateway → MS Document Intelligence `prebuilt-read`, async polling). Production swap is config-only.
+- **Breaker** trips after `OCR_FAILURE_BREAKER` (default 4) consecutive *terminal* failures (transient retries don't count). Halt sentinel persists in `system_state` keyed `ocr.halted`. The breaker's failure counter is **per-pod, in-memory** — multi-pod scaling would need to migrate the counter into `system_state` to avoid each pod tripping independently.
+- **Halt does NOT flip `/readyz`'s HTTP status** (per stakeholder decision G2). The public form is independent of the back-office queue. `/readyz` reports `queue: 'ok' | 'halted' | 'disabled'` in the body for monitoring.
+- **Mailer** is a `LogMailer` by default (writes the alert subject and recipients to pino at `error` level; body deliberately stays out of the structured payload). Switch to `MAIL_TRANSPORT=smtp` once the BC Gov relay is confirmed — the `SmtpMailer` is currently a stub that throws on send().
+- **Keyword list** lives in `config/keywords.json` and is baked into the image. Edits require a redeploy. Match semantics: case-insensitive, whole-word, phrase-aware; no stemming/accents. Hits stored sparsely (`count > 0` only) in `keyword_hits`.
+- **Audit events** include `ocr_job_enqueued`, `ocr_request_sent`, `ocr_succeeded`, `ocr_attempt_failed`, `ocr_terminal_failed`, `queue_halted`, `queue_resumed`, `ocr_job_requeued`, `keyword_hits_recorded`, `mail_logged`. Submission/job/attachment IDs are permitted in payloads; raw text and submitter PII are not. The pino redactor scrubs `raw_text`, `body`, `text`, `authorization`, `apikey` defensively.
+
 ## Test conventions
 
 - Unit / integration: `./node_modules/.bin/vitest run` (covers both `client` and `server` projects).

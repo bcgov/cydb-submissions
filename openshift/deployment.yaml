@@ -42,6 +42,32 @@ spec:
               value: /data/local.db
             - name: ATTACHMENTS_DIR
               value: /data/attachments
+            # Phase 3 OCR worker — disabled by default; set to "1" to start.
+            # Switch OCR_PROVIDER to "kong-ms-di" once the Kong creds are in
+            # the cydb-submissions-secrets Secret (see secret.example.yaml).
+            - name: OCR_WORKER_ENABLED
+              value: "0"
+            - name: OCR_PROVIDER
+              value: "stub"
+            - name: OCR_MAX_CONCURRENCY
+              value: "1"
+            - name: OCR_MAX_ATTEMPTS
+              value: "3"
+            - name: OCR_FAILURE_BREAKER
+              value: "4"
+            - name: OCR_POLL_INTERVAL_MS
+              value: "1000"
+            - name: OCR_MODEL_ID
+              value: "prebuilt-read"
+            - name: AZURE_DI_API_VERSION
+              value: "2024-11-30"
+            - name: KONG_BASE_URL
+              value: "https://api.gov.bc.ca/document-intelligence"
+            # Halted-queue alerts — log-only until SMTP relay is confirmed.
+            - name: MAIL_TRANSPORT
+              value: "log"
+            - name: OCR_ALERT_FROM
+              value: "cydb-noreply@gov.bc.ca"
           volumeMounts:
             - name: data
               mountPath: /data

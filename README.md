@@ -80,6 +80,30 @@ rejects form POSTs (e.g. `/login`) with a 403 cross-site error. Two patterns:
 | `DEV_AUTH_BYPASS` | Dev/CI shim. Format: `email:role[+role][,email:role…]`. Refused when `NODE_ENV=production`. |
 | `ADMIN_BOOTSTRAP_EMAIL` | First-deploy admin email (only seeded when no users exist). |
 | `ADMIN_BOOTSTRAP_PASSWORD` | First-deploy admin password (min 12 chars). Rotate immediately after first login. |
+| `OCR_WORKER_ENABLED` | Phase 3. Set to `1` to start the in-process OCR worker. Default off. |
+| `OCR_PROVIDER` | `stub` (default) \| `stub-fail` \| `stub-flaky` \| `kong-ms-di`. Use a stub mode in dev/CI. |
+| `OCR_MAX_CONCURRENCY` | In-flight requests (1–4, default 1). |
+| `OCR_MAX_ATTEMPTS` | Per-job retry budget (default 3). |
+| `OCR_FAILURE_BREAKER` | Consecutive terminal failures before the queue halts (default 4). |
+| `OCR_POLL_INTERVAL_MS` | Worker tick interval (default 1000). |
+| `OCR_STUB_FIXTURES` | Path to fixture .txt files used by the stub provider (default `tests/fixtures/ocr`). |
+| `OCR_STUB_FLAKY_FAILURES` | How many times the `stub-flaky` mode fails before it succeeds (default 1). |
+| `OCR_MODEL_ID` | MS DI model id (default `prebuilt-read`). |
+| `AZURE_DI_API_VERSION` | MS DI API version (default `2024-11-30`). |
+| `KONG_BASE_URL` | Required when `OCR_PROVIDER=kong-ms-di`. e.g. `https://api.gov.bc.ca/document-intelligence` |
+| `KONG_TOKEN_URL` | OAuth client-credentials token endpoint. |
+| `KONG_CLIENT_ID` / `KONG_CLIENT_SECRET` | OAuth credentials provisioned by the BC Gov API platform team. |
+| `MAIL_TRANSPORT` | `log` (default) \| `smtp`. Stay on `log` until the relay is wired. |
+| `OCR_ALERT_RECIPIENTS` | Comma-separated email list for halted-queue alerts. Empty = log-only. |
+| `OCR_ALERT_FROM` | Sender address for halted-queue alerts (default `cydb-noreply@gov.bc.ca`). |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | Reserved for `MAIL_TRANSPORT=smtp` (Phase 3 ships log-only). |
+
+### Local OCR development
+
+`npm run dev` and the Playwright suite run with `OCR_PROVIDER=stub` so no
+external service is hit. The stub returns canned text from
+`tests/fixtures/ocr/<filename-stem>.txt`; drop your own `.txt` next to the
+fixture filename to script specific keyword counts.
 
 ## Routes
 
@@ -94,7 +118,8 @@ Role-gated (`admin` | `cfd_worker`):
 - `/attachments/[id]` — streamed file (inline preview by default; `?download=1` forces attachment disposition)
 
 Role-gated (`admin`):
-- `/admin` — Phase 2 stub; admin tooling lands in Phases 3–4
+- `/admin` — seed/clear database tooling
+- `/admin/ocr` — OCR queue: status counts, halt banner, requeue/abandon failed jobs, resume halted queue
 
 Role-gated (`clinician`):
 - `/clinician` — Phase 2 stub; assignment workflows land in Phase 4
@@ -103,8 +128,10 @@ Role-gated (`clinician`):
 
 - The Phase-1 rate limiter is in-process. The Phase-2 bypass shim also assumes a
   single pod (its synthesised user/role rows are persisted in the DB but the
-  cookie association is per-pod). Multi-pod horizontal scaling needs both
-  rethought.
+  cookie association is per-pod). The Phase-3 worker uses row-level leasing
+  (multi-pod-safe) but the consecutive-failure breaker counter is in-memory
+  per pod, so multi-pod operation would let each pod trip the breaker
+  independently. Multi-pod horizontal scaling needs all three rethought.
 - OIDC integration (BC Gov SSO) is **deferred** to a later phase. It will slot
   into `src/lib/server/auth.ts` as a `genericOAuth` plugin alongside the existing
   `emailAndPassword` config.

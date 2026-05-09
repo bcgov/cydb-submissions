@@ -105,6 +105,56 @@ export const userRoles = sqliteTable('user_roles', {
   )
 }));
 
+export const ocrJobs = sqliteTable('ocr_jobs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  attachmentId: integer('attachment_id').notNull()
+    .references(() => submissionAttachments.id, { onDelete: 'cascade' }),
+  status: text('status').notNull().default('queued'),
+  attempts: integer('attempts').notNull().default(0),
+  requeueCount: integer('requeue_count').notNull().default(0),
+  lastError: text('last_error'),
+  nextAttemptAt: text('next_attempt_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  leasedBy: text('leased_by'),
+  leasedAt: text('leased_at'),
+  createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`)
+}, (t) => ({
+  byStatusNext: index('ocr_jobs_status_next_idx').on(t.status, t.nextAttemptAt),
+  byAttachment: index('ocr_jobs_attachment_idx').on(t.attachmentId),
+  statusCheck: check(
+    'ocr_jobs_status_check',
+    sql`${t.status} IN ('queued','processing','succeeded','failed','abandoned')`
+  )
+}));
+
+export const ocrResults = sqliteTable('ocr_results', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  attachmentId: integer('attachment_id').notNull().unique()
+    .references(() => submissionAttachments.id, { onDelete: 'cascade' }),
+  rawText: text('raw_text').notNull(),
+  pages: integer('pages'),
+  modelId: text('model_id').notNull(),
+  apiVersion: text('api_version').notNull(),
+  processedAt: text('processed_at').notNull().default(sql`CURRENT_TIMESTAMP`)
+});
+
+export const keywordHits = sqliteTable('keyword_hits', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  submissionId: integer('submission_id').notNull()
+    .references(() => submissions.id, { onDelete: 'cascade' }),
+  keyword: text('keyword').notNull(),
+  count: integer('count').notNull(),
+  computedAt: text('computed_at').notNull().default(sql`CURRENT_TIMESTAMP`)
+}, (t) => ({
+  uniqByPair: uniqueIndex('keyword_hits_submission_keyword_unique').on(t.submissionId, t.keyword)
+}));
+
+export const systemState = sqliteTable('system_state', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: text('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`)
+});
+
 // Submissions that fail server-side validation are kept here for defect review.
 export const invalidSubmissions = sqliteTable('invalid_submissions', {
   id: integer('id').primaryKey({ autoIncrement: true }),

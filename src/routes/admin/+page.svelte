@@ -43,6 +43,11 @@
 		</p>
 	</section>
 
+	<section class="space-y-3">
+		<h2 class="text-lg font-semibold">Ingestion</h2>
+		<a href="/admin/chefs" class="underline text-blue-700">CHEFS configuration &amp; sync →</a>
+	</section>
+
 	<!-- Seed confirmation -->
 	<AlertDialog.Root bind:open={seedOpen}>
 		<AlertDialog.Content>

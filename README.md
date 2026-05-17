@@ -97,6 +97,15 @@ rejects form POSTs (e.g. `/login`) with a 403 cross-site error. Two patterns:
 | `OCR_ALERT_RECIPIENTS` | Comma-separated email list for halted-queue alerts. Empty = log-only. |
 | `OCR_ALERT_FROM` | Sender address for halted-queue alerts (default `cydb-noreply@gov.bc.ca`). |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | Reserved for `MAIL_TRANSPORT=smtp` (Phase 3 ships log-only). |
+| `CHEFS_FORM_ID` | CHEFS form UUID — overrides DB config when set. |
+| `CHEFS_API_TOKEN` | CHEFS API token — overrides DB config when set. Never logged. |
+| `CHEFS_VERSION` | Form version (`0` = all versions for JSON export, the CHEFS default). |
+| `CHEFS_BASE_URL` | CHEFS API base URL. Default `https://submit.digital.gov.bc.ca`. |
+| `CHEFS_FILE_COMPONENTS` | Comma-separated file-upload component keys to download. Default `simplefile`. |
+| `CHEFS_API_PARAMS` | JSON object of CHEFS export filter params (e.g. `{"status":"COMPLETED"}`). |
+| `CHEFS_POLLER_ENABLED` | Set to `1` to run the in-process CHEFS poller. |
+| `CHEFS_POLL_INTERVAL_MS` | Poll cadence in ms (default 60000). |
+| `CHEFS_INGEST_ONLY` | Set to `1` to return 410 from the public form POST (production toggle). |
 
 ### Local OCR development
 
@@ -104,6 +113,21 @@ rejects form POSTs (e.g. `/login`) with a 403 cross-site error. Two patterns:
 external service is hit. The stub returns canned text from
 `tests/fixtures/ocr/<filename-stem>.txt`; drop your own `.txt` next to the
 fixture filename to script specific keyword counts.
+
+## CHEFS ingestion
+
+The application can pull form submissions from BC Gov [CHEFS](https://developer.gov.bc.ca/docs/default/component/chefs-techdocs/Capabilities/Integrations/Downloading-Submission-Files/) via the export API. Configure from `/admin/chefs` (admins only) or via environment variables — env always wins so secrets can rotate without DB access.
+
+**Workflow:**
+
+1. Create the form in CHEFS, generate an API token, note the form UUID.
+2. In `/admin/chefs`, paste form ID + token, save. Optionally tick "Enable background poller".
+3. Click **Test connection** to verify auth. Click **Sync now** to pull immediately.
+4. Submissions land in the regular table; attachments are downloaded to `ATTACHMENTS_DIR/{submissionUuid}/` and OCR-enqueued through the existing pipeline.
+
+**Single-pod assumption.** The poller is per-pod, like the OCR worker. Multi-pod scaling would have every pod poll CHEFS concurrently — correctness is preserved by the `submissions.submission_uuid` unique constraint, but each extra pod multiplies API quota usage.
+
+**Disabling the public form.** Set `CHEFS_INGEST_ONLY=1` in production so the in-app POST returns 410 — CHEFS becomes the only legitimate ingest path.
 
 ## Routes
 

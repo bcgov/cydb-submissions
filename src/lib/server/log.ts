@@ -9,7 +9,8 @@ const PII_KEYS = new Set([
   'userAgent', 'fingerprint',
   'fileName', 'originalFilename',
   'rawPayload',
-  'raw_text', 'body', 'text'
+  'raw_text', 'body', 'text',
+  'apiToken', 'api_token'
 ]);
 
 // Case-insensitive — covers HTTP header names that arrive in any casing.

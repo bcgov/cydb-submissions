@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { auditLog } from '$lib/server/audit';
 import { createLogger } from '$lib/server/log';
 
@@ -53,8 +53,8 @@ describe('chefs events', () => {
 
   for (const ev of events) {
     it(`accepts ${ev}`, () => {
-      const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() } as any;
-      expect(() => auditLog(ev, { actorUserId: 'u', route: '/x', requestId: 'r' }, logger)).not.toThrow();
+      const { log } = captureLogger();
+      expect(() => auditLog(ev, { actorUserId: 'u', route: '/x', requestId: 'r' }, log)).not.toThrow();
     });
   }
 });

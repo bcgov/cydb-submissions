@@ -33,7 +33,7 @@ export function saveConfig(db: Db, partial: ChefsConfigInput): void {
   for (const k of Object.keys(partial) as Array<keyof ChefsConfigInput>) {
     const v = partial[k];
     if (v === undefined) continue;
-    if (k === 'apiToken' && (v === '' || v === null)) continue;
+    if (k === 'apiToken' && v === '') continue;
     (merged as Record<string, unknown>)[k] = v;
   }
   setSystemState(db, STATE_KEY, merged);

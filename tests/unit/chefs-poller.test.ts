@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
@@ -24,6 +24,10 @@ beforeEach(() => {
   db = drizzle(sqlite, { schema });
   migrate(db, { migrationsFolder: path.resolve('src/lib/server/db/migrations') });
   attachmentsDir = mkdtempSync(path.join(os.tmpdir(), 'cydb-poller-'));
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe('startPoller', () => {

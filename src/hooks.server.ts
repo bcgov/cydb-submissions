@@ -122,7 +122,12 @@ function maybeStartChefsPoller() {
 		getConfig: () => getEffectiveConfig(db, env as Record<string, string | undefined>),
 		logger,
 		list: (c) => listSubmissions(c, { fetch }),
-		download: (fileId) => downloadFile(cfg, fileId, { fetch }),
+		download: (fileId) =>
+				downloadFile(
+					getEffectiveConfig(db, env as Record<string, string | undefined>),
+					fileId,
+					{ fetch }
+				),
 		attachmentsDir: env.ATTACHMENTS_DIR ?? './attachments'
 	});
 }

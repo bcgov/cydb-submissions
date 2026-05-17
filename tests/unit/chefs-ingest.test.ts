@@ -97,6 +97,25 @@ describe('ingestOne', () => {
     expect(invalid).toHaveLength(1);
     expect(invalid[0].submissionUuid).toBe('chefs_sub-uuid-A');
   });
+
+  it('strips path components from attachment filenames before writing', async () => {
+    const malicious = {
+      ...validRaw,
+      form: { submissionId: 'sub-uuid-MAL' },
+      simplefile: [{ data: { id: 'file-MAL' }, originalName: '../../escape.pdf' }]
+    };
+    const download = vi.fn().mockResolvedValue({
+      bytes: Buffer.from('payload'),
+      mimeType: 'application/pdf'
+    });
+    await ingestOne(db, cfg, malicious, { download, attachmentsDir, logger: stubLogger() });
+    const atts = db.select().from(schema.submissionAttachments).all();
+    expect(atts).toHaveLength(1);
+    // stored path must remain inside attachmentsDir/{submissionUuid}/
+    const expectedDir = path.join(attachmentsDir, 'chefs_sub-uuid-MAL');
+    expect(atts[0].storedPath).toBe(path.join(expectedDir, 'escape.pdf'));
+    expect(atts[0].storedPath.startsWith(expectedDir + path.sep)).toBe(true);
+  });
 });
 
 function stubLogger() {

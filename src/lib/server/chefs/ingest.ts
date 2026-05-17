@@ -52,7 +52,7 @@ async function downloadAndPersist(
   const out: SavedAttachment[] = [];
   for (const ref of refs) {
     const dl = await deps.download(ref.fileId);
-    const stored = path.join(dir, ref.originalName);
+    const stored = path.join(dir, path.basename(ref.originalName));
     await writeFile(stored, dl.bytes);
     out.push({
       originalFilename: ref.originalName,

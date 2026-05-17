@@ -19,6 +19,13 @@ function safeIp(evt: RequestEvent): string | null {
 
 export const actions: Actions = {
 	default: async (event) => {
+		if (env.CHEFS_INGEST_ONLY === '1') {
+			event.locals.logger.warn(
+				{ event: 'public_submission_blocked' },
+				'public form submission blocked: CHEFS_INGEST_ONLY=1'
+			);
+			return fail(410, { error: 'Direct form submission is disabled — submit via CHEFS.' });
+		}
 		const log = event.locals.logger;
 		const form = await event.request.formData();
 		const submissionUuid = 'sub_' + nanoid(12);

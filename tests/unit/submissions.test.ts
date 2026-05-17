@@ -71,3 +71,33 @@ describe('writeInvalidSubmission', () => {
     expect(r.c).toBe(1);
   });
 });
+
+import { describe as describeIngestOnly, it as itIngestOnly, expect as expectIngestOnly, vi as viIngestOnly, beforeAll, afterAll } from 'vitest';
+
+describeIngestOnly('public form route — CHEFS_INGEST_ONLY', () => {
+  let mod: typeof import('../../src/routes/+page.server.ts');
+
+  beforeAll(async () => {
+    viIngestOnly.mock('$env/dynamic/private', () => ({
+      env: { CHEFS_INGEST_ONLY: '1' }
+    }));
+    viIngestOnly.resetModules();
+    mod = await import('../../src/routes/+page.server.ts');
+  });
+
+  afterAll(() => {
+    viIngestOnly.restoreAllMocks();
+    viIngestOnly.resetModules();
+  });
+
+  itIngestOnly('returns 410 from the default action when the env flag is set', async () => {
+    const fakeEvent: any = {
+      request: { formData: async () => new FormData(), headers: new Headers() },
+      cookies: { get: () => 'tok' },
+      locals: { logger: { info: viIngestOnly.fn(), warn: viIngestOnly.fn(), error: viIngestOnly.fn() } },
+      getClientAddress: () => '127.0.0.1'
+    };
+    const res = await mod.actions.default(fakeEvent);
+    expectIngestOnly((res as any).status).toBe(410);
+  });
+});

@@ -17,6 +17,9 @@ import { selectProvider } from '$lib/server/ocr/select-provider';
 import { selectMailer } from '$lib/server/mail/select-mailer';
 import { loadKeywords } from '$lib/server/ocr/keywords';
 import { startWorker, type WorkerHandle } from '$lib/server/ocr/worker';
+import { startPoller, type PollerHandle } from '$lib/server/chefs/poller';
+import { getEffectiveConfig } from '$lib/server/chefs/config';
+import { listSubmissions, downloadFile } from '$lib/server/chefs/client';
 
 // Surface crashes that would otherwise produce the bare
 // 'triggerUncaughtException' line with no stack. SvelteKit's adapter-node
@@ -46,6 +49,9 @@ const rl = createRateLimiter({
 
 let workerHandle: WorkerHandle | null = null;
 let workerStarted = false;
+
+let pollerHandle: PollerHandle | null = null;
+let pollerStarted = false;
 
 async function maybeStartOcrWorker() {
 	if (workerStarted) return;
@@ -103,9 +109,28 @@ async function maybeStartOcrWorker() {
 	}
 }
 
+function maybeStartChefsPoller() {
+	if (pollerStarted) return;
+	pollerStarted = true;
+	const cfg = getEffectiveConfig(db, env as Record<string, string | undefined>);
+	if (!cfg.pollerEnabled) {
+		logger.info({ event: 'chefs_poller_disabled' }, 'CHEFS poller not enabled');
+		return;
+	}
+	pollerHandle = startPoller({
+		db,
+		getConfig: () => getEffectiveConfig(db, env as Record<string, string | undefined>),
+		logger,
+		list: (c) => listSubmissions(c, { fetch }),
+		download: (fileId) => downloadFile(cfg, fileId, { fetch }),
+		attachmentsDir: env.ATTACHMENTS_DIR ?? './attachments'
+	});
+}
+
 if (!building) {
 	for (const sig of ['SIGINT', 'SIGTERM'] as const) {
 		process.once(sig, async () => {
+			await pollerHandle?.stop();
 			await workerHandle?.stop();
 			process.exit(0);
 		});
@@ -116,6 +141,7 @@ const CSRF_COOKIE = 'cydb_csrf';
 
 const handlePhase1: Handle = async ({ event, resolve }) => {
 	await maybeStartOcrWorker();
+	await maybeStartChefsPoller();
 	event.locals.requestId = nanoid(12);
 	event.locals.roles = new Set<Role>();
 

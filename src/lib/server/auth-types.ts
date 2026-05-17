@@ -25,6 +25,13 @@ export const AUDIT_EVENTS = [
   'queue_resumed',
   'ocr_job_requeued',
   'keyword_hits_recorded',
-  'mail_logged'
+  'mail_logged',
+  'chefs_config_saved',
+  'chefs_token_rotated',
+  'chefs_test_connection',
+  'chefs_sync_started',
+  'chefs_sync_completed',
+  'chefs_submission_ingested',
+  'chefs_poller_halted'
 ] as const;
 export type AuditEvent = (typeof AUDIT_EVENTS)[number];

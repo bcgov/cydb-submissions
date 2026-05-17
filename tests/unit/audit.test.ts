@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { auditLog } from '$lib/server/audit';
 import { createLogger } from '$lib/server/log';
 
@@ -38,4 +38,23 @@ describe('auditLog', () => {
       auditLog('totally_made_up', { actorUserId: 'u', actorRole: 'admin', route: '/', requestId: 'r' }, log)
     ).toThrow(/unknown audit event/i);
   });
+});
+
+describe('chefs events', () => {
+  const events = [
+    'chefs_config_saved',
+    'chefs_token_rotated',
+    'chefs_test_connection',
+    'chefs_sync_started',
+    'chefs_sync_completed',
+    'chefs_submission_ingested',
+    'chefs_poller_halted'
+  ] as const;
+
+  for (const ev of events) {
+    it(`accepts ${ev}`, () => {
+      const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() } as any;
+      expect(() => auditLog(ev, { actorUserId: 'u', route: '/x', requestId: 'r' }, logger)).not.toThrow();
+    });
+  }
 });

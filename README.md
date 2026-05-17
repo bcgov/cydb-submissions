@@ -105,7 +105,6 @@ rejects form POSTs (e.g. `/login`) with a 403 cross-site error. Two patterns:
 | `CHEFS_API_PARAMS` | JSON object of CHEFS export filter params (e.g. `{"status":"COMPLETED"}`). |
 | `CHEFS_POLLER_ENABLED` | Set to `1` to run the in-process CHEFS poller. |
 | `CHEFS_POLL_INTERVAL_MS` | Poll cadence in ms (default 60000). |
-| `CHEFS_INGEST_ONLY` | Set to `1` to return 410 from the public form POST (production toggle). |
 
 ### Local OCR development
 
@@ -127,12 +126,12 @@ The application can pull form submissions from BC Gov [CHEFS](https://developer.
 
 **Single-pod assumption.** The poller is per-pod, like the OCR worker. Multi-pod scaling would have every pod poll CHEFS concurrently — correctness is preserved by the `submissions.submission_uuid` unique constraint, but each extra pod multiplies API quota usage.
 
-**Disabling the public form.** Set `CHEFS_INGEST_ONLY=1` in production so the in-app POST returns 410 — CHEFS becomes the only legitimate ingest path.
+**In-app form is archived.** The Svelte form previously served at `/` has been moved to `archive/public-form/` (route files + form-specific E2E specs). `/` is now a staff-portal landing page. To restore the in-app form, see `archive/public-form/README.md`.
 
 ## Routes
 
 Public:
-- `/` — submission form
+- `/` — staff portal landing page (links to `/login`)
 - `/login`, `/logout` — staff sign-in
 - `/healthz`, `/readyz` — process / dependency probes
 

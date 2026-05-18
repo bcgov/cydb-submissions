@@ -1,10 +1,12 @@
 import type { Actions, PageServerLoad } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
 import { z } from 'zod';
+import { env } from '$env/dynamic/private';
 import { getAuth } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import { getUserRoles } from '$lib/server/roles';
 import { auditLog } from '$lib/server/audit';
+import { parseBypassConfig, applyBypass } from '$lib/server/dev-bypass';
 import type { Role } from '$lib/server/auth-types';
 
 const LoginSchema = z.object({
@@ -19,15 +21,93 @@ function landingFor(roles: Set<Role>): string {
 	return '/';
 }
 
+function devPersonas() {
+	if (env.NODE_ENV === 'production') return null;
+	try {
+		const cfg = parseBypassConfig(env.DEV_AUTH_BYPASS);
+		if (!cfg) return null;
+		return cfg.map((p) => ({
+			email: p.email,
+			roles: p.roles,
+			landing: landingFor(new Set(p.roles))
+		}));
+	} catch {
+		return null;
+	}
+}
+
 export const load: PageServerLoad = async ({ url, locals }) => {
-	if (locals.user) {
+	const switching = url.searchParams.has('switch');
+	if (locals.user && !switching) {
 		const next = url.searchParams.get('next') ?? landingFor(locals.roles);
 		throw redirect(303, next);
 	}
-	return { next: url.searchParams.get('next') ?? null };
+	return {
+		next: url.searchParams.get('next') ?? null,
+		personas: devPersonas()
+	};
 };
 
 export const actions: Actions = {
+	devLogin: async ({ request, cookies, locals, url }) => {
+		if (env.NODE_ENV === 'production') {
+			return fail(403, { error: 'dev impersonation is disabled in production' });
+		}
+		const cfg = (() => {
+			try {
+				return parseBypassConfig(env.DEV_AUTH_BYPASS);
+			} catch {
+				return null;
+			}
+		})();
+		if (!cfg) {
+			return fail(503, { error: 'DEV_AUTH_BYPASS is not configured' });
+		}
+		const form = await request.formData();
+		const email = form.get('email')?.toString() ?? '';
+		const target = cfg.find((p) => p.email === email);
+		if (!target) {
+			return fail(400, { error: `unknown persona: ${email}` });
+		}
+
+		// Clear any prior better-auth or bypass session so the new persona
+		// wins on the next request.
+		const auth = getAuth();
+		if (auth) {
+			try {
+				await auth.api.signOut({ headers: request.headers });
+			} catch {
+				/* nothing to sign out of */
+			}
+		}
+		cookies.set('cydb_bypass', target.email, {
+			path: '/',
+			httpOnly: true,
+			sameSite: 'lax',
+			secure: false
+		});
+
+		// Pre-seed the user+roles so the redirect target's load function
+		// sees the new identity on this same response cycle (the bypass
+		// cookie alone takes effect on the *next* request).
+		await applyBypass(db, cfg, target.email);
+
+		auditLog(
+			'auth_bypass_applied',
+			{
+				actorUserId: target.email,
+				actorRole: target.roles[0],
+				route: url.pathname,
+				requestId: locals.requestId,
+				reason: 'dev_impersonation_button'
+			},
+			locals.logger
+		);
+
+		const next = form.get('next')?.toString() || landingFor(new Set(target.roles));
+		throw redirect(303, next);
+	},
+
 	sso: async ({ request, url, locals }) => {
 		const auth = getAuth();
 		if (!auth) {
@@ -61,7 +141,7 @@ export const actions: Actions = {
 		}
 	},
 
-	default: async ({ request, url, locals }) => {
+	password: async ({ request, url, locals }) => {
 		const form = await request.formData();
 		const parsed = LoginSchema.safeParse({
 			email: form.get('email'),

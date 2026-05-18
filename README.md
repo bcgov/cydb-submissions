@@ -128,6 +128,14 @@ In deployed environments (`SSO_ISSUER_URL` set), `/login` shows **Sign in with B
 
 Locally, leave `SSO_ISSUER_URL` empty and use `DEV_AUTH_BYPASS=email:role[+role]` for fast access. The bypass shim refuses to operate when `NODE_ENV=production`, so it's safe to leave set in `.env`. The clinician email/password form is still available under "Sign in with a clinician password instead" in both modes.
 
+**Dev impersonation panel.** When `DEV_AUTH_BYPASS` is set, `/login` renders a "Dev impersonation" section listing each configured persona as a one-click button — pick the role you need to exercise and the shim signs you in. Once authenticated via bypass, the layout header shows a yellow **dev** chip next to your email plus a **Switch** link that returns to `/login` so you can hop personas without touching the URL. Example covering every role:
+
+```
+DEV_AUTH_BYPASS=admin@test:admin,worker@test:cfd_worker,clinician@test:clinician,super@test:admin+cfd_worker
+```
+
+The shim still honours the legacy `?bypass=<email>` query param (used by the Playwright suite), so adding the UI doesn't break existing E2E tests.
+
 ## CHEFS ingestion
 
 The application can pull form submissions from BC Gov [CHEFS](https://developer.gov.bc.ca/docs/default/component/chefs-techdocs/Capabilities/Integrations/Downloading-Submission-Files/) via the export API. Configure from `/admin/chefs` (admins only) or via environment variables — env always wins so secrets can rotate without DB access.

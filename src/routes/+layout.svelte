@@ -16,6 +16,20 @@
 			{#if data.user}
 				<form method="POST" action="/logout" use:enhance class="flex items-center gap-2">
 					<span class="text-sm text-muted-foreground">{data.user.email}</span>
+					{#if data.bypassActive}
+						<span
+							class="text-xs px-1.5 py-0.5 rounded border border-yellow-500/60 bg-yellow-50 text-yellow-900 dark:bg-yellow-950/30 dark:text-yellow-200"
+							title="Signed in via DEV_AUTH_BYPASS"
+						>
+							dev
+						</span>
+						<a
+							href="/login?switch=1"
+							class="text-xs underline text-muted-foreground hover:text-foreground"
+						>
+							Switch
+						</a>
+					{/if}
 					<Button type="submit" variant="outline" size="sm">Sign out</Button>
 				</form>
 			{/if}

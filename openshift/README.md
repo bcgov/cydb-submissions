@@ -90,14 +90,17 @@ Defaults below are baked into the worker. Override in the deployment env if the 
 
 ### 4. Halted-queue alert mailer (optional)
 
-The worker emails on transition to halted. Today the SmtpMailer is a stub that throws on `send()`, so the mailer stays on `MAIL_TRANSPORT=log` until the BC Gov SMTP relay is confirmed — the alert is written to pino at `error` level so it shows up in OpenShift's log stream.
+The worker emails on transition to halted. The supported transport for BC Gov workloads is **CHES** (Common Hosted Email Service) — a web API wrapping nodemailer behind Keycloak OAuth2. See `CHES-instructions.md` at the repo root for the operational constraints (gov-hosted `from:` domain, SPANBC source IP requirement, rate limits).
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `MAIL_TRANSPORT` | `log` | `log` (default) or `smtp`. Stay on `log` until the relay is wired. |
-| `OCR_ALERT_RECIPIENTS` | empty | Comma-separated. Empty = log-only (no mail attempt). |
-| `OCR_ALERT_FROM` | `cydb-noreply@gov.bc.ca` | Sender address for halt alerts. |
-| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | unset | Only consulted when `MAIL_TRANSPORT=smtp`. Phase 3 ships log-only; the SmtpMailer is a stub. |
+| `MAIL_TRANSPORT` | `log` | `log` (default — alerts go to pino) \| `ches` (CHES web service) \| `smtp` (stub; throws on send). |
+| `OCR_ALERT_RECIPIENTS` | empty | Comma-separated. Empty = log-only (no mail attempt) regardless of transport. |
+| `OCR_ALERT_FROM` | `cydb-noreply@gov.bc.ca` | Sender address for halt alerts. Must be a gov-hosted domain when `MAIL_TRANSPORT=ches`. |
+| `CHES_BASE_URL` | `https://ches.api.gov.bc.ca/api/v1` | CHES web service base URL. |
+| `CHES_TOKEN_URL` | unset | Keycloak OAuth2 token endpoint, realm-scoped. e.g. `https://loginproxy.gov.bc.ca/auth/realms/comsvcauth/protocol/openid-connect/token` (verify realm with the team that provisioned your CHES service account). |
+| `CHES_CLIENT_ID` / `CHES_CLIENT_SECRET` | unset | **Secret.** Keycloak service-account credentials. Required when `MAIL_TRANSPORT=ches`. |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | unset | Only consulted when `MAIL_TRANSPORT=smtp`. The SmtpMailer is a stub and throws — prefer `ches`. |
 
 ### Minimal `bcgov-di` deployment checklist
 

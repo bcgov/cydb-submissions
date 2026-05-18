@@ -81,7 +81,11 @@ async function maybeStartOcrWorker() {
 				SMTP_HOST: env.SMTP_HOST,
 				SMTP_PORT: env.SMTP_PORT,
 				SMTP_USER: env.SMTP_USER,
-				SMTP_PASS: env.SMTP_PASS
+				SMTP_PASS: env.SMTP_PASS,
+				CHES_BASE_URL: env.CHES_BASE_URL,
+				CHES_TOKEN_URL: env.CHES_TOKEN_URL,
+				CHES_CLIENT_ID: env.CHES_CLIENT_ID,
+				CHES_CLIENT_SECRET: env.CHES_CLIENT_SECRET
 			},
 			logger
 		);

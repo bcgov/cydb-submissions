@@ -96,10 +96,13 @@ rejects form POSTs (e.g. `/login`) with a 403 cross-site error. Two patterns:
 | `BCGOV_DI_BASE_URL` | Required when `OCR_PROVIDER=bcgov-di`. Test backend: `https://bcgov-di-test-backend-fd34fb-test.apps.silver.devops.gov.bc.ca`. |
 | `BCGOV_DI_API_KEY` | Required when `OCR_PROVIDER=bcgov-di`. Group-scoped key issued by the AI Adoption team. Never logged. |
 | `BCGOV_DI_WORKFLOW_SLUG` | Workflow id on the BC Gov DI backend (default `ocr-only-minimal`). |
-| `MAIL_TRANSPORT` | `log` (default) \| `smtp`. Stay on `log` until the relay is wired. |
+| `MAIL_TRANSPORT` | `log` (default) \| `ches` \| `smtp`. `ches` posts halt alerts to the BC Gov Common Hosted Email Service; `smtp` is a stub. |
 | `OCR_ALERT_RECIPIENTS` | Comma-separated email list for halted-queue alerts. Empty = log-only. |
 | `OCR_ALERT_FROM` | Sender address for halted-queue alerts (default `cydb-noreply@gov.bc.ca`). |
-| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | Reserved for `MAIL_TRANSPORT=smtp` (Phase 3 ships log-only). |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | Reserved for `MAIL_TRANSPORT=smtp` (currently a stub — prefer `ches`). |
+| `CHES_BASE_URL` | CHES web service base URL. Default `https://ches.api.gov.bc.ca/api/v1`. |
+| `CHES_TOKEN_URL` | Keycloak OAuth2 token endpoint (realm-scoped). Required when `MAIL_TRANSPORT=ches`. |
+| `CHES_CLIENT_ID` / `CHES_CLIENT_SECRET` | Keycloak service-account credentials. Required when `MAIL_TRANSPORT=ches`. Never logged. |
 | `CHEFS_FORM_ID` | CHEFS form UUID — overrides DB config when set. |
 | `CHEFS_API_TOKEN` | CHEFS API token — overrides DB config when set. Never logged. |
 | `CHEFS_VERSION` | Form version (`0` = all versions for JSON export, the CHEFS default). |

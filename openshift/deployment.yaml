@@ -73,11 +73,24 @@ spec:
               value: "https://bcgov-di-test-backend-fd34fb-test.apps.silver.devops.gov.bc.ca"
             - name: BCGOV_DI_WORKFLOW_SLUG
               value: "ocr-only-minimal"
-            # Halted-queue alerts — log-only until SMTP relay is confirmed.
+            # Halted-queue alerts.
+            # MAIL_TRANSPORT:
+            #   "log"  — default, writes alerts to pino (no mail sent)
+            #   "ches" — BC Gov Common Hosted Email Service (web API + OAuth2)
+            #   "smtp" — direct SMTP (currently a stub, throws on send)
+            # Switch to "ches" once CHES_CLIENT_ID / CHES_CLIENT_SECRET
+            # are in cydb-submissions-secrets.
             - name: MAIL_TRANSPORT
               value: "log"
             - name: OCR_ALERT_FROM
               value: "cydb-noreply@gov.bc.ca"
+            # CHES non-secret config. The Keycloak token URL is realm-
+            # scoped; the BC Gov SSO loginproxy host is correct for most
+            # gov workloads — override per environment as needed.
+            - name: CHES_BASE_URL
+              value: "https://ches.api.gov.bc.ca/api/v1"
+            - name: CHES_TOKEN_URL
+              value: "https://loginproxy.gov.bc.ca/auth/realms/comsvcauth/protocol/openid-connect/token"
           volumeMounts:
             - name: db
               mountPath: /data/db

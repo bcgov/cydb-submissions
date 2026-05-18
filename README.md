@@ -81,7 +81,7 @@ rejects form POSTs (e.g. `/login`) with a 403 cross-site error. Two patterns:
 | `ADMIN_BOOTSTRAP_EMAIL` | First-deploy admin email (only seeded when no users exist). |
 | `ADMIN_BOOTSTRAP_PASSWORD` | First-deploy admin password (min 12 chars). Rotate immediately after first login. |
 | `OCR_WORKER_ENABLED` | Phase 3. Set to `1` to start the in-process OCR worker. Default off. |
-| `OCR_PROVIDER` | `stub` (default) \| `stub-fail` \| `stub-flaky` \| `kong-ms-di`. Use a stub mode in dev/CI. |
+| `OCR_PROVIDER` | `stub` (default) \| `stub-fail` \| `stub-flaky` \| `kong-ms-di` \| `bcgov-di`. Use a stub mode in dev/CI. |
 | `OCR_MAX_CONCURRENCY` | In-flight requests (1–4, default 1). |
 | `OCR_MAX_ATTEMPTS` | Per-job retry budget (default 3). |
 | `OCR_FAILURE_BREAKER` | Consecutive terminal failures before the queue halts (default 4). |
@@ -93,6 +93,9 @@ rejects form POSTs (e.g. `/login`) with a 403 cross-site error. Two patterns:
 | `KONG_BASE_URL` | Required when `OCR_PROVIDER=kong-ms-di`. e.g. `https://api.gov.bc.ca/document-intelligence` |
 | `KONG_TOKEN_URL` | OAuth client-credentials token endpoint. |
 | `KONG_CLIENT_ID` / `KONG_CLIENT_SECRET` | OAuth credentials provisioned by the BC Gov API platform team. |
+| `BCGOV_DI_BASE_URL` | Required when `OCR_PROVIDER=bcgov-di`. Test backend: `https://bcgov-di-test-backend-fd34fb-test.apps.silver.devops.gov.bc.ca`. |
+| `BCGOV_DI_API_KEY` | Required when `OCR_PROVIDER=bcgov-di`. Group-scoped key issued by the AI Adoption team. Never logged. |
+| `BCGOV_DI_WORKFLOW_SLUG` | Workflow id on the BC Gov DI backend (default `ocr-only-minimal`). |
 | `MAIL_TRANSPORT` | `log` (default) \| `smtp`. Stay on `log` until the relay is wired. |
 | `OCR_ALERT_RECIPIENTS` | Comma-separated email list for halted-queue alerts. Empty = log-only. |
 | `OCR_ALERT_FROM` | Sender address for halted-queue alerts (default `cydb-noreply@gov.bc.ca`). |

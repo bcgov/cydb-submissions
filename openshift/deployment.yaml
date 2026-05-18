@@ -44,8 +44,11 @@ spec:
             - name: ATTACHMENTS_DIR
               value: /data/attachments
             # Phase 3 OCR worker — disabled by default; set to "1" to start.
-            # Switch OCR_PROVIDER to "kong-ms-di" once the Kong creds are in
-            # the cydb-submissions-secrets Secret (see secret.example.yaml).
+            # OCR_PROVIDER:
+            #   "stub"       — dev/CI; reads fixtures from tests/fixtures/ocr
+            #   "kong-ms-di" — BC Gov Kong gateway → Azure DI (OAuth2 client_creds)
+            #   "bcgov-di"   — BC Gov AI Adoption DI backend (x-api-key, workflow-driven)
+            # See secret.example.yaml for the credentials each provider needs.
             - name: OCR_WORKER_ENABLED
               value: "0"
             - name: OCR_PROVIDER
@@ -64,6 +67,12 @@ spec:
               value: "2024-11-30"
             - name: KONG_BASE_URL
               value: "https://api.gov.bc.ca/document-intelligence"
+            # BC Gov DI backend — non-secret base URL + workflow live here;
+            # BCGOV_DI_API_KEY comes from cydb-submissions-secrets.
+            - name: BCGOV_DI_BASE_URL
+              value: "https://bcgov-di-test-backend-fd34fb-test.apps.silver.devops.gov.bc.ca"
+            - name: BCGOV_DI_WORKFLOW_SLUG
+              value: "ocr-only-minimal"
             # Halted-queue alerts — log-only until SMTP relay is confirmed.
             - name: MAIL_TRANSPORT
               value: "log"

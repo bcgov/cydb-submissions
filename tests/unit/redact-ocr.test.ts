@@ -24,4 +24,12 @@ describe('redactPII (phase 3 additions)', () => {
 		expect(out.headers.apikey).toBe('[REDACTED]');
 		expect(out.headers.ApiKey).toBe('[REDACTED]');
 	});
+
+	it('redacts the BC Gov DI x-api-key header (case-insensitive)', () => {
+		const out = redactPII({
+			headers: { 'x-api-key': 'secret-key', 'X-Api-Key': 'secret-key' }
+		}) as { headers: Record<string, string> };
+		expect(out.headers['x-api-key']).toBe('[REDACTED]');
+		expect(out.headers['X-Api-Key']).toBe('[REDACTED]');
+	});
 });

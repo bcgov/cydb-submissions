@@ -14,7 +14,7 @@ const PII_KEYS = new Set([
 ]);
 
 // Case-insensitive — covers HTTP header names that arrive in any casing.
-const PII_KEYS_CI = new Set(['authorization', 'apikey']);
+const PII_KEYS_CI = new Set(['authorization', 'apikey', 'x-api-key']);
 
 const EMAIL_RE = /[\w.+-]+@[\w-]+\.[\w.-]+/g;
 const LONG_DIGITS_RE = /\b\d[\d\s-]{6,}\d\b/g;

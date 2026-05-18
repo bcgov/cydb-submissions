@@ -7,7 +7,15 @@ import { db } from '$lib/server/db';
 import { getUserRoles } from '$lib/server/roles';
 import { auditLog } from '$lib/server/audit';
 import { parseBypassConfig, applyBypass } from '$lib/server/dev-bypass';
+import { safeNextUrl } from '$lib/server/security/url-safety';
+import { createLoginThrottle } from '$lib/server/security/login-throttle';
 import type { Role } from '$lib/server/auth-types';
+
+const loginThrottle = createLoginThrottle({
+	maxFailuresPerKey: 5,
+	windowMs: 15 * 60_000,
+	lockoutMs: 15 * 60_000
+});
 
 const LoginSchema = z.object({
 	email: z.string().email().max(254),
@@ -38,12 +46,15 @@ function devPersonas() {
 
 export const load: PageServerLoad = async ({ url, locals }) => {
 	const switching = url.searchParams.has('switch');
+	const rawNext = url.searchParams.get('next');
 	if (locals.user && !switching) {
-		const next = url.searchParams.get('next') ?? landingFor(locals.roles);
-		throw redirect(303, next);
+		const fallback = landingFor(locals.roles);
+		throw redirect(303, safeNextUrl(rawNext, url.origin, fallback));
 	}
 	return {
-		next: url.searchParams.get('next') ?? null,
+		// Raw value is fine to echo into the form's hidden input (Svelte
+		// auto-escapes for HTML); the actions re-validate before redirecting.
+		next: rawNext ?? null,
 		personas: devPersonas()
 	};
 };
@@ -104,8 +115,9 @@ export const actions: Actions = {
 			locals.logger
 		);
 
-		const next = form.get('next')?.toString() || landingFor(new Set(target.roles));
-		throw redirect(303, next);
+		const rawNext = form.get('next')?.toString() ?? '';
+		const fallback = landingFor(new Set(target.roles));
+		throw redirect(303, safeNextUrl(rawNext, url.origin, fallback));
 	},
 
 	sso: async ({ request, url, locals }) => {
@@ -114,10 +126,10 @@ export const actions: Actions = {
 			return fail(503, { error: 'Auth is not configured on the server.' });
 		}
 		const form = await request.formData();
-		const next = form.get('next')?.toString() || '/';
-		// Resolve relative redirect targets against this origin so the BC Gov
-		// SSO callback handler can verify them as same-origin.
-		const callbackURL = new URL(next, url.origin).toString();
+		const rawNext = form.get('next')?.toString() ?? '';
+		// Validate before handing off as the post-OAuth callback URL.
+		const safeNext = safeNextUrl(rawNext, url.origin, '/');
+		const callbackURL = new URL(safeNext, url.origin).toString();
 		try {
 			const result = await auth.api.signInWithOAuth2({
 				body: { providerId: 'keycloak', callbackURL, disableRedirect: true },
@@ -141,7 +153,7 @@ export const actions: Actions = {
 		}
 	},
 
-	password: async ({ request, url, locals }) => {
+	password: async ({ request, url, locals, getClientAddress }) => {
 		const form = await request.formData();
 		const parsed = LoginSchema.safeParse({
 			email: form.get('email'),
@@ -149,6 +161,30 @@ export const actions: Actions = {
 		});
 		if (!parsed.success) {
 			return fail(400, { error: 'Invalid credentials' });
+		}
+
+		const ip = (() => {
+			try {
+				return getClientAddress();
+			} catch {
+				return 'unknown';
+			}
+		})();
+		const decision = loginThrottle.check(ip, parsed.data.email);
+		if (!decision.allowed) {
+			locals.logger.warn(
+				{ event: 'login_failed', reason: 'throttled', retryAfterMs: decision.retryAfterMs },
+				'login throttled'
+			);
+			auditLog(
+				'login_failed',
+				{ route: url.pathname, requestId: locals.requestId, reason: 'throttled' },
+				locals.logger
+			);
+			return fail(429, {
+				error: 'Too many failed attempts. Try again in a few minutes.',
+				email: parsed.data.email
+			});
 		}
 
 		const auth = getAuth();
@@ -169,10 +205,12 @@ export const actions: Actions = {
 				headers: request.headers
 			});
 			if (!result?.user?.id) {
+				loginThrottle.recordFailure(ip, parsed.data.email);
 				return fail(401, { error: 'Invalid credentials', email: parsed.data.email });
 			}
 			userId = result.user.id;
 		} catch {
+			loginThrottle.recordFailure(ip, parsed.data.email);
 			auditLog(
 				'login_failed',
 				{
@@ -185,6 +223,7 @@ export const actions: Actions = {
 			return fail(401, { error: 'Invalid credentials', email: parsed.data.email });
 		}
 
+		loginThrottle.recordSuccess(ip, parsed.data.email);
 		const roles = await getUserRoles(db, userId);
 		auditLog(
 			'login_succeeded',
@@ -195,7 +234,8 @@ export const actions: Actions = {
 			},
 			locals.logger
 		);
-		const next = form.get('next')?.toString() || landingFor(roles);
-		throw redirect(303, next);
+		const rawNext = form.get('next')?.toString() ?? '';
+		const fallback = landingFor(roles);
+		throw redirect(303, safeNextUrl(rawNext, url.origin, fallback));
 	}
 };

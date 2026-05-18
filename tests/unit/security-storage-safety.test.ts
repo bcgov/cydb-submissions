@@ -21,22 +21,24 @@ describe('saveAttachments — defensive file-write hardening (6.10, 9.3, 9.4)', 
 	});
 
 	it('strips path components from f.name so writes stay inside the submission directory', async () => {
-		const f = file('../../../etc/passwd', 'application/pdf', PDF_MAGIC);
+		// Realistic attack: legit-looking filename with embedded traversal.
+		// (A filename like "../../etc/passwd" with no extension is rejected
+		// outright by the extension check covered below.)
+		const f = file('../../../evil.pdf', 'application/pdf', PDF_MAGIC);
 		await saveAttachments(
 			{ baseDir: dir, submissionUuid: 'sub_a', maxBytes: 1024, allowedMime: new Set(['application/pdf']) },
 			[f]
 		);
 		const subDir = path.join(dir, 'sub_a');
 		const entries = readdirSync(subDir);
-		// Every persisted file lives inside the submission directory.
-		expect(entries.length).toBeGreaterThan(0);
+		// File persisted inside the submission directory; basename stripped.
+		expect(entries).toEqual(['evil.pdf']);
 		for (const e of entries) {
 			expect(e).not.toContain('..');
 			expect(e).not.toContain('/');
 		}
-		// Nothing escaped to the parent.
-		expect(existsSync(path.join(dir, 'etc'))).toBe(false);
-		expect(existsSync(path.join(dir, '..', 'etc'))).toBe(false);
+		// Nothing escaped to the parent of the basedir.
+		expect(existsSync(path.join(dir, '..', 'evil.pdf'))).toBe(false);
 	});
 
 	it('rejects a file whose magic bytes do not match the claimed PDF mime', async () => {

@@ -97,6 +97,13 @@ spec:
             # (loginproxy host changes between dev/test/prod).
             - name: SSO_ISSUER_URL
               value: "https://loginproxy.gov.bc.ca/auth/realms/standard"
+            # adapter-node's default body-size limit is 512K, which truncates
+            # any upload above that long before the in-app MAX_UPLOAD_BYTES
+            # check runs. Sized to the form's 25 MiB cap with headroom for
+            # form fields. Lower this for stricter intake or to protect
+            # against memory pressure under load.
+            - name: BODY_SIZE_LIMIT
+              value: "27000000"
           volumeMounts:
             - name: db
               mountPath: /data/db

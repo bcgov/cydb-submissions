@@ -8,6 +8,7 @@ import { getEffectiveConfig, redactForClient, saveConfig, rotateApiToken } from 
 import { listSubmissions, downloadFile } from '$lib/server/chefs/client';
 import { runOneSync } from '$lib/server/chefs/sync';
 import { getSystemState, clearSystemState } from '$lib/server/ocr/system-state';
+import { isAllowedChefsBaseUrl } from '$lib/server/security/url-safety';
 import type { SyncResult } from '$lib/server/chefs/types';
 
 function csrfOk(formCsrf: FormDataEntryValue | null, cookieCsrf: string | undefined): boolean {
@@ -48,10 +49,18 @@ export const actions: Actions = {
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean);
+    const baseUrl = String(form.get('baseUrl') ?? '').trim() || undefined;
+    if (baseUrl && !isAllowedChefsBaseUrl(baseUrl)) {
+      return fail(400, {
+        action: 'save',
+        error:
+          'baseUrl must be an HTTPS URL on the gov.bc.ca apex (e.g. https://submit.digital.gov.bc.ca)'
+      });
+    }
     saveConfig(db, {
       formId: String(form.get('formId') ?? '').trim() || undefined,
       version: String(form.get('version') ?? '').trim() || undefined,
-      baseUrl: String(form.get('baseUrl') ?? '').trim() || undefined,
+      baseUrl,
       fileComponents: fileComponents.length > 0 ? fileComponents : undefined,
       apiParams,
       pollerEnabled: form.get('pollerEnabled') === 'on',

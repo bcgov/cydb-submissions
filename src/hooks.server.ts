@@ -12,6 +12,7 @@ import { db } from '$lib/server/db';
 import { parseBypassConfig, applyBypass } from '$lib/server/dev-bypass';
 import { getUserRoles } from '$lib/server/roles';
 import { auditLog } from '$lib/server/audit';
+import { buildSecurityHeaders } from '$lib/server/security/headers';
 import type { Role } from '$lib/server/auth-types';
 import { selectProvider } from '$lib/server/ocr/select-provider';
 import { selectMailer } from '$lib/server/mail/select-mailer';
@@ -251,7 +252,7 @@ const ROUTE_RULES: Array<{ prefix: string; roles: Role[] }> = [
 	{ prefix: '/admin', roles: ['admin'] },
 	{ prefix: '/clinician', roles: ['clinician'] },
 	{ prefix: '/submissions', roles: ['admin', 'cfd_worker'] },
-	{ prefix: '/attachments', roles: ['admin', 'cfd_worker'] }
+	{ prefix: '/attachments', roles: ['admin', 'cfd_worker', 'clinician'] }
 ];
 
 const handleRoleGuard: Handle = async ({ event, resolve }) => {
@@ -279,9 +280,22 @@ const handleRoleGuard: Handle = async ({ event, resolve }) => {
 	return resolve(event);
 };
 
+const handleSecurityHeaders: Handle = async ({ event, resolve }) => {
+	const response = await resolve(event);
+	const headers = buildSecurityHeaders({
+		pathname: event.url.pathname,
+		isProduction: env.NODE_ENV === 'production'
+	});
+	for (const [k, v] of Object.entries(headers)) {
+		response.headers.set(k, v);
+	}
+	return response;
+};
+
 export const handle: Handle = sequence(
 	handlePhase1,
 	handleBetterAuth,
 	handlePopulateRoles,
-	handleRoleGuard
+	handleRoleGuard,
+	handleSecurityHeaders
 );

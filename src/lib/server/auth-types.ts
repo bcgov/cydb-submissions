@@ -32,6 +32,10 @@ export const AUDIT_EVENTS = [
   'chefs_sync_started',
   'chefs_sync_completed',
   'chefs_submission_ingested',
-  'chefs_poller_halted'
+  'chefs_poller_halted',
+  'sso_login_succeeded',
+  'sso_login_failed',
+  'sso_role_sync_succeeded',
+  'sso_role_sync_failed'
 ] as const;
 export type AuditEvent = (typeof AUDIT_EVENTS)[number];

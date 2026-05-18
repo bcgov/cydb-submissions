@@ -1,9 +1,13 @@
 import { betterAuth } from 'better-auth/minimal';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
+import { genericOAuth, keycloak } from 'better-auth/plugins/generic-oauth';
 import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
 import { db } from '$lib/server/db';
+import { loadSsoConfig } from '$lib/server/sso-config';
+import { extractSsoRoles, syncUserRoles } from '$lib/server/sso-roles';
+import { logger } from '$lib/server/log';
 
 type Auth = ReturnType<typeof betterAuth>;
 
@@ -31,6 +35,58 @@ export function getAuth(): Auth | null {
 		);
 		return null;
 	}
+	const ssoCfg = loadSsoConfig({
+		SSO_ISSUER_URL: env.SSO_ISSUER_URL,
+		SSO_CLIENT_ID: env.SSO_CLIENT_ID,
+		SSO_CLIENT_SECRET: env.SSO_CLIENT_SECRET
+	});
+	const plugins: ReturnType<typeof betterAuth>['options']['plugins'] = [
+		sveltekitCookies(getRequestEvent)
+	];
+	if (ssoCfg) {
+		plugins.push(
+			genericOAuth({
+				config: [
+					keycloak({
+						clientId: ssoCfg.clientId,
+						clientSecret: ssoCfg.clientSecret,
+						issuer: ssoCfg.issuer
+					})
+				]
+			})
+		);
+	}
+
+	const ssoRoleSync = async (account: { providerId?: string; userId?: string; accessToken?: string | null }) => {
+		if (!ssoCfg || account.providerId !== 'keycloak' || !account.accessToken || !account.userId)
+			return;
+		try {
+			const roles = extractSsoRoles(account.accessToken, ssoCfg.clientId);
+			await syncUserRoles(db, account.userId, roles);
+			if (roles.size > 0) {
+				logger.info(
+					{ event: 'sso_role_sync_succeeded', userId: account.userId, count: roles.size },
+					'sso role sync ok'
+				);
+			} else {
+				logger.warn(
+					{ event: 'sso_role_sync_failed', userId: account.userId, reason: 'no_roles_in_token' },
+					'sso token had no recognised roles; local roles unchanged'
+				);
+			}
+		} catch (err) {
+			logger.error(
+				{
+					event: 'sso_role_sync_failed',
+					userId: account.userId,
+					reason: 'exception',
+					err: (err as Error).message
+				},
+				'sso role sync threw'
+			);
+		}
+	};
+
 	_auth = betterAuth({
 		baseURL: env.ORIGIN,
 		secret: env.BETTER_AUTH_SECRET,
@@ -45,7 +101,15 @@ export function getAuth(): Auth | null {
 			expiresIn: 8 * 60 * 60,
 			updateAge: 60 * 60
 		},
-		plugins: [sveltekitCookies(getRequestEvent)]
+		plugins,
+		databaseHooks: ssoCfg
+			? {
+					account: {
+						create: { after: ssoRoleSync },
+						update: { after: ssoRoleSync }
+					}
+				}
+			: undefined
 	});
 	return _auth;
 }

@@ -103,6 +103,9 @@ rejects form POSTs (e.g. `/login`) with a 403 cross-site error. Two patterns:
 | `CHES_BASE_URL` | CHES web service base URL. Default `https://ches.api.gov.bc.ca/api/v1`. |
 | `CHES_TOKEN_URL` | Keycloak OAuth2 token endpoint (realm-scoped). Required when `MAIL_TRANSPORT=ches`. |
 | `CHES_CLIENT_ID` / `CHES_CLIENT_SECRET` | Keycloak service-account credentials. Required when `MAIL_TRANSPORT=ches`. Never logged. |
+| `SSO_ISSUER_URL` | BC Gov SSO (Keycloak) issuer URL, e.g. `https://dev.loginproxy.gov.bc.ca/auth/realms/standard`. Empty = SSO disabled. |
+| `SSO_CLIENT_ID` | OAuth client id from `SSO/CYDB Submissions-installation-*.json` (`resource` field). Required when `SSO_ISSUER_URL` is set. |
+| `SSO_CLIENT_SECRET` | OAuth client secret (`credentials.secret`). Required when `SSO_ISSUER_URL` is set. Never logged. |
 | `CHEFS_FORM_ID` | CHEFS form UUID — overrides DB config when set. |
 | `CHEFS_API_TOKEN` | CHEFS API token — overrides DB config when set. Never logged. |
 | `CHEFS_VERSION` | Form version (`0` = all versions for JSON export, the CHEFS default). |
@@ -118,6 +121,12 @@ rejects form POSTs (e.g. `/login`) with a 403 cross-site error. Two patterns:
 external service is hit. The stub returns canned text from
 `tests/fixtures/ocr/<filename-stem>.txt`; drop your own `.txt` next to the
 fixture filename to script specific keyword counts.
+
+### Signing in
+
+In deployed environments (`SSO_ISSUER_URL` set), `/login` shows **Sign in with BC Gov SSO** as the primary action. Click-through redirects to the BC Gov Keycloak realm; on return the user's session is established and roles are synced from the access token's `client_roles` claim (BC Gov SSO IdP mapper) — plus the standard `resource_access.<client>.roles` claim as a defensive fallback. Roles must be created and assigned in the CSS app (per `openshift/README.md`); users without one of `admin`, `cfd_worker`, or `clinician` will land on `/` with no role-gated access.
+
+Locally, leave `SSO_ISSUER_URL` empty and use `DEV_AUTH_BYPASS=email:role[+role]` for fast access. The bypass shim refuses to operate when `NODE_ENV=production`, so it's safe to leave set in `.env`. The clinician email/password form is still available under "Sign in with a clinician password instead" in both modes.
 
 ## CHEFS ingestion
 

@@ -102,6 +102,25 @@ The worker emails on transition to halted. The supported transport for BC Gov wo
 | `CHES_CLIENT_ID` / `CHES_CLIENT_SECRET` | unset | **Secret.** Keycloak service-account credentials. Required when `MAIL_TRANSPORT=ches`. |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | unset | Only consulted when `MAIL_TRANSPORT=smtp`. The SmtpMailer is a stub and throws — prefer `ches`. |
 
+## BC Gov SSO (Keycloak OIDC)
+
+Staff authenticate against the BC Gov Common Hosted Single Sign-On service. The `SSO/` directory at the repo root contains the per-environment installation JSON files issued by the BC Gov SSO team. The realm is `standard` for all three environments; only the loginproxy host and the client secret change.
+
+| Variable | Where | Value |
+| --- | --- | --- |
+| `SSO_ISSUER_URL` | Deployment env / ConfigMap | `${auth-server-url}/realms/standard`. Dev: `https://dev.loginproxy.gov.bc.ca/auth/realms/standard`. Test: `https://test.loginproxy.gov.bc.ca/auth/realms/standard`. Prod: `https://loginproxy.gov.bc.ca/auth/realms/standard`. Leave **empty** to disable SSO (the `/login` page falls back to email+password). |
+| `SSO_CLIENT_ID` | **Secret** | `resource` field from the installation JSON. Same value (`cydb-submissions-6444`) across all three environments today. |
+| `SSO_CLIENT_SECRET` | **Secret** | `credentials.secret` from the installation JSON. Different per environment. |
+
+**Operator setup, per environment:**
+
+1. Open `SSO/CYDB Submissions-installation-<env>.json`. Copy `resource` → `SSO_CLIENT_ID`, `credentials.secret` → `SSO_CLIENT_SECRET` into `cydb-submissions-secrets`. Construct `SSO_ISSUER_URL` as `${auth-server-url}/realms/${realm}` and put it in the env-matching ConfigMap (the three `configmap-*.yaml` files already have this set).
+2. Register the OAuth callback URI with the BC Gov SSO team via the CSS app: `https://<your-route-host>/api/auth/oauth2/callback/keycloak` (the `keycloak` segment is the provider id better-auth's helper sets; do **not** rename it).
+3. In the CSS app, under the integration's Role Management, create the three roles `admin`, `cfd_worker`, `clinician` and assign IDIR users to them. The app's role guard checks the local `userRoles` table, which is upserted on every sign-in from the access token's `client_roles` claim. Users without a recognised role will sign in successfully but be blocked from all role-gated routes.
+4. Audience check (per the CSS docs): the standard realm is shared across teams, so only roles for `aud=cydb-submissions-6444` count. The app reads `resource_access.${SSO_CLIENT_ID}.roles` as a defensive fallback to `client_roles`.
+
+**Local development:** Don't set `SSO_ISSUER_URL`. Use `DEV_AUTH_BYPASS=email:role` instead — the bypass shim refuses to operate when `NODE_ENV=production`, so the configmap leaves it empty in test and prod.
+
 ### Minimal `bcgov-di` deployment checklist
 
 1. In the Deployment env block (`openshift/deployment.yaml`): `OCR_WORKER_ENABLED=1`, `OCR_PROVIDER=bcgov-di`, `BCGOV_DI_BASE_URL=…`, `BCGOV_DI_WORKFLOW_SLUG=ocr-only-minimal` (the template already carries the URL + workflow).

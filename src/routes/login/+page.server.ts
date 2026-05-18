@@ -28,6 +28,39 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 };
 
 export const actions: Actions = {
+	sso: async ({ request, url, locals }) => {
+		const auth = getAuth();
+		if (!auth) {
+			return fail(503, { error: 'Auth is not configured on the server.' });
+		}
+		const form = await request.formData();
+		const next = form.get('next')?.toString() || '/';
+		// Resolve relative redirect targets against this origin so the BC Gov
+		// SSO callback handler can verify them as same-origin.
+		const callbackURL = new URL(next, url.origin).toString();
+		try {
+			const result = await auth.api.signInWithOAuth2({
+				body: { providerId: 'keycloak', callbackURL, disableRedirect: true },
+				headers: request.headers
+			});
+			if (!result?.url) {
+				locals.logger.error(
+					{ event: 'sso_login_failed', reason: 'no_redirect_url' },
+					'better-auth returned no URL for SSO sign-in'
+				);
+				return fail(503, { error: 'SSO is currently unavailable.' });
+			}
+			throw redirect(303, result.url);
+		} catch (e) {
+			if ((e as { status?: number }).status === 303) throw e;
+			locals.logger.error(
+				{ event: 'sso_login_failed', err: (e as Error).message },
+				'sso init threw'
+			);
+			return fail(503, { error: 'SSO is currently unavailable.' });
+		}
+	},
+
 	default: async ({ request, url, locals }) => {
 		const form = await request.formData();
 		const parsed = LoginSchema.safeParse({

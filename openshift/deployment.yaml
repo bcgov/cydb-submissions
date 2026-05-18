@@ -91,6 +91,12 @@ spec:
               value: "https://ches.api.gov.bc.ca/api/v1"
             - name: CHES_TOKEN_URL
               value: "https://loginproxy.gov.bc.ca/auth/realms/comsvcauth/protocol/openid-connect/token"
+            # BC Gov SSO (Keycloak OIDC) — non-secret issuer URL. The
+            # client id + secret come from cydb-submissions-secrets.
+            # Set per environment via the configmap-*.yaml overlays
+            # (loginproxy host changes between dev/test/prod).
+            - name: SSO_ISSUER_URL
+              value: "https://loginproxy.gov.bc.ca/auth/realms/standard"
           volumeMounts:
             - name: db
               mountPath: /data/db

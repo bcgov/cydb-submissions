@@ -16,11 +16,12 @@ spec:
       labels:
         app: cydb-submissions
     spec:
-      # fsGroup ensures the PVC mount at /data is owned by the supplemental
-      # group the container runs in, so the arbitrary OpenShift UID can
-      # write the SQLite file and attachment subdirs. The Restricted SCC
-      # would normally pick this up automatically, but stating it makes the
-      # intent explicit and works on platforms with stricter defaults.
+      # fsGroup ensures the PVC mounts at /data/db and /data/attachments are
+      # owned by the supplemental group the container runs in, so the
+      # arbitrary OpenShift UID can write the SQLite file and attachment
+      # subdirs. The Restricted SCC would normally pick this up automatically,
+      # but stating it makes the intent explicit and works on platforms with
+      # stricter defaults.
       securityContext:
         fsGroup: 0
       containers:
@@ -39,7 +40,7 @@ spec:
             - name: PORT
               value: "3000"
             - name: DATABASE_URL
-              value: /data/local.db
+              value: /data/db/local.db
             - name: ATTACHMENTS_DIR
               value: /data/attachments
             # Phase 3 OCR worker — disabled by default; set to "1" to start.
@@ -69,8 +70,10 @@ spec:
             - name: OCR_ALERT_FROM
               value: "cydb-noreply@gov.bc.ca"
           volumeMounts:
-            - name: data
-              mountPath: /data
+            - name: db
+              mountPath: /data/db
+            - name: attachments
+              mountPath: /data/attachments
           readinessProbe:
             httpGet:
               path: /readyz
@@ -91,6 +94,9 @@ spec:
               cpu: 1000m
               memory: 1Gi
       volumes:
-        - name: data
+        - name: db
           persistentVolumeClaim:
-            claimName: cydb-submissions-data
+            claimName: cydb-submissions-db
+        - name: attachments
+          persistentVolumeClaim:
+            claimName: cydb-submissions-attachments

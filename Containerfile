@@ -12,7 +12,7 @@ RUN npm run build && npm prune --omit=dev
 
 FROM node:22-alpine AS runtime
 WORKDIR /app
-ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000 DATABASE_URL=/data/local.db ATTACHMENTS_DIR=/data/attachments PROTOCOL_HEADER=x-forwarded-proto HOST_HEADER=x-forwarded-host
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000 DATABASE_URL=/data/db/local.db ATTACHMENTS_DIR=/data/attachments PROTOCOL_HEADER=x-forwarded-proto HOST_HEADER=x-forwarded-host
 # Note: ORIGIN is intentionally NOT set here. Behind a TLS-terminating proxy
 # (OpenShift Route, nginx, etc.) adapter-node derives the origin from the
 # x-forwarded-* headers above. For local podman dev with no proxy, pass
@@ -25,13 +25,14 @@ COPY --from=build /app/scripts ./scripts
 # Phase 3: keyword list for OCR. Edit and rebuild to change.
 COPY --from=build /app/config ./config
 # OpenShift's Restricted SCC overrides the image USER with an arbitrary high UID
-# and adds it to GID 0. Make /data and /app owned by root group with group-write
-# so the container can run as either `node` (local podman/docker) or an arbitrary
-# OpenShift UID. See https://docs.openshift.com/container-platform/latest/openshift_images/create-images.html#use-uid_create-images
-RUN mkdir -p /data /app/attachments && \
+# and adds it to GID 0. Make /data/{db,attachments} and /app owned by root
+# group with group-write so the container can run as either `node` (local
+# podman/docker) or an arbitrary OpenShift UID. See
+# https://docs.openshift.com/container-platform/latest/openshift_images/create-images.html#use-uid_create-images
+RUN mkdir -p /data/db /data/attachments /app/attachments && \
     chown -R node:0 /data /app && \
     chmod -R g=u /data /app
 EXPOSE 3000
 USER 1000
-VOLUME ["/data"]
+VOLUME ["/data/db", "/data/attachments"]
 CMD ["sh", "-c", "node scripts/migrate.mjs && node scripts/seed-admin.mjs && node build"]

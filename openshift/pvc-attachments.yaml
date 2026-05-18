@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: cydb-submissions-data
+  name: cydb-submissions-attachments
 spec:
   accessModes:
     - ReadWriteOnce

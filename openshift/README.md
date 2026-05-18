@@ -5,11 +5,28 @@ Templates only — not applied. To deploy:
 ```sh
 oc apply -f openshift/pvc-db.yaml
 oc apply -f openshift/pvc-attachments.yaml
-oc apply -f openshift/secret.yaml          # create from secret.example.yaml; never commit
+oc apply -f openshift/secret.yaml             # create from secret.example.yaml; never commit
+oc apply -f openshift/configmap-<env>.yaml    # see Per-environment ConfigMaps below; never commit
 oc apply -f openshift/deployment.yaml
 oc apply -f openshift/service.yaml
 oc apply -f openshift/route.yaml
 ```
+
+## Per-environment ConfigMaps
+
+`openshift/configmap-dev.yaml`, `openshift/configmap-test.yaml`, and `openshift/configmap-prod.yaml` carry the non-secret runtime env for each cluster (OCR provider choice, BC Gov DI base URL, CHEFS poller flag, log level, mailer transport, etc.). They are **gitignored** — each operator maintains the one that matches the cluster they're deploying to. Secrets (API keys, OAuth client creds, SMTP credentials, BETTER_AUTH_SECRET, ADMIN_BOOTSTRAP_*) stay in `cydb-submissions-secrets`.
+
+Wire whichever ConfigMap you applied into the Deployment by adding it to the container's `envFrom:` list — for example:
+
+```yaml
+envFrom:
+  - secretRef:
+      name: cydb-submissions-secrets
+  - configMapRef:
+      name: cydb-submissions-config
+```
+
+When `envFrom: configMapRef` is in place you can delete the inline `env:` block from `deployment.yaml` (the ConfigMap values take precedence anyway; the inline block is kept today only because the ConfigMaps aren't checked in).
 
 Storage layout:
 - `cydb-submissions-db` (1Gi, RWO) — mounted at `/data/db`, holds `local.db` and its `-shm` / `-wal` siblings.

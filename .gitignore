@@ -30,3 +30,9 @@ test-results
 
 # Runtime PVC mount (E2E + local dev write here)
 /attachments
+
+# Per-environment OpenShift artifacts — created locally per cluster,
+# never committed. The committed templates are the .example files and
+# the shared deployment.yaml / pvc-*.yaml / route.yaml / service.yaml.
+openshift/secret.yaml
+openshift/configmap-*.yaml

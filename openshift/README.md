@@ -19,3 +19,72 @@ Notes:
 - `replicas: 1`. The Phase-1 in-process rate limiter and the Phase-2 bypass shim assume a single pod. Multi-pod scaling is a deliberate future task.
 - Migrations run on pod start (`scripts/migrate.mjs`) followed by `seed-admin.mjs`. If migrations grow expensive, switch to a one-shot OpenShift `Job` invoked before deployment rollout.
 - Image stream + BuildConfig wiring is left to the platform team.
+
+## OCR environment variables
+
+The OCR worker is **off by default**. To turn it on in a deployment, you need (1) the worker enable flag, (2) a provider selection, and (3) the credentials that the chosen provider needs. Everything else has a working default.
+
+### 1. Always required
+
+| Variable | Where | Value |
+| --- | --- | --- |
+| `OCR_WORKER_ENABLED` | Deployment env | `"1"` to start the worker. Anything else (including unset) leaves the queue dormant. |
+| `OCR_PROVIDER` | Deployment env | One of `stub` / `stub-fail` / `stub-flaky` (dev/CI only) / `kong-ms-di` / `bcgov-di`. |
+
+### 2. Required per provider
+
+**`OCR_PROVIDER=bcgov-di`** — BC Gov AI Adoption Document Intelligence backend (`x-api-key`, workflow-driven). This is the path documented in `docs/superpowers/plans/ocr-config-email.md`.
+
+| Variable | Where | Value |
+| --- | --- | --- |
+| `BCGOV_DI_BASE_URL` | Deployment env | Test backend: `https://bcgov-di-test-backend-fd34fb-test.apps.silver.devops.gov.bc.ca`. |
+| `BCGOV_DI_API_KEY` | **Secret** (`cydb-submissions-secrets`) | Group-scoped key from the AI Adoption team. Never log; the pino redactor scrubs `x-api-key` defensively. |
+| `BCGOV_DI_WORKFLOW_SLUG` | Deployment env (optional) | Defaults to `ocr-only-minimal`. Override only if the AI Adoption team provisions a different workflow. |
+| `OCR_MODEL_ID` | Deployment env (optional) | Defaults to `prebuilt-read`. The BC Gov backend infers the Azure model from the workflow + API key, so overriding this only affects the `model_id` recorded in `OcrAnalysis`. |
+
+**`OCR_PROVIDER=kong-ms-di`** — Raw BC Gov Kong gateway → Azure Document Intelligence (OAuth2 client_credentials, `operation-location` polling).
+
+| Variable | Where | Value |
+| --- | --- | --- |
+| `KONG_BASE_URL` | Deployment env | e.g. `https://api.gov.bc.ca/document-intelligence`. |
+| `KONG_TOKEN_URL` | **Secret** | OAuth2 token endpoint. |
+| `KONG_CLIENT_ID` | **Secret** | Provisioned by the BC Gov API Platform team. |
+| `KONG_CLIENT_SECRET` | **Secret** | Provisioned by the BC Gov API Platform team. |
+| `OCR_MODEL_ID` | Deployment env (optional) | Defaults to `prebuilt-read`. |
+| `AZURE_DI_API_VERSION` | Deployment env (optional) | Defaults to `2024-11-30`. Pin only when Azure ships a version with a relevant change. |
+
+**`OCR_PROVIDER=stub*`** — Dev/CI only. No credentials needed.
+
+| Variable | Where | Value |
+| --- | --- | --- |
+| `OCR_STUB_FIXTURES` | Deployment env (optional) | Path to fixture `.txt` files. Defaults to `tests/fixtures/ocr` (not present in the runtime image). |
+| `OCR_STUB_FLAKY_FAILURES` | Deployment env (optional) | Used by `stub-flaky`; defaults to `1`. |
+
+### 3. Worker tuning (optional)
+
+Defaults below are baked into the worker. Override in the deployment env if the BC Gov DI backend pushes back or you want different breaker behaviour.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `OCR_MAX_CONCURRENCY` | `1` | In-flight requests. Capped at 4 — the breaker assumes a single pod. |
+| `OCR_MAX_ATTEMPTS` | `3` | Per-job retry budget. Transient failures retry; only terminal failures count against the breaker. |
+| `OCR_FAILURE_BREAKER` | `4` | Consecutive terminal failures before the worker sets `system_state.ocr.halted` and stops dispatching. |
+| `OCR_POLL_INTERVAL_MS` | `1000` | Worker tick interval for the local lease loop (not the provider's HTTP poll). |
+
+### 4. Halted-queue alert mailer (optional)
+
+The worker emails on transition to halted. Today the SmtpMailer is a stub that throws on `send()`, so the mailer stays on `MAIL_TRANSPORT=log` until the BC Gov SMTP relay is confirmed — the alert is written to pino at `error` level so it shows up in OpenShift's log stream.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `MAIL_TRANSPORT` | `log` | `log` (default) or `smtp`. Stay on `log` until the relay is wired. |
+| `OCR_ALERT_RECIPIENTS` | empty | Comma-separated. Empty = log-only (no mail attempt). |
+| `OCR_ALERT_FROM` | `cydb-noreply@gov.bc.ca` | Sender address for halt alerts. |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | unset | Only consulted when `MAIL_TRANSPORT=smtp`. Phase 3 ships log-only; the SmtpMailer is a stub. |
+
+### Minimal `bcgov-di` deployment checklist
+
+1. In the Deployment env block (`openshift/deployment.yaml`): `OCR_WORKER_ENABLED=1`, `OCR_PROVIDER=bcgov-di`, `BCGOV_DI_BASE_URL=…`, `BCGOV_DI_WORKFLOW_SLUG=ocr-only-minimal` (the template already carries the URL + workflow).
+2. In the Secret (`cydb-submissions-secrets`): `BCGOV_DI_API_KEY=…`.
+3. Roll out the Deployment. The worker reads its config at boot — there is no runtime reload.
+4. Watch `/readyz` (it reports `queue: 'ok' | 'halted' | 'disabled'` in the body) and `/admin/ocr` for the queue state. The HTTP status of `/readyz` deliberately stays 200 even when halted — the public form path is independent of the back-office queue.

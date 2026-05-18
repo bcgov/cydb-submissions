@@ -44,8 +44,12 @@
 	</section>
 
 	<section class="space-y-3">
-		<h2 class="text-lg font-semibold">Ingestion</h2>
-		<a href="/admin/chefs" class="underline text-blue-700">CHEFS configuration &amp; sync →</a>
+		<h2 class="text-lg font-semibold">Pipeline</h2>
+		<div class="flex flex-col gap-1">
+			<a href="/admin/queues" class="underline text-blue-700">Queue pipeline dashboard →</a>
+			<a href="/admin/chefs" class="underline text-blue-700">CHEFS configuration &amp; sync →</a>
+			<a href="/admin/ocr" class="underline text-blue-700">OCR queue detail →</a>
+		</div>
 	</section>
 
 	<!-- Seed confirmation -->

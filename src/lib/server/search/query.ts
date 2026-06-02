@@ -60,6 +60,9 @@ export async function runSearch(db: Db, client: SearchClient, opts: RunSearchOpt
 	const ids = result.hits.map((h) => h.id);
 	const snippetById = new Map(result.hits.map((h) => [h.id, h.snippet]));
 
+	// "submissions"."id" MUST be a quoted literal here, not ${schema.submissions.id}.
+	// Drizzle renders the column-ref form as an unqualified "id" inside this subquery,
+	// which SQLite mis-resolves to submission_attachments, yielding wrong counts.
 	const attachmentCountExpr = sql<number>`(
 		SELECT count(*) FROM submission_attachments WHERE submission_id = "submissions"."id"
 	)`;

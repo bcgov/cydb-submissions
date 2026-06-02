@@ -10,6 +10,7 @@ export const AUDIT_EVENTS = [
   'logout',
   'submission_listed',
   'submission_viewed',
+  'submission_searched',
   'attachment_downloaded',
   'role_denied',
   'auth_bypass_applied',

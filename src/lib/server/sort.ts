@@ -17,6 +17,7 @@ export interface SubmissionsQuery {
 	page: number;
 	size: number;
 	statusFilter: StatusFilter;
+	q: string;
 }
 
 export function parseSubmissionsQuery(url: URL): SubmissionsQuery {
@@ -31,7 +32,8 @@ export function parseSubmissionsQuery(url: URL): SubmissionsQuery {
 	const statusFilter: StatusFilter = STATUS_FILTER_VALUES.has(filterRaw ?? '')
 		? (filterRaw as StatusFilter)
 		: 'exclude_invalid';
-	return { sort, order, page, size, statusFilter };
+	const q = (url.searchParams.get('q') ?? '').trim();
+	return { sort, order, page, size, statusFilter, q };
 }
 
 function toInt(s: string | null, fallback: number): number {

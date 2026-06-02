@@ -10,7 +10,8 @@ describe('parseSubmissionsQuery', () => {
       order: 'desc',
       page: 1,
       size: 25,
-      statusFilter: 'exclude_invalid'
+      statusFilter: 'exclude_invalid',
+      q: ''
     });
   });
 
@@ -40,5 +41,10 @@ describe('parseSubmissionsQuery', () => {
     expect(parseSubmissionsQuery(url('order=asc')).order).toBe('asc');
     expect(parseSubmissionsQuery(url('order=desc')).order).toBe('desc');
     expect(parseSubmissionsQuery(url('order=')).order).toBe('desc');
+  });
+
+  it('parses a trimmed search query, empty by default', () => {
+    expect(parseSubmissionsQuery(url('')).q).toBe('');
+    expect(parseSubmissionsQuery(url('q=%20autism%20')).q).toBe('autism');
   });
 });

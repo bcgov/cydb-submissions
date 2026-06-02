@@ -5,10 +5,43 @@ import { submissions } from '$lib/server/db/schema';
 import { parseSubmissionsQuery } from '$lib/server/sort';
 import { requireRole } from '$lib/server/roles';
 import { auditLog } from '$lib/server/audit';
+import { getSearchClient } from '$lib/server/search/instance';
+import { runSearch, buildStatusFilter } from '$lib/server/search/query';
+import { SearchQueryError } from '$lib/server/search/types';
 
 export const load: PageServerLoad = async ({ url, locals }) => {
 	requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker');
 	const q = parseSubmissionsQuery(url);
+
+	if (q.q) {
+		auditLog(
+			'submission_searched',
+			{ actorUserId: locals.user!.id, actorRole: [...locals.roles][0], route: url.pathname, requestId: locals.requestId },
+			locals.logger
+		);
+		try {
+			const result = await runSearch(db, getSearchClient(), {
+				query: q.q,
+				...buildStatusFilter(q.statusFilter),
+				limit: q.size,
+				offset: (q.page - 1) * q.size,
+				fuzzy: true,
+				fuzzyDistance: 2
+			});
+			return {
+				rows: result.rows,
+				total: result.total,
+				query: q,
+				totalPages: Math.max(1, Math.ceil(result.total / q.size)),
+				searchError: null as string | null
+			};
+		} catch (e) {
+			if (e instanceof SearchQueryError) {
+				return { rows: [], total: 0, query: q, totalPages: 1, searchError: e.message };
+			}
+			throw e;
+		}
+	}
 
 	const filterClause =
 		q.statusFilter === 'all'
@@ -17,8 +50,11 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 				? ne(submissions.status, 'invalid')
 				: eq(submissions.status, q.statusFilter);
 
+	// "submissions"."id" MUST be a quoted literal here, not ${submissions.id}.
+	// Drizzle renders the column-ref form as an unqualified "id" inside this subquery,
+	// which SQLite mis-resolves to submission_attachments, yielding wrong counts.
 	const attachmentCountExpr = sql<number>`(
-		SELECT count(*) FROM submission_attachments WHERE submission_id = ${submissions.id}
+		SELECT count(*) FROM submission_attachments WHERE submission_id = "submissions"."id"
 	)`;
 
 	const orderColumn =
@@ -68,6 +104,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		rows,
 		total,
 		query: q,
-		totalPages: Math.max(1, Math.ceil(total / q.size))
+		totalPages: Math.max(1, Math.ceil(total / q.size)),
+		searchError: null as string | null
 	};
 };

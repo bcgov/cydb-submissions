@@ -17,8 +17,9 @@ export class ManticoreClient implements SearchClient {
 			body: `query=${encodeURIComponent(query)}`
 		});
 		const json = (await res.json().catch(() => null)) as unknown;
-		if (!res.ok || (json && typeof json === 'object' && 'error' in (json as Record<string, unknown>))) {
-			throw new Error(`manticore sql failed: ${res.status} ${JSON.stringify(json)}`);
+		const err = sqlError(json);
+		if (!res.ok || err) {
+			throw new Error(`manticore sql failed: ${res.status} ${err ?? JSON.stringify(json)}`);
 		}
 		return json;
 	}
@@ -52,7 +53,7 @@ export class ManticoreClient implements SearchClient {
 
 		const body: Record<string, unknown> = {
 			index: INDEX,
-			query: { bool: { must, must_not: mustNot } },
+			query: { bool: { must, ...(mustNot.length ? { must_not: mustNot } : {}) } },
 			highlight: { fields: HIGHLIGHT_FIELDS, limit: 1 },
 			limit: input.limit,
 			offset: input.offset
@@ -92,6 +93,21 @@ export class ManticoreClient implements SearchClient {
 			return false;
 		}
 	}
+}
+
+/**
+ * Manticore's /sql endpoint returns HTTP 200 even on DDL/DML errors, signalling
+ * failure via a non-empty `error` field — usually inside a single-element array
+ * ([{ error: "..." }]), sometimes a bare object. Returns the error string, or
+ * null when there is no error (including the empty-string `error` of a success).
+ */
+function sqlError(json: unknown): string | null {
+	const row = Array.isArray(json) ? json[0] : json;
+	if (row && typeof row === 'object' && 'error' in row) {
+		const e = (row as { error?: unknown }).error;
+		if (typeof e === 'string' && e.length > 0) return e;
+	}
+	return null;
 }
 
 function firstHighlight(h: Record<string, string[]> | undefined): string {

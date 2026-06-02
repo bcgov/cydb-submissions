@@ -78,3 +78,34 @@ describe('ManticoreClient.ping', () => {
 		expect(await new ManticoreClient('http://mc:9308').ping()).toBe(false);
 	});
 });
+
+describe('ManticoreClient sql-path error handling', () => {
+	it('treats an array response with empty error as success (replaceDoc resolves)', async () => {
+		mockFetch(() => new Response(JSON.stringify([{ total: 1, error: '', warning: '' }]), { status: 200 }));
+		const c = new ManticoreClient('http://mc:9308');
+		await expect(c.replaceDoc({
+			id: 1, submissionUuid: 'u', status: 'submitted', createdAt: 1, surname: 'X',
+			structuredText: '', ocrText: '', metadataText: ''
+		})).resolves.toBeUndefined();
+	});
+
+	it('throws when an array response carries a non-empty error (HTTP 200)', async () => {
+		mockFetch(() => new Response(JSON.stringify([{ total: 0, error: 'index already exists', warning: '' }]), { status: 200 }));
+		const c = new ManticoreClient('http://mc:9308');
+		await expect(c.deleteDoc(1)).rejects.toThrow(/manticore sql failed/);
+	});
+
+	it('ping returns false when SHOW TABLES reports an array error', async () => {
+		mockFetch(() => new Response(JSON.stringify([{ error: 'boom' }]), { status: 200 }));
+		const c = new ManticoreClient('http://mc:9308');
+		expect(await c.ping()).toBe(false);
+	});
+
+	it('omits must_not from the search payload when there is no statusNotEquals', async () => {
+		const spy = mockFetch(() => new Response(JSON.stringify({ hits: { total: 0, hits: [] } }), { status: 200 }));
+		const c = new ManticoreClient('http://mc:9308');
+		await c.search({ match: 'x', limit: 10, offset: 0, fuzzy: false, fuzzyDistance: 2 });
+		const sent = JSON.parse(String(spy.mock.calls[0][1].body));
+		expect(sent.query.bool.must_not).toBeUndefined();
+	});
+});

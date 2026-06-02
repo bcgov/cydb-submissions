@@ -18,6 +18,8 @@ export interface ProcessOpts {
 	provider: OcrProvider;
 	keywords: readonly string[];
 	logger: Logger;
+	/** Optional: push the submission to the search index after a successful OCR commit. */
+	onIndexed?: (submissionId: number) => Promise<void>;
 }
 
 export type ProcessOutcome = 'succeeded' | 'retried' | 'failed';
@@ -87,6 +89,16 @@ export async function processOneJob(opts: ProcessOpts): Promise<ProcessResult> {
 			{ event: 'keyword_hits_recorded', submissionId: attachment.submissionId, jobId },
 			'keyword hits recorded'
 		);
+		if (opts.onIndexed) {
+			try {
+				await opts.onIndexed(attachment.submissionId);
+			} catch (e) {
+				logger.error(
+					{ event: 'search_index_failed', submissionId: attachment.submissionId, message: (e as Error).message },
+					'search index push failed; reconciler will retry'
+				);
+			}
+		}
 		return { outcome: 'succeeded' };
 	} catch (e) {
 		const errorClass = e instanceof OcrError ? e.errorClass : 'UnexpectedError';

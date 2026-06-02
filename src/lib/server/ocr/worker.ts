@@ -21,6 +21,7 @@ export interface WorkerOpts {
 	alertFrom: string;
 	pollIntervalMs?: number;
 	maxConcurrency?: number;
+	onIndexed?: (submissionId: number) => Promise<void>;
 }
 
 export interface WorkerHandle {
@@ -55,7 +56,8 @@ export function startWorker(opts: WorkerOpts): WorkerHandle {
 				jobId: lease.id,
 				provider: opts.provider,
 				keywords: opts.keywords,
-				logger: opts.logger
+				logger: opts.logger,
+				onIndexed: opts.onIndexed
 			})
 				.then(async (r) => {
 					if (r.outcome === 'succeeded') breaker.recordSuccess();

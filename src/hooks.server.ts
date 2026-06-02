@@ -19,6 +19,9 @@ import { selectMailer } from '$lib/server/mail/select-mailer';
 import { loadKeywords } from '$lib/server/ocr/keywords';
 import { startWorker, type WorkerHandle } from '$lib/server/ocr/worker';
 import { startPoller, type PollerHandle } from '$lib/server/chefs/poller';
+import { getSearchClient } from '$lib/server/search/instance';
+import { indexSubmission } from '$lib/server/search/indexer';
+import { startReconciler, type ReconcilerHandle } from '$lib/server/search/reconciler';
 import { getEffectiveConfig } from '$lib/server/chefs/config';
 import { listSubmissions, downloadFile } from '$lib/server/chefs/client';
 
@@ -53,6 +56,9 @@ let workerStarted = false;
 
 let pollerHandle: PollerHandle | null = null;
 let pollerStarted = false;
+
+let reconcilerHandle: ReconcilerHandle | null = null;
+let searchStarted = false;
 
 async function maybeStartOcrWorker() {
 	if (workerStarted) return;
@@ -104,7 +110,8 @@ async function maybeStartOcrWorker() {
 				.filter(Boolean),
 			alertFrom: env.OCR_ALERT_FROM ?? 'cydb-noreply@gov.bc.ca',
 			pollIntervalMs: Number(env.OCR_POLL_INTERVAL_MS ?? 1000),
-			maxConcurrency: Number(env.OCR_MAX_CONCURRENCY ?? 1)
+			maxConcurrency: Number(env.OCR_MAX_CONCURRENCY ?? 1),
+			onIndexed: async (submissionId) => { await indexSubmission(db, getSearchClient(), submissionId); }
 		});
 	} catch (e) {
 		logger.error(
@@ -137,11 +144,30 @@ function maybeStartChefsPoller() {
 	});
 }
 
+async function maybeStartSearch() {
+	if (searchStarted) return;
+	searchStarted = true;
+	const client = getSearchClient();
+	try {
+		await client.ensureIndex();
+	} catch (e) {
+		logger.error({ event: 'search_index_bootstrap_failed', message: (e as Error).message }, 'could not create search index');
+	}
+	reconcilerHandle = startReconciler({
+		db,
+		client,
+		logger,
+		pollIntervalMs: Number(env.SEARCH_RECONCILE_INTERVAL_MS ?? 2000),
+		batchSize: Number(env.SEARCH_RECONCILE_BATCH ?? 50)
+	});
+}
+
 if (!building) {
 	for (const sig of ['SIGINT', 'SIGTERM'] as const) {
 		process.once(sig, async () => {
 			await pollerHandle?.stop();
 			await workerHandle?.stop();
+			reconcilerHandle?.stop();
 			process.exit(0);
 		});
 	}
@@ -152,6 +178,7 @@ const CSRF_COOKIE = 'cydb_csrf';
 const handlePhase1: Handle = async ({ event, resolve }) => {
 	await maybeStartOcrWorker();
 	await maybeStartChefsPoller();
+	await maybeStartSearch();
 	event.locals.requestId = nanoid(12);
 	event.locals.roles = new Set<Role>();
 

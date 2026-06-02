@@ -1,0 +1,13 @@
+# compose.search.yaml — local Manticore for dev/CI
+services:
+  manticore:
+    image: manticoresearch/manticore:7.0.0
+    ports:
+      - "9308:9308"
+      - "9306:9306"
+    ulimits:
+      nofile: { soft: 65536, hard: 65536 }
+    volumes:
+      - manticore-data:/var/lib/manticore
+volumes:
+  manticore-data:

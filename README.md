@@ -151,6 +151,65 @@ The application can pull form submissions from BC Gov [CHEFS](https://developer.
 
 **In-app form is archived.** The Svelte form previously served at `/` has been moved to `archive/public-form/` (route files + form-specific E2E specs). `/` is now a staff-portal landing page. To restore the in-app form, see `archive/public-form/README.md`.
 
+## Search (Manticore)
+
+Search is backed by a self-hosted **Manticore** sidecar running in the same pod as the app container in OpenShift (`localhost:9308`). It is self-contained — no external search service is required.
+
+### Local dev
+
+Start Manticore alongside the app:
+
+```bash
+podman compose -f compose.search.yaml up -d
+# or
+docker compose -f compose.search.yaml up -d
+```
+
+Add to `.env`:
+
+```
+MANTICORE_URL=http://localhost:9308
+```
+
+### Index lifecycle
+
+The index `submissions_idx` is auto-created on app start via `ensureIndex`. A background **reconciler** re-indexes any submission whose `search_indexed_at` column is null or stale, covering:
+
+- New in-app submissions
+- CHEFS ingests
+- OCR completion (full-text of `ocr_text` fields becomes searchable)
+- Any submission missed by a real-time push (e.g. after a pod restart)
+
+The reconciler runs every `SEARCH_RECONCILE_INTERVAL_MS` milliseconds and processes up to `SEARCH_RECONCILE_BATCH` rows per tick, so the index self-heals without manual intervention.
+
+### Query syntax
+
+The search UI supports the full Manticore extended query syntax:
+
+| Pattern | Example | Effect |
+|---------|---------|--------|
+| Wildcard prefix/infix | `aut*` / `*ism*` | Matches any term starting/containing the fragment |
+| Phrase | `"speech delay"` | Terms must appear adjacent |
+| Field scope | `@ocr_text vineland` | Restricts match to a named field |
+| Proximity | `"speech delay" NEAR/3` | Terms within 3 words of each other |
+| Quorum | `"adhd anxiety seizures"/2` | At least 2 of the listed terms must match |
+| Exclusion | `diagnosis -provisional` | Excludes documents containing `provisional` |
+| Lemmas | `running` | Matches inflected forms: run, ran, running |
+
+Fuzzy/typo tolerance is on by default — minor misspellings are corrected automatically.
+
+### Mission-critical behaviour
+
+`/readyz` returns **503** when Manticore is unreachable, taking the pod out of rotation in OpenShift until connectivity is restored. Manticore must be running before the app is considered ready.
+
+### Env vars
+
+| Var | Purpose |
+|-----|---------|
+| `MANTICORE_URL` | Manticore HTTP endpoint (default `http://localhost:9308`) |
+| `SEARCH_RECONCILE_INTERVAL_MS` | Reconciler tick interval in ms (default 2000) |
+| `SEARCH_RECONCILE_BATCH` | Max rows re-indexed per tick (default 50) |
+
 ## Routes
 
 Public:

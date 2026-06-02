@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { labelFor, labelsFor, buildSearchDocument } from '$lib/server/search/document';
+import { labelFor, labelsFor, buildSearchDocument, toUnixSeconds } from '$lib/server/search/document';
 
 describe('labelFor / labelsFor', () => {
 	it('maps a coded value to its human label', () => {
@@ -12,6 +12,20 @@ describe('labelFor / labelsFor', () => {
 	});
 	it('expands an array of coded values', () => {
 		expect(labelsFor('conditions', ['ID', 'ADHD'])).toEqual(['Intellectual disability', 'ADHD']);
+	});
+});
+
+describe('toUnixSeconds', () => {
+	const expected = Math.floor(Date.parse('2026-06-01T09:30:00Z') / 1000);
+	it('parses SQLite space-separated UTC timestamps', () => {
+		expect(toUnixSeconds('2026-06-01 09:30:00')).toBe(expected);
+	});
+	it('parses ISO-8601 timestamps that already end in Z (no double-Z bug)', () => {
+		expect(toUnixSeconds('2026-06-01T09:30:00Z')).toBe(expected);
+		expect(toUnixSeconds('2026-06-01T09:30:00Z')).not.toBe(0);
+	});
+	it('returns 0 for an unparseable value', () => {
+		expect(toUnixSeconds('not-a-date')).toBe(0);
 	});
 });
 
@@ -65,6 +79,6 @@ describe('buildSearchDocument', () => {
 			''
 		);
 		expect(doc.surname).toBe('');
-		expect(doc.structuredText.length).toBeGreaterThanOrEqual(0);
+		expect(doc.structuredText).toContain('status: submitted');
 	});
 });

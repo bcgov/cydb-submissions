@@ -43,6 +43,20 @@ function yesNo(v: boolean | null | undefined): string {
 	return '';
 }
 
+/**
+ * Convert a stored timestamp to unix seconds. SQLite CURRENT_TIMESTAMP is the
+ * space-separated 'YYYY-MM-DD HH:MM:SS' in UTC; some rows already store ISO-8601
+ * (with or without a trailing 'Z'). Normalise all three to a parseable UTC
+ * instant; return 0 if unparseable.
+ */
+export function toUnixSeconds(ts: string): number {
+	let iso = ts.includes('T') ? ts : ts.replace(' ', 'T');
+	// Append 'Z' only when there is no timezone designator already.
+	if (!/[zZ]$|[+-]\d\d:?\d\d$/.test(iso)) iso = `${iso}Z`;
+	const ms = Date.parse(iso);
+	return Number.isNaN(ms) ? 0 : Math.floor(ms / 1000);
+}
+
 export function buildSearchDocument(
 	row: SubmissionRowForIndex,
 	ocrText: string,
@@ -71,9 +85,7 @@ export function buildSearchDocument(
 		id: row.id,
 		submissionUuid: row.submissionUuid,
 		status: row.status,
-		// SQLite CURRENT_TIMESTAMP is 'YYYY-MM-DD HH:MM:SS' in UTC; normalise to ISO
-		// before parsing so Date.parse is deterministic across engines.
-		createdAt: Math.floor(Date.parse(`${row.createdAt.replace(' ', 'T')}Z`) / 1000) || 0,
+		createdAt: toUnixSeconds(row.createdAt),
 		surname: row.submitterSurname ?? '',
 		structuredText: parts.filter(Boolean).join(' \n '),
 		ocrText,

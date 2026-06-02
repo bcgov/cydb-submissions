@@ -131,7 +131,7 @@ spec:
               cpu: 1000m
               memory: 1Gi
         - name: manticore
-          image: manticoresearch/manticore:7.0.0
+          image: manticoresearch/manticore:25.0.0
           ports:
             - containerPort: 9308
             - containerPort: 9306

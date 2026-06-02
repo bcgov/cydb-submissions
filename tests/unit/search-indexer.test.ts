@@ -44,6 +44,9 @@ describe('indexSubmission', () => {
 		const byTool = await client.search({ match: 'Vineland', limit: 10, offset: 0, fuzzy: false, fuzzyDistance: 2 });
 		expect(byTool.hits.map((h) => h.id)).toEqual([id]);
 
+		const byMeta = await client.search({ match: 'Mozilla', limit: 10, offset: 0, fuzzy: false, fuzzyDistance: 2 });
+		expect(byMeta.hits.map((h) => h.id)).toEqual([id]);
+
 		const stamped = db.select({ idx: schema.submissions.searchIndexedAt }).from(schema.submissions).where(eq(schema.submissions.id, id)).get();
 		expect(stamped!.idx).not.toBeNull();
 	});

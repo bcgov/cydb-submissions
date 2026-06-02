@@ -10,4 +10,13 @@ describe('pingSearch', () => {
 		expect(await pingSearch(up as SearchClient)).toBe(true);
 		expect(await pingSearch(down as SearchClient)).toBe(false);
 	});
+
+	it('returns false when the client ping throws', async () => {
+		const boom: Pick<SearchClient, 'ping'> = {
+			ping: async () => {
+				throw new Error('connection refused');
+			}
+		};
+		expect(await pingSearch(boom as SearchClient)).toBe(false);
+	});
 });

@@ -5,7 +5,7 @@ import { SearchQueryError } from '$lib/server/search/types';
 afterEach(() => vi.restoreAllMocks());
 
 function mockFetch(impl: (url: string, init: RequestInit) => Response) {
-	const spy = vi.fn(async (url: unknown, init: unknown) => impl(String(url), (init ?? {}) as RequestInit));
+	const spy = vi.fn((url: string, init: RequestInit) => Promise.resolve(impl(url, init)));
 	vi.stubGlobal('fetch', spy);
 	return spy;
 }

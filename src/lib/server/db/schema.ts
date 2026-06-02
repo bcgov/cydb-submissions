@@ -48,11 +48,15 @@ export const submissions = sqliteTable('submissions', {
   dataSharingConsent: integer('dataSharingConsent', { mode: 'boolean' }).notNull(),
   rawPayload: text('raw_payload', { mode: 'json' }).notNull(),
   createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: text('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`)
+  updatedAt: text('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  // Null (or older than updatedAt) means this row is not yet reflected in the
+  // Manticore search index. The reconciler indexes any such "dirty" row.
+  searchIndexedAt: text('search_indexed_at')
 }, (t) => ({
   byStatus: index('submissions_status_idx').on(t.status),
   byCreated: index('submissions_created_idx').on(t.createdAt),
   bySurname: index('submissions_surname_idx').on(t.submitterSurname),
+  bySearchIndexed: index('submissions_search_indexed_idx').on(t.searchIndexedAt),
   statusCheck: check(
     'submissions_status_check',
     sql`${t.status} IN ('submitted','OCR queued','OCR Error','OCR processed','ready for review','ready for clinician','reviewed','invalid')`

@@ -1,6 +1,6 @@
 # 60 · Workers & integrations
 
-Three in-process workers + four outbound integrations. They share a small set of patterns (single-flight, breaker, halt sentinel) you'll see repeated across modules. Once you know the patterns, each new worker is just a different domain on top.
+Four in-process workers + four outbound integrations. They share a small set of patterns (single-flight, breaker, halt sentinel) you'll see repeated across modules. Once you know the patterns, each new worker is just a different domain on top.
 
 ## What's running in the same process
 
@@ -14,6 +14,9 @@ node build/                              (one OS process, replicas: 1)
 │
 ├── CHEFS poller                         — setInterval, pulls from CHEFS API
 │   (started lazily when the effective config has pollerEnabled=true)
+│
+├── Search reconciler                    — setInterval, re-indexes dirty submissions
+│   (started lazily alongside the OCR worker via maybeStartSearch)
 │
 └── ChesTokenCache + KongTokenCache      — OAuth2 client_credentials caches
     (no timer; lazy refresh on demand)
@@ -138,6 +141,8 @@ The transaction means a second hypothetical worker can't lease the same row. Wit
    d. Run keyword evaluator over the text → upsert keyword_hits
    e. Update submissions.status: 'OCR queued' → 'OCR processed'
    f. recordSuccess() → ocr_jobs.status = 'succeeded'
+   g. onIndexed hook → indexSubmission(db, searchClient, id)
+      (best-effort real-time push to Manticore; see below)
 4. On exception:
    a. recordFailure() → increment attempts, set next_attempt_at with back-off
    b. If attempts >= OCR_MAX_ATTEMPTS:
@@ -145,6 +150,16 @@ The transaction means a second hypothetical worker can't lease the same row. Wit
       - submissions.status = 'OCR Error'
       - increment failure counter; trip breaker if at threshold
 ```
+
+### Real-time search push on OCR completion
+
+After the OCR transaction commits (so `ocr_results` is visible in SQLite), `processJob` fires an `onIndexed` hook wired in `src/hooks.server.ts`:
+
+```ts
+onIndexed: (id) => indexSubmission(db, getSearchClient(), id)
+```
+
+This pushes the submission immediately to the Manticore sidecar so its OCR text is searchable without waiting for the next reconciler tick. The push is **best-effort**: a Manticore failure is caught, logged, and never rethrown — OCR processing is unaffected. Because `search_indexed_at` stays `NULL` on failure, the reconciler heals it on its next pass.
 
 ### Configuration
 
@@ -284,6 +299,56 @@ This means an admin can't accidentally (or maliciously) point the poller at an i
 
 `/admin/queues` has the same `chefsSyncNow` and `chefsResume` actions exposed alongside the OCR equivalents, in a unified UI.
 
+## The search reconciler
+
+### Files
+- `src/lib/server/search/reconciler.ts` — `startReconciler()` returns a `ReconcilerHandle { stop() }`
+- `src/lib/server/search/indexer.ts` — `indexSubmission(db, client, id)` — single-row push to Manticore
+- `src/lib/server/search/instance.ts` — `getSearchClient()` — shared Manticore client
+- `src/lib/server/search/manticore.ts` — HTTP transport to the Manticore sidecar (`localhost:9308`)
+
+### What it does each tick
+
+The reconciler follows the same `setInterval + busy guard` pattern as the OCR worker. Each tick:
+
+```
+1. If a tick is already in progress (busy flag set), skip.
+2. Query SQLite for up to SEARCH_RECONCILE_BATCH submissions where:
+     submissions.search_indexed_at IS NULL
+     OR search_indexed_at < updated_at        ← row was updated after last index
+3. For each dirty row, call indexSubmission(db, client, id).
+4. On Manticore failure: log and continue — SQLite is never affected.
+```
+
+A row is "dirty" if it has never been indexed (`search_indexed_at IS NULL`) or if SQLite was updated after the last index push. This catches every write path: public-form submissions, CHEFS ingests, admin status changes, and any real-time push that silently failed.
+
+The reconciler is also the mechanism that **builds a cold or empty index from scratch** — on first deploy, every existing submission has `search_indexed_at IS NULL` and will be indexed in batches at startup.
+
+### Boot and shutdown wiring
+
+`src/hooks.server.ts` boots the reconciler via `maybeStartSearch`:
+
+```
+maybeStartSearch():
+  1. ensureIndex()          — idempotent CREATE TABLE IF NOT EXISTS submissions_idx
+  2. startReconciler(...)   — starts the setInterval loop
+```
+
+`maybeStartSearch` is called alongside `maybeStartOcrWorker`; both are gated on the first HTTP request. The reconciler handle is stopped on SIGINT/SIGTERM alongside the OCR worker and CHEFS poller (same `.stop()` / `await` pattern in the shutdown handler).
+
+### Configuration
+
+| Env var | Default | Purpose |
+|---|---|---|
+| `SEARCH_RECONCILE_INTERVAL_MS` | `2000` | Tick cadence |
+| `SEARCH_RECONCILE_BATCH` | `50` | Max rows indexed per tick |
+
+The Manticore sidecar address (`localhost:9308`) is currently compiled in. See `80-deployment.md` for sidecar provisioning and `30-architecture.md` for the full-text index design.
+
+### Failure behaviour
+
+Manticore failures are logged and swallowed — they never affect SQLite or OCR processing, and they never trip a breaker. The `search_indexed_at` timestamp not advancing is the self-healing signal: the reconciler retries the row on the next tick. If the sidecar is down for an extended period, the reconciler backlog drains automatically once it recovers.
+
 ## The CHES mailer
 
 CHES (Common Hosted Email Service) is BC Gov's REST API wrapping `nodemailer`, behind Keycloak OAuth2 for auth. We use it to send halt alerts.
@@ -370,22 +435,27 @@ maybeStartChefsPoller() (if effective config has pollerEnabled=true)
   - getEffectiveConfig(db, env)
   - startPoller({db, getConfig, logger, list, download, attachmentsDir})
   ↓
+maybeStartSearch()
+  - ensureIndex()           — CREATE TABLE IF NOT EXISTS submissions_idx
+  - startReconciler({db, client, logger, ...})
+  ↓
 ... requests serve as normal; workers tick in background ...
   ↓
 SIGINT or SIGTERM
   ↓
-pollerHandle.stop() — clears the setInterval, waits for in-flight tick
-workerHandle.stop()  — same
+pollerHandle.stop()      — clears the setInterval, waits for in-flight tick
+workerHandle.stop()      — same
+reconcilerHandle.stop()  — same
   ↓
 process.exit(0)
 ```
 
 ### Why lazy start?
 
-`maybeStartOcrWorker` and `maybeStartChefsPoller` run **on the first HTTP request**, not at module load. Reasons:
+`maybeStartOcrWorker`, `maybeStartChefsPoller`, and `maybeStartSearch` run **on the first HTTP request**, not at module load. Reasons:
 - During test runs, `vitest` imports the module without starting workers. Workers only start when a request comes in (and tests don't make requests against the live hook chain).
 - The startup is async and includes a `loadKeywords()` file-read; doing it on first request defers the work to when it's actually needed.
-- The `workerStarted` / `pollerStarted` flags ensure exactly-once start despite the first-request race.
+- The `workerStarted` / `pollerStarted` / `searchStarted` flags ensure exactly-once start despite the first-request race.
 
 ### What about graceful shutdown?
 

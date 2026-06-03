@@ -95,6 +95,17 @@ src/lib/server/
 │   ├── select-mailer.ts        # MAIL_TRANSPORT → Mailer instance
 │   └── types.ts                # Mailer + MailMessage interfaces
 │
+├── search/
+│   ├── types.ts                # SearchClient interface + SearchHit/SearchResult types
+│   ├── stub.ts                 # InMemorySearchClient — test double (no HTTP)
+│   ├── manticore.ts            # ManticoreClient — HTTP JSON DSL + /sql over localhost:9308
+│   ├── document.ts             # buildSearchDocument — expands coded values to human labels
+│   ├── indexer.ts              # indexSubmission / deleteSubmission
+│   ├── query.ts                # buildStatusFilter + runSearch (IDs → SQLite re-hydration)
+│   ├── reconciler.ts           # selectDirty / reconcileOnce / startReconciler
+│   ├── instance.ts             # getSearchClient — singleton (ManticoreClient or stub)
+│   └── health.ts               # pingSearch — used by /readyz
+│
 ├── log.ts                      # pino logger + redactPII serializer
 ├── storage.ts                  # saveAttachments — basename + magic-byte + extension check
 ├── submissions.ts              # writeValidSubmission / writeInvalidSubmission
@@ -130,7 +141,7 @@ src/routes/
 ├── attachments/[id]/           # Streaming download/preview, role + status gated
 │
 ├── healthz/                    # Liveness — text "ok"
-└── readyz/                     # Readiness — JSON with db/attachments/auth/queue state
+└── readyz/                     # Readiness — JSON with db/attachments/auth/queue/search state
 ```
 
 ## The request lifecycle
@@ -147,6 +158,7 @@ hooks.server.ts: handle = sequence(
    handlePhase1
      - maybeStartOcrWorker (first request only)
      - maybeStartChefsPoller (first request only)
+     - maybeStartSearch (first request only — starts the search reconciler)
      - assigns requestId (nanoid 12)
      - issues cydb_csrf cookie if absent
      - applies rate limit on POST / (legacy; route is archived)
@@ -214,7 +226,7 @@ If the path doesn't match any rule, the request passes through ungated. **Public
 
 ## In-process workers
 
-Two workers run in the same Node process as the HTTP server. They start lazily on the first request that reaches `handlePhase1`. Once started, they tick on their own `setInterval` until process shutdown.
+Three workers run in the same Node process as the HTTP server. They start lazily on the first request that reaches `handlePhase1`. Once started, they tick on their own `setInterval` until process shutdown.
 
 ### OCR worker
 
@@ -240,6 +252,65 @@ Each tick:
 4. **On consecutive failures:** breaker writes `chefs.halted` + sends the alert mail.
 
 The single-flight pattern (no overlapping ticks) is handled by an in-memory flag in the poller closure.
+
+### Search reconciler
+
+Started by `maybeStartSearch()` in `hooks.server.ts`. Calls `startReconciler({…})` in `src/lib/server/search/reconciler.ts`. This is the third in-process background loop.
+
+Each tick: `selectDirty(db)` finds rows where `submissions.search_indexed_at IS NULL OR search_indexed_at < updated_at`, then calls `indexSubmission(...)` for each, which writes to the Manticore index over HTTP. Covers new submissions, CHEFS ingests, status changes, and any push that was missed.
+
+## Search (Manticore)
+
+Full-text search on `/submissions` is backed by a **Manticore Search sidecar container** (`manticoresearch/manticore:25.0.0`) running in the same Pod as the app. It is reached over `localhost:9308` using plain HTTP JSON DSL (`/search`) and `/sql` — no Kubernetes Service or Route; it is never reachable from outside the Pod. See `80-deployment.md` for the Pod spec and sidecar configuration.
+
+### Request / hydrate / re-auth flow
+
+```
+Browser: GET /submissions?q=smith&status=pending
+   ↓
+submissions loader (+page.server.ts)
+   ↓ requireRole('admin', 'cfd_worker')         ← auth check first
+   ↓ status filter applied to scope the corpus
+   ↓
+runSearch(query.ts)
+   ↓
+ManticoreClient.search(manticore.ts) — HTTP POST localhost:9308/search
+   returns: [ { id, relevance, snippet }, … ]   (BM25-ranked)
+   ↓
+loader re-fetches full rows from SQLite by those IDs, preserving hit order
+   ↓ status filter re-applied against SQLite                  ← second auth boundary
+   ↓ canAccessAttachmentByStatus / requireRole already enforced above
+   ↓
+Page rendered with ranked, highlighted results
+```
+
+**SQLite is the source of truth; the authorisation boundary stays in the DB.** Manticore returns only IDs; the loader re-runs the same status filter against SQLite before rendering. Search cannot widen access.
+
+### What's in the index
+
+Each submission is indexed as a single Manticore document in the `submissions_idx` index, with four text fields:
+
+| Field | Content |
+|---|---|
+| `structured_text` | Form fields expanded to human labels via `OPTIONS` (e.g. `"Autism Spectrum Disorder"` not `"ASD"`) |
+| `ocr_text` | Raw text extracted by OCR from attachments |
+| `metadata_text` | Request metadata (IP, UA, timestamp) |
+| `surname` | Applicant surname for exact-prefix matching |
+
+Index settings: `morphology=lemmatize_en_all`, `min_infix_len=2`, `index_exact_words=1`. Fuzzy matching is on by default. The document is built by `buildSearchDocument` in `document.ts`, which calls `OPTIONS` label-expansion at index time so the index content matches what staff read in the UI.
+
+### Freshness: real-time push + reconciler
+
+`submissions.search_indexed_at` is a nullable timestamp column that acts as a dirty marker.
+
+- **Real-time push**: when an OCR job completes, `process-job.ts` calls `onIndexed` (after the DB transaction commits, best-effort) to index the updated row immediately.
+- **Reconciler**: the background loop (described above) catches anything the push missed — new submissions, CHEFS ingests, status changes, process restarts.
+
+A row is considered dirty when `search_indexed_at IS NULL OR search_indexed_at < updated_at`.
+
+### Health
+
+`/readyz` includes a `search` probe (`pingSearch` from `search/health.ts`) that issues a lightweight request to Manticore. Manticore down → `/readyz` returns 503, blocking traffic from the Route until it recovers. This means a failed sidecar is immediately visible in the readiness gate — it will not silently serve stale or empty search results.
 
 ## Single-flight pattern
 

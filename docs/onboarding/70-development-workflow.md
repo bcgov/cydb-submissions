@@ -149,6 +149,63 @@ When you're working on a single area, run a watch on just that file:
 
 Vitest re-runs that file every time you save. Once you've widened the test scope (the fix you're making touches multiple modules), expand the pattern.
 
+## Search (Manticore) in local dev
+
+The submissions search feature is backed by [Manticore Search](https://manticoresearch.com). It is **mission-critical**: the app's `/readyz` health endpoint returns 503 when `MANTICORE_URL` is unreachable, so for most day-to-day dev work you want Manticore running alongside the app.
+
+### Starting Manticore
+
+A compose file is committed at the repo root:
+
+```bash
+podman compose -f compose.search.yaml up -d
+# or
+docker compose -f compose.search.yaml up -d
+```
+
+This exposes Manticore on `localhost:9308` (HTTP) and `localhost:9306` (MySQL binary). Add to `.env` (it's also in `.env.example`):
+
+```bash
+MANTICORE_URL=http://localhost:9308
+```
+
+On app start, `ensureIndex` auto-creates the `submissions_idx` index if it doesn't exist. The reconciler (`SEARCH_RECONCILE_INTERVAL_MS`, default 2000 ms) indexes any seeded or submitted rows within a couple of seconds — you don't need to do anything manually.
+
+Module layout: `src/lib/server/search/` (client, indexer, query, reconciler, …). Architecture detail is in `30-architecture.md`; deployment config is in `80-deployment.md`.
+
+### Search tests
+
+**Unit tests** (`tests/unit/search-*.test.ts`) use an `InMemorySearchClient` stub and a `vi`-mocked `fetch` for the HTTP client. They always run — no live Manticore needed:
+
+```bash
+./node_modules/.bin/vitest --project server --run
+```
+
+**Integration test** (`tests/unit/search-manticore-integration.test.ts`) and **E2E spec** (`tests/e2e/submissions-search.spec.ts`) are env-gated: they skip automatically unless `MANTICORE_URL` is set and a real Manticore instance is reachable. They validate the actual wire format (the JSON `/search` DSL, fuzzy option, highlight, `/sql` DDL/DML). Run them with:
+
+```bash
+podman compose -f compose.search.yaml up -d
+MANTICORE_URL=http://localhost:9308 ./node_modules/.bin/vitest --project server --run search-manticore-integration
+```
+
+The integration test is the authoritative check that `ManticoreClient` request shapes are accepted by the real engine. Run it after any change to `src/lib/server/search/manticore.ts`.
+
+### Query syntax
+
+In the UI search box on `/submissions` you can try:
+
+| Syntax | What it does |
+|---|---|
+| `aut*` | Prefix wildcard |
+| `"speech delay"` | Exact phrase |
+| `@ocr_text vineland` | Field-scoped search |
+| `"speech delay" NEAR/3` | Proximity |
+| `"adhd anxiety seizures"/2` | Quorum (2-of-3 match) |
+| `diagnosis -provisional` | Exclusion |
+| `running` | Lemma (matches run, ran, …) |
+
+Typos are tolerated automatically via Manticore's built-in fuzzy matching.
+
 ## Type checking + lint
 
 ```bash

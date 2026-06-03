@@ -60,10 +60,12 @@ informationAccurate    INTEGER (boolean mode) NOT NULL
 dataSharingConsent     INTEGER (boolean mode) NOT NULL
 raw_payload            TEXT (json mode) NOT NULL  -- exact JSON the form posted
 created_at, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+search_indexed_at      TEXT NULL                  -- dirty marker for Manticore indexing
 
-INDEX  submissions_status_idx  (status)
-INDEX  submissions_created_idx (created_at)
-INDEX  submissions_surname_idx (submitter_surname)
+INDEX  submissions_status_idx         (status)
+INDEX  submissions_created_idx        (created_at)
+INDEX  submissions_surname_idx        (submitter_surname)
+INDEX  submissions_search_indexed_idx (search_indexed_at)
 CHECK  status IN (one of SUBMISSION_STATUSES)
 ```
 
@@ -75,7 +77,22 @@ CHECK  status IN (one of SUBMISSION_STATUSES)
 
 **Multi-select arrays as JSON.** SQLite has no native array type. `assessmentTools`, `conditions`, and `services` are stored as JSON text. Drizzle's `.$type<string[]>()` annotation gives you a typed read, but you're still serializing into a text column.
 
+**`search_indexed_at` (Drizzle: `searchIndexedAt`) is a dirty marker for the Manticore full-text index.** A row is considered dirty — needs re-indexing — when `search_indexed_at IS NULL OR search_indexed_at < updated_at`. New rows insert with it NULL, so the background reconciler picks them up on its next tick. After `indexSubmission` successfully pushes a row to Manticore it writes `CURRENT_TIMESTAMP` here. To force a full re-index of all submissions, `UPDATE submissions SET search_indexed_at = NULL` and the reconciler will do the rest. Added in migration `0003_elite_giant_man.sql`.
+
 **SubmissionStatus** is a TypeScript union derived from the constant array `SUBMISSION_STATUSES`. The DB has a matching `CHECK` constraint, so a typo at the app layer that escapes TypeScript will still be caught by SQLite.
+
+### Manticore `submissions_idx` (derived, not a SQLite table)
+
+The full-text search powering `/submissions` (lemmas, wildcards, fuzzy matching) runs against a **Manticore Search sidecar**, not SQLite. The Manticore index `submissions_idx` lives at `/var/lib/manticore` inside the sidecar container — it is **not** part of the relational schema and does not appear in any migration.
+
+It is a **fully-rebuildable projection** of SQLite (the source of truth). Per submission it holds:
+
+- Full-text fields: `surname`, `structured_text` (all form fields with coded values expanded to human labels via `OPTIONS`), `ocr_text` (concatenated `ocr_results.rawText`), `metadata_text`
+- Attributes (filterable): `submission_uuid`, `status`, `created_at`
+
+Search returns submission IDs only; the app re-reads the authoritative rows from SQLite before rendering. Because `submissions_idx` is derived, it **requires no backup** — if it is lost or corrupted, clear `search_indexed_at` across all rows and the reconciler rebuilds it.
+
+The reconciler and `indexSubmission` are described in `30-architecture.md`; deployment concerns (sidecar, PVC path) are in `80-deployment.md`.
 
 ### `submission_metadata`
 
@@ -258,6 +275,7 @@ Migrations live in `src/lib/server/db/migrations/`:
 0000_unknown_tomas.sql        # Phase 1: submissions, attachments, metadata, invalid_submissions
 0001_heavy_luckman.sql        # Phase 2: better-auth tables, user_roles
 0002_phase3_ocr.sql           # Phase 3: ocr_jobs, ocr_results, keyword_hits, system_state
+0003_elite_giant_man.sql      # Search: submissions.search_indexed_at + index
 meta/                         # Drizzle bookkeeping (don't edit by hand)
 ```
 
@@ -321,6 +339,7 @@ PVC backups are the BC Gov Platform team's job; we don't have an in-app backup. 
 | "OCR queue won't start" | `system_state.ocr.halted`  — check `value`, then `/admin/queues` Resume |
 | "CHEFS sync says it ran but no new submissions" | `system_state.chefs.lastSync` (`{ added: 0 }` means CHEFS returned nothing new) |
 | "Attachment download returns 410" | The file is missing from the PVC; the DB row is still there |
+| "Search returns no results / stale results" | `submissions.search_indexed_at` — rows with NULL or old values haven't been pushed to Manticore yet; check the reconciler logs |
 
 ## SQL escape hatch
 

@@ -5,6 +5,7 @@ Templates only — not applied. To deploy:
 ```sh
 oc apply -f openshift/pvc-db.yaml
 oc apply -f openshift/pvc-attachments.yaml
+oc apply -f openshift/pvc-search.yaml         # Manticore search index volume
 oc apply -f openshift/secret.yaml             # create from secret.example.yaml; never commit
 oc apply -f openshift/configmap-<env>.yaml    # see Per-environment ConfigMaps below; never commit
 oc apply -f openshift/deployment.yaml
@@ -31,11 +32,28 @@ When `envFrom: configMapRef` is in place you can delete the inline `env:` block 
 Storage layout:
 - `cydb-submissions-db` (1Gi, RWO) — mounted at `/data/db`, holds `local.db` and its `-shm` / `-wal` siblings.
 - `cydb-submissions-attachments` (10Gi, RWO) — mounted at `/data/attachments`, holds one subdirectory per submission UUID. Resize independently as the corpus grows.
+- `cydb-submissions-search` (2Gi, RWO) — mounted at `/var/lib/manticore` **in the Manticore sidecar**, holds the `submissions_idx` full-text index. Rebuildable from SQLite at any time (see Search sidecar below), so it does not need its own backup.
 
 Notes:
-- `replicas: 1`. The Phase-1 in-process rate limiter and the Phase-2 bypass shim assume a single pod. Multi-pod scaling is a deliberate future task.
+- `replicas: 1`. The Phase-1 in-process rate limiter, the Phase-2 bypass shim, and the in-pod Manticore sidecar (one app ⟷ one index) all assume a single pod. Multi-pod scaling is a deliberate future task.
 - Migrations run on pod start (`scripts/migrate.mjs`) followed by `seed-admin.mjs`. If migrations grow expensive, switch to a one-shot OpenShift `Job` invoked before deployment rollout.
 - Image stream + BuildConfig wiring is left to the platform team.
+
+## Search sidecar (Manticore)
+
+Full-text search on `/submissions` is served by a **Manticore Search** container that runs as a **sidecar in the app Pod** (image `manticoresearch/manticore:25.0.0`). It is **internal-only** — reached over `localhost:9308`, with **no Service and no Route** (Manticore has no built-in auth, so non-exposure is the access control). The app needs no extra runtime dependency; it speaks Manticore's HTTP `/search` (JSON) and `/sql` endpoints with `fetch`. SQLite stays the source of truth — search returns only document IDs, and the app re-reads the rows from `local.db` under the existing role/status authorisation.
+
+- **Storage:** `cydb-submissions-search` (2Gi, RWO) at `/var/lib/manticore`, declared in `openshift/pvc-search.yaml`. The index survives app-container restarts; if the volume is ever lost the reconciler rebuilds it from SQLite.
+- **Index lifecycle:** the app creates `submissions_idx` on boot (idempotent `CREATE TABLE IF NOT EXISTS`, with `morphology=lemmatize_en_all`, `min_infix_len=2` for wildcards) and keeps it fresh two ways — a real-time push when an OCR job completes, and a background **reconciler** that re-indexes any submission whose `search_indexed_at` is null or older than `updated_at` (covers new submissions, CHEFS ingests, status changes, and any missed push).
+- **Mission-critical readiness:** search reachability is part of `/readyz`. If the Manticore sidecar is unreachable the pod is marked **not-ready → HTTP 503** and taken out of rotation. This is intentional and **contrasts with the OCR queue**, whose halted state deliberately leaves `/readyz` at 200 (see the OCR checklist below): the submissions view is considered down without search, but the public form is not down without OCR.
+
+| Variable | Where | Value |
+| --- | --- | --- |
+| `MANTICORE_URL` | Deployment env / ConfigMap | Defaults to `http://localhost:9308` (the in-pod sidecar). Only change it if you move Manticore to a separate Pod/Service. |
+| `SEARCH_RECONCILE_INTERVAL_MS` | Deployment env (optional) | Reconciler tick interval. Default `2000`. |
+| `SEARCH_RECONCILE_BATCH` | Deployment env (optional) | Dirty rows indexed per tick. Default `50`. |
+
+The `manticore` container requests `100m` CPU / `256Mi` memory (limits `1` CPU / `1Gi`), declared on the sidecar in `deployment.yaml` — so the Pod's total budget is the app container **plus** the sidecar. The image tag is pinned to `25.0.0`; it bundles Manticore Buddy, which the default-on fuzzy/typo search requires.
 
 ## OCR environment variables
 
@@ -126,4 +144,4 @@ Staff authenticate against the BC Gov Common Hosted Single Sign-On service. The 
 1. In the Deployment env block (`openshift/deployment.yaml`): `OCR_WORKER_ENABLED=1`, `OCR_PROVIDER=bcgov-di`, `BCGOV_DI_BASE_URL=…`, `BCGOV_DI_WORKFLOW_SLUG=ocr-only-minimal` (the template already carries the URL + workflow).
 2. In the Secret (`cydb-submissions-secrets`): `BCGOV_DI_API_KEY=…`.
 3. Roll out the Deployment. The worker reads its config at boot — there is no runtime reload.
-4. Watch `/readyz` (it reports `queue: 'ok' | 'halted' | 'disabled'` in the body) and `/admin/ocr` for the queue state. The HTTP status of `/readyz` deliberately stays 200 even when halted — the public form path is independent of the back-office queue.
+4. Watch `/readyz` (it reports `checks: { db, attachments, auth, search }` plus `queue: 'ok' | 'halted' | 'disabled'` in the body) and `/admin/ocr` for the queue state. A halted OCR queue deliberately leaves `/readyz` at **200** — the public form path is independent of the back-office queue. By contrast a failed `search` check (Manticore unreachable) returns **503**; see "Search sidecar" above.

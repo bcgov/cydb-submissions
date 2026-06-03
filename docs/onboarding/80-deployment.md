@@ -6,11 +6,12 @@ This app deploys to the **BC Gov Gold OpenShift cluster** as a single-pod worklo
 
 ```
 openshift/
-├── deployment.yaml        # The Pod spec (image, env, volumes, probes, resources)
-├── service.yaml           # ClusterIP Service in front of the Pod
+├── deployment.yaml        # The Pod spec — TWO containers (app + manticore sidecar), env, volumes, probes, resources
+├── service.yaml           # ClusterIP Service in front of the Pod (app port only; Manticore is NOT exposed)
 ├── route.yaml             # Edge TLS-terminated Route in front of the Service
 ├── pvc-db.yaml            # PVC for /data/db (SQLite + WAL)
 ├── pvc-attachments.yaml   # PVC for /data/attachments
+├── pvc-search.yaml        # PVC for /var/lib/manticore (the Manticore full-text index)
 ├── configmap-dev.yaml     # Per-env non-secret env vars (GITIGNORED)
 ├── configmap-test.yaml    # Same, for test (GITIGNORED)
 ├── configmap-prod.yaml    # Same, for prod (GITIGNORED)
@@ -18,7 +19,9 @@ openshift/
 └── README.md              # In-tree pointers and operator notes
 ```
 
-Plus the `Containerfile` at the repo root.
+Plus the `Containerfile` at the repo root, and `compose.search.yaml` (a local-dev Manticore for `podman/docker compose`, not used in OpenShift).
+
+> **Manticore sidecar:** `/submissions` full-text search is served by a **Manticore Search** container (`manticoresearch/manticore:25.0.0`) that runs as a **second container in the same Pod**, reached over `localhost:9308`. It is internal-only — there is no Service or Route in front of it. SQLite stays the source of truth; search returns document IDs and the app re-reads the rows under the existing role/status checks. See `openshift/README.md` → "Search sidecar (Manticore)" for the full picture.
 
 ## How traffic gets in
 
@@ -59,18 +62,25 @@ Plus the `Containerfile` at the repo root.
 ```
 Pod
 │
-├── /data/db                 (PVC: cydb-submissions-db, 1Gi RWO)
-│     local.db
-│     local.db-shm
-│     local.db-wal
+├── app container
+│   ├── /data/db                 (PVC: cydb-submissions-db, 1Gi RWO)
+│   │     local.db
+│   │     local.db-shm
+│   │     local.db-wal
+│   │
+│   └── /data/attachments        (PVC: cydb-submissions-attachments, 10Gi RWO)
+│         sub_<uuid>/
+│           <file1>
+│           <file2>
 │
-└── /data/attachments        (PVC: cydb-submissions-attachments, 10Gi RWO)
-      sub_<uuid>/
-        <file1>
-        <file2>
+└── manticore sidecar
+    └── /var/lib/manticore       (PVC: cydb-submissions-search, 2Gi RWO)
+          submissions_idx        (the full-text index)
 ```
 
-Two PVCs deliberately — different sizes (DB stays small forever; attachments grow), different sensitivity profiles, different backup cadences possible. Both are `ReadWriteOnce`. With `replicas: 1` and `strategy: Recreate`, no scheduling problem arises.
+Three PVCs deliberately — different sizes (DB stays small forever; attachments grow; the search index tracks the DB), different sensitivity profiles, different backup cadences possible. All are `ReadWriteOnce`. With `replicas: 1` and `strategy: Recreate`, no scheduling problem arises — and the single-pod topology is exactly what the SQLite single-writer and the one-app-to-one-Manticore-index design both require.
+
+The search PVC is the only one that **doesn't need its own backup**: the index is fully rebuildable from SQLite. On a fresh or wiped volume the reconciler re-indexes every submission on the next ticks.
 
 If the attachments PVC fills up, increase the `storage: 10Gi` value in `pvc-attachments.yaml` and `oc apply -f`. OpenShift will resize the underlying volume online.
 
@@ -125,6 +135,7 @@ Includes:
 - `CHEFS_POLLER_ENABLED`, `CHEFS_BASE_URL`, `CHEFS_VERSION`, `CHEFS_FILE_COMPONENTS`, `CHEFS_POLL_INTERVAL_MS`
 - `SSO_ISSUER_URL` (per-environment loginproxy host)
 - `BODY_SIZE_LIMIT=27000000` (≈25 MiB + headroom; adapter-node's default of 512K would truncate every real upload)
+- Search: `MANTICORE_URL` (defaults to `http://localhost:9308`, the in-pod sidecar), `SEARCH_RECONCILE_INTERVAL_MS` (default `2000`), `SEARCH_RECONCILE_BATCH` (default `50`)
 
 ### How they merge into the container
 
@@ -181,6 +192,7 @@ oc new-project cydb
 # 2. Apply the PVCs
 oc apply -f openshift/pvc-db.yaml
 oc apply -f openshift/pvc-attachments.yaml
+oc apply -f openshift/pvc-search.yaml
 
 # 3. Create the Secret from your local secret.yaml
 #    (copy secret.example.yaml → secret.yaml, fill in values, NEVER COMMIT)
@@ -251,11 +263,16 @@ livenessProbe:
 ```
 
 - **`/healthz`** returns plain `ok\n`. Used as a "is the process alive" check.
-- **`/readyz`** returns JSON: `{ ok, checks: { db, attachments, auth }, queue: 'ok' | 'halted' | 'disabled' }`. Status code is 200 if every `check` is true, 503 otherwise.
+- **`/readyz`** returns JSON: `{ ok, checks: { db, attachments, auth, search }, queue: 'ok' | 'halted' | 'disabled' }`. Status code is 200 if every `check` is true, 503 otherwise.
 
-Important note about `/readyz`: **a halted OCR queue does NOT flip the HTTP status to 503**. The reasoning is that the public form path (and CHEFS ingest) is independent of the back-office OCR queue. If OCR is halted but submissions can still arrive, the pod is still "ready" — the queue just needs human attention.
+The `manticore` sidecar has its own `tcpSocket: 9308` readiness/liveness probes (so OpenShift restarts the sidecar if it crashes), independent of the app container's HTTP probes above.
 
-If you want OpenShift to roll the pod when something deeper breaks, augment `/readyz` to set `ok=false` for that condition.
+Two `/readyz` behaviours that look similar but are opposite — know the difference:
+
+- **A failed `search` check flips `/readyz` to 503.** Search is mission-critical: if the Manticore sidecar is unreachable, `checks.search` is false → the pod is marked not-ready and pulled from rotation. This is deliberate — the submissions view is considered down without search.
+- **A halted OCR queue does NOT flip the HTTP status to 503.** The public form path (and CHEFS ingest) is independent of the back-office OCR queue; `queue: 'halted'` is reported in the body but the pod stays "ready". The queue just needs human attention.
+
+If you want OpenShift to roll the pod when some other condition breaks, augment `/readyz` to set the relevant `check` to false (that's exactly how `search` was wired).
 
 ## Resource limits
 
@@ -273,7 +290,9 @@ resources:
 
 100m CPU and 256Mi memory are comfortable at current load. The 1Gi memory limit gives headroom for a few concurrent OCR jobs (`OCR_MAX_CONCURRENCY` ≤ 4); larger uploads need more (a 25MiB PDF gets buffered into memory before the worker reads it).
 
-If OOM kills start appearing in `oc events`, bump the memory limit first.
+These are the **app container's** limits. The `manticore` sidecar declares its own (requests `100m`/`256Mi`, limits `1` CPU/`1Gi`), so the Pod now schedules against the sum of the two. Manticore sits near-idle when not queried; bump its limit only if the index grows large or query volume rises.
+
+If OOM kills start appearing in `oc events`, check which container was killed (`oc get pod <name> -o jsonpath='{.status.containerStatuses[*].lastState}'`) and bump that container's memory limit first.
 
 ## Backup and recovery
 
@@ -328,6 +347,34 @@ oc exec deployment/cydb-submissions -- sh -c "echo 'DELETE FROM system_state WHE
 ```
 
 The worker picks up its next tick within `OCR_POLL_INTERVAL_MS`.
+
+### Search is down (`/readyz` 503 with `checks.search: false`)
+
+The Manticore sidecar is unreachable, so the pod is not-ready. Check the sidecar:
+
+```bash
+oc logs deployment/cydb-submissions -c manticore --tail=50
+oc get pod -l app=cydb-submissions -o jsonpath='{.status.containerStatuses[*].name}{"\n"}{.status.containerStatuses[*].ready}'
+```
+
+If the sidecar crashed, OpenShift restarts it automatically (its own liveness probe). Once `localhost:9308` answers, `checks.search` goes true and the pod returns to rotation. No data is lost: SQLite is untouched, and every unindexed/stale row stays "dirty" (`search_indexed_at` null or `< updated_at`) and is re-indexed by the reconciler.
+
+### Rebuilding the search index from scratch
+
+The index is fully derived from SQLite, so you can force a full rebuild by clearing the per-row stamp — the reconciler then re-indexes everything:
+
+```bash
+oc exec deployment/cydb-submissions -- sh -c \
+  "echo 'UPDATE submissions SET search_indexed_at = NULL;' | sqlite3 /data/db/local.db"
+```
+
+Re-indexing proceeds `SEARCH_RECONCILE_BATCH` rows per `SEARCH_RECONCILE_INTERVAL_MS` tick. To rebuild the index *table* itself (e.g. after a schema/morphology change), drop it in Manticore and restart the app — `ensureIndex` recreates `submissions_idx` on boot:
+
+```bash
+oc exec deployment/cydb-submissions -c manticore -- \
+  curl -s 'http://localhost:9308/sql?mode=raw' --data-urlencode 'query=DROP TABLE IF EXISTS submissions_idx'
+oc rollout restart deployment/cydb-submissions
+```
 
 ### Looking at the live database
 

@@ -8,7 +8,10 @@ When the system misbehaves, work this file from the top down. Each section is a 
 |---|---|---|
 | Halt alert email about OCR | Workers running, breaker tripped | [OCR queue halted](#ocr-queue-halted) |
 | Halt alert email about CHEFS | Workers running, breaker tripped | [CHEFS poller halted](#chefs-poller-halted) |
+| `/readyz` returning 503, `checks.search: false` | Manticore sidecar unreachable | [Search down — `/readyz` 503](#search-down----readyz-503) |
 | `/readyz` returning 503 | One of: db, attachments, auth missing | [Readiness failing](#readiness-failing) |
+| Submission missing or stale in search | Not yet indexed by reconciler | [Submission not appearing in search](#submission-not-appearing-in-search) |
+| Need to rebuild search index (schema change) | Drop and recreate `submissions_idx` | [Rebuilding the search index](#rebuilding-the-search-index) |
 | Sign-in failing with "auth not configured" | `BETTER_AUTH_SECRET` missing or short | [Auth unavailable](#auth-unavailable) |
 | Sign-in failing with "SSO unavailable" | SSO env missing or IdP unreachable | [SSO unavailable](#sso-unavailable) |
 | Login form rejecting valid credentials | Login throttle tripped, or wrong password | [Login throttled / wrong creds](#login-throttled--wrong-credentials) |
@@ -147,6 +150,94 @@ The JSON tells you exactly which check failed:
 - `auth: false` — the Secret doesn't have `BETTER_AUTH_SECRET`, or it's shorter than 32 chars. Update the Secret and restart.
 
 Note: a halted OCR queue does **NOT** flip `/readyz` to 503. That was a deliberate choice — see `80-deployment.md`. If you want OpenShift to roll the pod on a halt, change the `/readyz` handler.
+
+Note: `checks.search: false` means the Manticore sidecar is unreachable. This **does** return 503 — search is treated as mission-critical. See [Search down — `/readyz` 503](#search-down----readyz-503).
+
+## Search down — `/readyz` 503
+
+**Symptoms:**
+- `/readyz` returns 503 with `"checks": { "search": false }`
+- OpenShift marks the pod not-ready; it drops out of rotation
+
+**Cause:**
+The Manticore sidecar (runs in-pod on `localhost:9308`) is unreachable — either it hasn't finished starting up yet or it crashed. Because search is treated as mission-critical, a dead sidecar intentionally makes the whole pod not-ready.
+
+**Diagnosis:**
+
+```bash
+oc logs deployment/cydb-submissions -c manticore --tail=50
+oc get pod -l app=cydb-submissions -o jsonpath='{.status.containerStatuses[*].name}{"\n"}{.status.containerStatuses[*].ready}'
+```
+
+The second command shows both container names and their ready flags side by side. If `manticore` is `false`, that's the failing check.
+
+**Fix:**
+You don't need to do anything manually. OpenShift runs a `tcpSocket:9308` liveness probe on the sidecar and restarts it automatically on crash. Once `localhost:9308` answers, `checks.search` goes true and the pod returns to rotation.
+
+**No data loss:** SQLite is untouched while the sidecar is down. Every submission that was indexed or updated while the sidecar was absent stays "dirty" (`submissions.search_indexed_at` is null or older than `updated_at`). The reconciler re-indexes those rows within `SEARCH_RECONCILE_INTERVAL_MS` (default 2000 ms) once the sidecar is back.
+
+If the sidecar is crash-looping repeatedly rather than recovering, read its logs for the root cause (disk permissions on the Manticore data directory, OOM, etc.) and address that before the pod will stabilise.
+
+See also: `80-deployment.md` (Search sidecar section) and `30-architecture.md`.
+
+## Submission not appearing in search
+
+**Symptoms:**
+- A submission exists in the DB (`submissions` table) but doesn't appear in search results
+- Search results look stale — a recently-updated submission still shows old values
+
+**Cause:**
+The submission hasn't been (re)indexed yet. Indexing is asynchronous: the reconciler wakes every `SEARCH_RECONCILE_INTERVAL_MS` (default 2000 ms) and processes up to `SEARCH_RECONCILE_BATCH` (default 50) dirty rows per tick. A row is "dirty" when `search_indexed_at` is null or `< updated_at`.
+
+Under normal load, the lag is a few seconds. It's longer if the sidecar just restarted (see above) or if a large backlog accumulated.
+
+**Diagnosis:**
+
+```bash
+# How many rows are waiting to be indexed?
+oc exec deployment/cydb-submissions -- sqlite3 /data/db/local.db \
+  "SELECT COUNT(*) FROM submissions WHERE search_indexed_at IS NULL OR search_indexed_at < updated_at;"
+```
+
+If the count is draining over time, the reconciler is working and you just need to wait. If it's stuck, check whether the sidecar is healthy (see [Search down](#search-down----readyz-503)).
+
+**Fix:**
+Usually just wait — the reconciler catches up on its own. To force every row to re-index immediately:
+
+```bash
+# Mark all rows dirty; the reconciler refills in subsequent ticks:
+oc exec deployment/cydb-submissions -- sh -c \
+  "echo 'UPDATE submissions SET search_indexed_at = NULL;' | sqlite3 /data/db/local.db"
+```
+
+This is safe to run at any time. The index is a derived, rebuildable projection of SQLite — clearing the stamp loses nothing.
+
+## Rebuilding the search index
+
+**When you need this:**
+- You changed the Manticore index schema (field list, morphology settings, etc.) and need to apply it
+- The `submissions_idx` table is corrupt or inconsistent
+
+**Cause:**
+The index table is created by `ensureIndex` at app boot. If the table already exists with the old schema, the app won't alter it. You have to drop it and let the app recreate it.
+
+**Procedure:**
+
+```bash
+# 1. Drop the index table via the Manticore HTTP API:
+oc exec deployment/cydb-submissions -c manticore -- \
+  curl -s 'http://localhost:9308/sql?mode=raw' --data-urlencode 'query=DROP TABLE IF EXISTS submissions_idx'
+
+# 2. Restart the app — ensureIndex recreates the table on boot,
+#    then the reconciler refills it from SQLite:
+oc rollout restart deployment/cydb-submissions
+```
+
+The reconciler fills the new index within a few minutes for typical dataset sizes (batch size `SEARCH_RECONCILE_BATCH`, default 50, every `SEARCH_RECONCILE_INTERVAL_MS`, default 2000 ms). Search results will be sparse during the fill but the pod stays healthy.
+
+**No backup needed:** `submissions_idx` is entirely derived from `submissions` in SQLite. If you lost the index table entirely, the above procedure recreates it with no data loss.
+
+**Relevant env vars:** `MANTICORE_URL` (default `http://localhost:9308`), `SEARCH_RECONCILE_INTERVAL_MS`, `SEARCH_RECONCILE_BATCH`. See `80-deployment.md` for full env reference.
 
 ## Auth unavailable
 

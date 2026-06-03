@@ -278,3 +278,28 @@ If you've used React but not Svelte:
 If you've never used a component framework but have written HTML/CSS/JS: that's enough; the official Svelte tutorial is incremental. Plan for a day.
 
 When you're stuck, the patterns that exist in this codebase are mostly canonical. `grep -rn 'use:enhance'` will show you how forms are wired; `grep -rn '+page.server.ts'` lists every server load; `grep -rn '\$state\|\$derived\|\$effect'` shows every reactive primitive. Read three or four of each before writing your own.
+
+## 13. Manticore Search (full-text search sidecar)
+
+The `/submissions` admin view includes advanced full-text search across all fields in the current status-filtered set. The engine behind it is **Manticore Search** — not a Node library, but a separate process running as a **sidecar container in the same app Pod** (image `manticoresearch/manticore:25.0.0`, reachable at `localhost:9308`). The app talks to it with plain `fetch` calls over Manticore's HTTP API (`/search` for JSON DSL queries, `/sql` for ad-hoc SQL); there is no extra npm dependency and nothing leaves the cluster.
+
+Why Manticore instead of SQLite FTS or an external cloud service: the requirement called for advanced search syntax — wildcards (`aut*`, `*ism*`), phrases (`"speech delay"`), field scoping (`@ocr_text vineland`), proximity (`NEAR/3`), quorum (`"a b c"/2`), exclusion (`-term`), true English lemmatisation, and fuzzy/typo tolerance on by default — all of which Manticore handles self-contained, with no external service to provision or pay for.
+
+**SQLite stays the source of truth.** A search returns document IDs, relevance scores, and highlighted snippets; the server then re-fetches the matching rows from SQLite and re-applies role/status authorisation. Search results can never widen access beyond what the DB query would have returned anyway.
+
+The index (`submissions_idx`) is kept current by a real-time push whenever OCR completes, plus a background reconciler that catches anything missed (driven by a `search_indexed_at` dirty-marker column on `submissions`). Manticore reachability is part of the `/readyz` health check — if the sidecar is down, the pod reports not-ready (HTTP 503).
+
+**Where the code lives**
+
+- `src/lib/server/search/` — types, Manticore HTTP client, document builder, indexer, query/hydration pipeline, reconciler, singleton, health check.
+- `src/routes/submissions/+page.svelte` + `+page.server.ts` — UI search box and the load branch that dispatches to the search pipeline.
+
+**Env vars**
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `MANTICORE_URL` | `http://localhost:9308` | Sidecar address |
+| `SEARCH_RECONCILE_INTERVAL_MS` | `2000` | Reconciler poll cadence |
+| `SEARCH_RECONCILE_BATCH` | `50` | Rows per reconciler batch |
+
+Local dev: `podman compose -f compose.search.yaml up -d` starts the sidecar. See `30-architecture.md` for how the sidecar fits into the request lifecycle and `80-deployment.md` for Pod/container configuration.

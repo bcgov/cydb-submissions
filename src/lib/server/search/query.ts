@@ -46,6 +46,11 @@ export interface RunSearchResult {
  * a malformed query (propagated from the client).
  */
 export async function runSearch(db: Db, client: SearchClient, opts: RunSearchOptions): Promise<RunSearchResult> {
+	// Status is filtered at the engine (statusEquals/NotEquals) AND every row is
+	// re-hydrated from SQLite below, where its TRUE current status is read for display.
+	// A briefly-stale index status entry self-heals via the reconciler. Phase-2
+	// hardening (once reviewer status actions exist): re-apply the status predicate to
+	// the hydrated rows as defence-in-depth.
 	const result = await client.search({
 		match: opts.query,
 		statusEquals: opts.statusEquals,

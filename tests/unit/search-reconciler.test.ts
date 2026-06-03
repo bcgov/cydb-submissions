@@ -3,6 +3,7 @@ import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import path from 'node:path';
+import { eq } from 'drizzle-orm';
 import * as schema from '$lib/server/db/schema';
 import { InMemorySearchClient } from '$lib/server/search/stub';
 import { selectDirty, reconcileOnce } from '$lib/server/search/reconciler';
@@ -38,5 +39,22 @@ describe('reconcileOnce', () => {
 		expect(selectDirty(db, 50)).toEqual([]);
 		const r = await client.search({ match: 'A', limit: 10, offset: 0, fuzzy: false, fuzzyDistance: 2 });
 		expect(r.total).toBeGreaterThanOrEqual(1);
+	});
+
+	it('re-dirties and re-indexes a row whose updatedAt is newer than searchIndexedAt', async () => {
+		const client = new InMemorySearchClient();
+		const a = seed('A');
+
+		// Plant a past searchIndexedAt that predates updatedAt, bypassing wall-clock
+		// racing: directly set searchIndexedAt < updatedAt using fixed timestamps.
+		db.update(schema.submissions)
+			.set({ searchIndexedAt: '2020-01-01 00:00:00', updatedAt: '2020-01-02 00:00:00' })
+			.where(eq(schema.submissions.id, a))
+			.run();
+
+		expect(selectDirty(db, 50)).toContain(a); // dirty: stale branch fires
+		const n = await reconcileOnce(db, client, 50);
+		expect(n).toBe(1);
+		expect(selectDirty(db, 50)).toEqual([]); // healed: searchIndexedAt stamped >= updatedAt
 	});
 });

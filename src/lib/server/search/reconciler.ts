@@ -14,6 +14,12 @@ export function selectDirty(db: Db, batchSize: number): number[] {
 		.select({ id: schema.submissions.id })
 		.from(schema.submissions)
 		.where(
+			// Dirty = never indexed, or updated since last index. Both columns are SQLite
+			// CURRENT_TIMESTAMP (1-second resolution), so lexical `<` is correct. Phase-1
+			// caveat: the only status-writer (OCR recompute) pairs the updatedAt bump with an
+			// immediate onIndexed push, so the stamp is >= updatedAt and same-second changes
+			// are not missed. If a future path mutates a searchable field WITHOUT an immediate
+			// push, a sub-second tiebreak (or <=) would be needed to avoid a same-second miss.
 			or(
 				isNull(schema.submissions.searchIndexedAt),
 				sql`${schema.submissions.searchIndexedAt} < ${schema.submissions.updatedAt}`

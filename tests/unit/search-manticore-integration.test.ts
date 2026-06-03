@@ -32,8 +32,22 @@ d('ManticoreClient (integration — requires MANTICORE_URL)', () => {
 		expect(r.hits.map((h) => h.id)).toContain(1001);
 	});
 
-	it('matches a typo via fuzzy', async () => {
-		const r = await c.search({ match: 'speach', limit: 10, offset: 0, fuzzy: true, fuzzyDistance: 2 });
+	it('matches a typo ONLY when fuzzy is enabled (negative control)', async () => {
+		const off = await c.search({ match: 'speach', limit: 10, offset: 0, fuzzy: false, fuzzyDistance: 2 });
+		expect(off.hits.map((h) => h.id)).not.toContain(1001);
+		const on = await c.search({ match: 'speach', limit: 10, offset: 0, fuzzy: true, fuzzyDistance: 2 });
+		expect(on.hits.map((h) => h.id)).toContain(1001);
+	});
+
+	it('supports field-scoped search (@ocr_text)', async () => {
+		const inOcr = await c.search({ match: '@ocr_text autism', limit: 10, offset: 0, fuzzy: false, fuzzyDistance: 2 });
+		expect(inOcr.hits.map((h) => h.id)).toContain(1001);
+		const inSurname = await c.search({ match: '@surname autism', limit: 10, offset: 0, fuzzy: false, fuzzyDistance: 2 });
+		expect(inSurname.hits.map((h) => h.id)).not.toContain(1001);
+	});
+
+	it('supports quorum matching (N of M)', async () => {
+		const r = await c.search({ match: '"autism delay sensory unrelatedword"/2', limit: 10, offset: 0, fuzzy: false, fuzzyDistance: 2 });
 		expect(r.hits.map((h) => h.id)).toContain(1001);
 	});
 

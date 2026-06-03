@@ -2,17 +2,6 @@
 
 Welcome. You're inheriting the **Children & Youth Disability Benefit (CYDB) Submissions** application — a SvelteKit-based intake and review system deployed on BC Government OpenShift.
 
-This onboarding tree is self-contained. You do not need to read anything else in the repo to ship code or operate the system. The numbered files are designed to be read in order on day one; later you'll skim them in any order as reference.
-
-## Who this is for
-
-- An engineer comfortable with **Node.js**, **JavaScript**, and **TypeScript**.
-- Conversant in modern web development (HTTP, REST, OAuth2 / OIDC basics, browser fundamentals).
-- Comfortable with **test-driven development** as a workflow.
-- **New to Svelte 5 and shadcn-svelte** — file `20-tech-stack.md` is your primer.
-
-If that's not you, the gap will show up first in `20-tech-stack.md`. Don't skip it.
-
 ## What you're inheriting
 
 | Component | Tech |

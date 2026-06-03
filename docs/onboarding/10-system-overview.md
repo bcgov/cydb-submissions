@@ -6,7 +6,9 @@ The **Children & Youth Disability Benefit (CYDB) Submissions** application recei
 
 ### The user-facing form
 
-Submitters complete a multi-section form (child info, developmental history, diagnosis, functional impact, co-occurring conditions, current supports, consent attestations) and upload supporting documents (PDFs, images, Word). The form's structure, validation rules, and option lists come from a **Form.io v2-style JSON schema** (`src/lib/form/cydb_form_schema.json`) that was originally authored on the BC Government **CHEFS** (Common Hosted Forms Service) platform. The visual layout matches the CHEFS rendering so submitters and staff have a consistent experience.
+Submitters complete a multi-section form (child info, developmental history, diagnosis, functional impact, co-occurring conditions, current supports, consent attestations) and upload supporting documents (PDFs, images, Word etc). The form's structure, validation rules, and option lists come from a **Form.io v2-style JSON schema** (`src/lib/form/cydb_form_schema.json`) that was originally authored on the BC Government **CHEFS** (Common Hosted Forms Service) platform. The visual layout matches the CHEFS rendering so submitters and staff have a consistent experience.
+
+The user-facing form is a fallback measure. The production footing is to have a CHEFS form be the primary applicant interface, with this app handling the OCR processing and submission evaluation.
 
 ### The processing pipeline
 
@@ -42,31 +44,16 @@ Roles are stored in a local `userRoles` table. They are also synced from BC Gov 
 | Sessions / accounts | `user`, `account`, `session`, `verification` (better-auth tables) | OAuth `account` rows carry the SSO access/refresh tokens |
 | Audit events | pino stdout → OpenShift log aggregator | No in-app audit table; the `auditLog()` wrapper is an allowlist gate |
 
-## The five-phase backbone
-
-The product was scoped in five phases. The first three are shipped. Phases 4 and 5 are partially shipped / not started.
-
-| Phase | Scope | Status |
-|---|---|---|
-| Phase 1 | Public CHEFS-equivalent form, validation, submission persistence, attachment storage | Shipped; public form has since been **archived** (see decision log below) |
-| Phase 2 | Staff submissions table + viewer, role-gated routes, audit logging, OpenShift YAML templates | Shipped |
-| Phase 3 | OCR queue with retry + breaker, halted-queue alert mailer, keyword evaluator | Shipped |
-| Phase 4 | Clinician assignment workflow, evaluation UI | **Partial.** Per-status access scope is enforced; assignment-toggle UX not yet built |
-| Phase 5 | At-rest encryption of attachments and form data | **Not started** |
-
-If you're picking up new feature work, it will most likely be **Phase 4 finalisation** or **Phase 5 design**.
-
 ## Decision log
 
 These are choices that have already been made. Don't re-litigate them unless you have new evidence.
 
 ### Stack choices
 
-**SvelteKit over Next.js / Remix.** SvelteKit gives us server-side rendering, file-system routing, and form actions out of the box. Svelte's compile-time approach makes the production bundle small and the runtime fast. The trade-off is a smaller ecosystem than React — you'll occasionally find a problem that has 50 React answers and 2 Svelte answers. Lean on the SvelteKit docs and the project's existing patterns; this onboarding tree captures the rest.
+**SvelteKit over Next.js / Remix.** SvelteKit gives us server-side rendering, file-system routing, and form actions out of the box. Svelte's compile-time approach makes the production bundle small and the runtime fast. The trade-off is a smaller ecosystem than React — you'll occasionally find a problem that has 50 React answers and 2 Svelte answers (for some this is a feature). Lean on the SvelteKit docs and the project's existing patterns; this onboarding tree captures the rest.
 
-**Svelte 5 runes (`$state`, `$props`, `$derived`, `$effect`) instead of legacy Svelte 4 stores.** Runes are explicit about reactivity, type better, and Svelte 5 is the version that ships in `svelte: ^5.55.2`. The legacy `$:` reactive-statement syntax doesn't appear in this codebase except in archived files. Don't introduce it.
-
-**SQLite with `better-sqlite3` instead of Postgres / MySQL.** The submission volume is modest (hundreds-low-thousands per year); SQLite is sufficient and the operational story (single file on a PVC) is much simpler than a managed database. Drizzle's SQLite dialect is good. The decision to revisit Postgres would come from one of: scale (>100k rows, write contention), need for multi-writer (multiple app pods), or BC Gov standardisation pressure. None apply today.
+**SQLite with `better-sqlite3` instead of Postgres / MySQL.** The submission volume is modest (40,000 over 3-6 months
+?; SQLite is sufficient and the operational story (single file on a PVC) is much simpler than a managed database. Drizzle's SQLite dialect is good. The decision to revisit Postgres would come from one of: scale (>100k rows, write contention), need for multi-writer (multiple app pods), or BC Gov standardisation pressure. None apply today.
 
 **`better-auth` instead of Auth.js / Lucia / hand-rolled.** Picked for: SvelteKit-native cookie handling, OIDC plugin (`genericOAuth` + `keycloak()` helper) that matches BC Gov SSO's Keycloak realm, Drizzle adapter, low ceremony for email/password as the clinician fallback. It's a young library; pin minor versions and read release notes before bumping.
 

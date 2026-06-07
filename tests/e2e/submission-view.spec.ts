@@ -12,9 +12,11 @@ test.describe.serial('submission detail page', () => {
 		await context.clearCookies();
 		await page.goto('/?bypass=worker@test');
 		await page.goto('/submissions/sub-detail');
-		await expect(page.getByRole('heading', { name: /child information/i })).toBeVisible();
-		await expect(page.getByRole('heading', { name: /diagnosis/i })).toBeVisible();
-		await expect(page.getByRole('heading', { name: /functional impact/i })).toBeVisible();
+		await expect(page.getByRole('heading', { name: /child \/ youth/i })).toBeVisible();
+		await expect(page.getByRole('heading', { name: /agreement signatory/i })).toBeVisible();
+		await expect(page.getByRole('heading', { name: /screening/i })).toBeVisible();
+		await expect(page.getByRole('heading', { name: /assessments/i })).toBeVisible();
+		await expect(page.getByRole('heading', { name: /signature/i })).toBeVisible();
 		await expect(page.getByRole('heading', { name: /attachments \(0\)/i })).toBeVisible();
 	});
 

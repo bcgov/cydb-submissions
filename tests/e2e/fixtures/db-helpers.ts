@@ -21,9 +21,7 @@ export function resetSubmissions() {
 export function resetUsers() {
 	const db = new Database(dbPath());
 	db.pragma('foreign_keys = ON');
-	db.exec(
-		'DELETE FROM session; DELETE FROM account; DELETE FROM user_roles; DELETE FROM "user";'
-	);
+	db.exec('DELETE FROM session; DELETE FROM account; DELETE FROM user_roles; DELETE FROM "user";');
 	db.close();
 }
 
@@ -32,18 +30,48 @@ export interface SeededSubmission {
 	surname?: string | null;
 	status?: string;
 	createdAt?: string;
+	screening?: string;
+	childFirstName?: string;
 }
 
 export function seedSubmissions(items: SeededSubmission[]) {
 	const db = new Database(dbPath());
 	db.pragma('foreign_keys = ON');
 	const stmt = db.prepare(
-		`INSERT INTO submissions (submission_uuid, status, submitter_surname, raw_payload, informationAccurate, dataSharingConsent, created_at, updated_at)
-		 VALUES (?, ?, ?, '{}', 1, 1, ?, ?)`
+		`INSERT INTO submissions (
+			submission_uuid, status, submitter_surname,
+			child_youth_first_name, child_youth_middle_names, child_youth_last_name,
+			child_youth_dob, child_youth_gender,
+			signatory_first_name, signatory_last_name, signatory_dob, signatory_gender,
+			signatory_relationship, primary_phone, email,
+			screening, primary_care_and_control, signature, date_signed,
+			raw_payload, created_at, updated_at
+		) VALUES (
+			?, ?, ?,
+			?, NULL, ?,
+			'2015-06-01', 'nonBinaryPerson',
+			'Pat', ?, '1985-02-20', 'womanGirl',
+			'Parent', '250-555-0100', 'seed@example.com',
+			?, 1, 'data:image/png;base64,AAAA', '2026-06-01',
+			'{}', ?, ?
+		)`
 	);
 	for (const it of items) {
 		const ts = it.createdAt ?? new Date().toISOString();
-		stmt.run(it.uuid, it.status ?? 'submitted', it.surname ?? null, ts, ts);
+		const lastName = it.surname ?? 'Test';
+		const firstName = it.childFirstName ?? 'Test';
+		const screening = it.screening ?? 'Yes';
+		stmt.run(
+			it.uuid,
+			it.status ?? 'submitted',
+			it.surname ?? null,
+			firstName,
+			lastName,
+			lastName,
+			screening,
+			ts,
+			ts
+		);
 	}
 	db.close();
 }

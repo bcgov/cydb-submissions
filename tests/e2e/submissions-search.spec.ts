@@ -14,12 +14,12 @@ test('search box filters to relevance-ranked matches and clears', async ({ page,
 	const box = page.getByLabel('Search submissions');
 	await expect(box).toBeVisible();
 
-	await box.fill('autism');
+	await box.fill('Smith');
 	await page.getByRole('button', { name: 'Search' }).click();
 
-	await expect(page).toHaveURL(/[?&]q=autism/);
+	await expect(page).toHaveURL(/[?&]q=Smith/);
 	await expect(page.getByText(/results? for/i)).toBeVisible();
 
 	await page.getByRole('button', { name: 'Clear' }).click();
-	await expect(page).not.toHaveURL(/[?&]q=autism/);
+	await expect(page).not.toHaveURL(/[?&]q=Smith/);
 });

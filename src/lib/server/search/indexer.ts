@@ -11,18 +11,27 @@ function ocrTextFor(db: Db, submissionId: number): string {
 	const rows = db
 		.select({ text: schema.ocrResults.rawText })
 		.from(schema.ocrResults)
-		.innerJoin(schema.submissionAttachments, eq(schema.submissionAttachments.id, schema.ocrResults.attachmentId))
+		.innerJoin(
+			schema.submissionAttachments,
+			eq(schema.submissionAttachments.id, schema.ocrResults.attachmentId)
+		)
 		.where(eq(schema.submissionAttachments.submissionId, submissionId))
 		.all();
 	return rows.map((r) => r.text).join('\n\n');
 }
 
 function metadataTextFor(db: Db, submissionId: number): string {
-	const m = db.select().from(schema.submissionMetadata).where(eq(schema.submissionMetadata.submissionId, submissionId)).get();
+	const m = db
+		.select()
+		.from(schema.submissionMetadata)
+		.where(eq(schema.submissionMetadata.submissionId, submissionId))
+		.get();
 	if (!m) return '';
 	// HTTP request fields useful for investigator search; requestMethod (always POST),
 	// session IDs, fingerprints and CSRF echoes are omitted as non-searchable noise.
-	return [m.userAgent, m.acceptLanguage, m.referer, m.ipAddress, m.tlsVersion].filter(Boolean).join(' ');
+	return [m.userAgent, m.acceptLanguage, m.referer, m.ipAddress, m.tlsVersion]
+		.filter(Boolean)
+		.join(' ');
 }
 
 /**
@@ -30,27 +39,32 @@ function metadataTextFor(db: Db, submissionId: number): string {
  * search_indexed_at. Returns false if the submission no longer exists.
  * Throws on index-client failure (callers decide whether to swallow).
  */
-export async function indexSubmission(db: Db, client: SearchClient, submissionId: number): Promise<boolean> {
+export async function indexSubmission(
+	db: Db,
+	client: SearchClient,
+	submissionId: number
+): Promise<boolean> {
 	const row = db
 		.select({
 			id: schema.submissions.id,
 			submissionUuid: schema.submissions.submissionUuid,
 			status: schema.submissions.status,
 			submitterSurname: schema.submissions.submitterSurname,
-			dateOfBirth: schema.submissions.dateOfBirth,
-			primaryLanguage: schema.submissions.primaryLanguage,
-			developmentalConcerns: schema.submissions.developmentalConcerns,
-			ageOfFirstConcern: schema.submissions.ageOfFirstConcern,
-			hasFormalDiagnosis: schema.submissions.hasFormalDiagnosis,
-			diagnosticStatus: schema.submissions.diagnosticStatus,
-			assessmentTools: schema.submissions.assessmentTools,
-			communication: schema.submissions.communication,
-			socialInteraction: schema.submissions.socialInteraction,
-			dailyLivingSkills: schema.submissions.dailyLivingSkills,
-			behaviouralConcerns: schema.submissions.behaviouralConcerns,
-			conditions: schema.submissions.conditions,
-			services: schema.submissions.services,
-			weeklyHours: schema.submissions.weeklyHours,
+			childYouthFirstName: schema.submissions.childYouthFirstName,
+			childYouthMiddleNames: schema.submissions.childYouthMiddleNames,
+			childYouthLastName: schema.submissions.childYouthLastName,
+			childYouthDob: schema.submissions.childYouthDob,
+			childYouthGender: schema.submissions.childYouthGender,
+			signatoryFirstName: schema.submissions.signatoryFirstName,
+			signatoryLastName: schema.submissions.signatoryLastName,
+			signatoryDob: schema.submissions.signatoryDob,
+			signatoryGender: schema.submissions.signatoryGender,
+			signatoryRelationship: schema.submissions.signatoryRelationship,
+			primaryPhone: schema.submissions.primaryPhone,
+			email: schema.submissions.email,
+			screening: schema.submissions.screening,
+			notSubmittingReasons: schema.submissions.notSubmittingReasons,
+			assessments: schema.submissions.assessments,
 			createdAt: schema.submissions.createdAt
 		})
 		.from(schema.submissions)
@@ -58,7 +72,11 @@ export async function indexSubmission(db: Db, client: SearchClient, submissionId
 		.get();
 	if (!row) return false;
 
-	const doc = buildSearchDocument(row, ocrTextFor(db, submissionId), metadataTextFor(db, submissionId));
+	const doc = buildSearchDocument(
+		row as SubmissionRowForIndex,
+		ocrTextFor(db, submissionId),
+		metadataTextFor(db, submissionId)
+	);
 	await client.replaceDoc(doc);
 
 	db.update(schema.submissions)

@@ -28,22 +28,30 @@ afterEach(() => {
 });
 
 describe('seedMockSubmissions', () => {
-	it('inserts 10 valid submissions, 2 invalid, and 9 attachments', async () => {
+	it('inserts 10 valid submissions, 2 invalid, 9 attachments, and 2 OCR results', async () => {
 		const result = await seedMockSubmissions({ db: db as never, attachmentsDir: tmpDir });
 		expect(result.submissions).toBe(10);
 		expect(result.invalid).toBe(2);
 		expect(result.attachments).toBe(9);
+		expect(result.ocrResults).toBe(2);
 
 		const subRow = sqlite.prepare(`SELECT count(*) as n FROM submissions`).get() as { n: number };
 		expect(subRow.n).toBe(10);
-		const invRow = sqlite
-			.prepare(`SELECT count(*) as n FROM invalid_submissions`)
-			.get() as { n: number };
+		const invRow = sqlite.prepare(`SELECT count(*) as n FROM invalid_submissions`).get() as {
+			n: number;
+		};
 		expect(invRow.n).toBe(2);
-		const attRow = sqlite
-			.prepare(`SELECT count(*) as n FROM submission_attachments`)
-			.get() as { n: number };
+		const attRow = sqlite.prepare(`SELECT count(*) as n FROM submission_attachments`).get() as {
+			n: number;
+		};
 		expect(attRow.n).toBe(9);
+		const ocrRow = sqlite.prepare(`SELECT count(*) as n FROM ocr_results`).get() as { n: number };
+		expect(ocrRow.n).toBe(2);
+		// OCR text is searchable document content (the search index reads ocr_results.raw_text).
+		const ados = sqlite
+			.prepare(`SELECT count(*) as n FROM ocr_results WHERE raw_text LIKE '%ADOS-2%'`)
+			.get() as { n: number };
+		expect(ados.n).toBe(1);
 	});
 
 	it('writes attachment files to disk under <attachmentsDir>/<uuid>/', async () => {
@@ -75,6 +83,7 @@ describe('clearAllSubmissions', () => {
 			'submissions',
 			'submission_metadata',
 			'submission_attachments',
+			'ocr_results',
 			'invalid_submissions'
 		]) {
 			const row = sqlite.prepare(`SELECT count(*) as n FROM ${t}`).get() as { n: number };

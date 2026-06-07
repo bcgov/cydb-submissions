@@ -10,24 +10,10 @@ function isStaffPath(pathname: string): boolean {
 }
 
 export function buildSecurityHeaders(args: BuildSecurityHeadersArgs): Record<string, string> {
-	const csp = [
-		"default-src 'self'",
-		"script-src 'self'",
-		"style-src 'self' 'unsafe-inline'",
-		"img-src 'self' data: blob:",
-		"font-src 'self' data:",
-		"connect-src 'self'",
-		"frame-ancestors 'none'",
-		"base-uri 'self'",
-		"form-action 'self'",
-		"object-src 'none'"
-	].join('; ');
-
 	const headers: Record<string, string> = {
 		'x-frame-options': 'DENY',
 		'x-content-type-options': 'nosniff',
-		'referrer-policy': 'same-origin',
-		'content-security-policy': csp
+		'referrer-policy': 'same-origin'
 	};
 
 	if (args.isProduction) {

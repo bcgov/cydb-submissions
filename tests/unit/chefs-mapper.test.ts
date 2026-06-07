@@ -1,88 +1,53 @@
-import { describe, it, expect } from 'vitest';
-import { mapChefsSubmission } from '$lib/server/chefs/mapper';
-import type { ChefsConfig } from '$lib/server/chefs/types';
+import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { mapChefsSubmission } from '../../src/lib/server/chefs/mapper';
 
-const cfg: ChefsConfig = {
-  formId: 'f',
-  apiToken: 't',
-  version: '0',
-  baseUrl: 'https://chefs.test',
-  fileComponents: ['simplefile'],
-  apiParams: {},
-  pollerEnabled: false,
-  pollIntervalMs: 60_000
+const cfg = {
+	formId: 'f',
+	apiToken: '',
+	version: '1',
+	baseUrl: 'https://x',
+	fileComponents: ['AttachAssessment'],
+	apiParams: {},
+	pollerEnabled: false,
+	pollIntervalMs: 1000
 };
-
-const baseRaw = {
-  form: { submissionId: 'sub-uuid-1', confirmationId: 'ABC123' },
-  childInfo: { dateOfBirth: '2018-04-12', primaryLanguage: 'English' },
-  developmentalHistory: { developmentalConcerns: true, ageOfFirstConcern: '1-2' },
-  diagnosis: { hasFormalDiagnosis: true, diagnosticStatus: 'Confirmed', assessmentTools: ['Vineland'] },
-  functionalImpact: {
-    communication: '2',
-    socialInteraction: '2',
-    dailyLivingSkills: '1',
-    behaviouralConcerns: '1'
-  },
-  coOccurringConditions: { conditions: ['ADHD'] },
-  currentSupports: { services: ['SLP'], weeklyHours: 5 },
-  consent: { informationAccurate: true, dataSharingConsent: true },
-  simplefile: [
-    { data: { id: 'file-1' }, originalName: 'report.pdf' },
-    { data: { id: 'file-2' }, originalName: 'summary.docx' }
-  ]
-};
+const yes = JSON.parse(readFileSync('tests/fixtures/chefs-submission-yes.json', 'utf8'));
+const no = JSON.parse(readFileSync('tests/fixtures/chefs-submission-no.json', 'utf8'));
 
 describe('mapChefsSubmission', () => {
-  it('uses submissionId for the submission uuid (prefixed)', () => {
-    const r = mapChefsSubmission(baseRaw, cfg);
-    expect(r.submissionUuid).toBe('chefs_sub-uuid-1');
-  });
-
-  it('falls back to confirmationId when submissionId is missing', () => {
-    const r = mapChefsSubmission({ ...baseRaw, form: { confirmationId: 'ABC123' } }, cfg);
-    expect(r.submissionUuid).toBe('chefs_ABC123');
-  });
-
-  it('strips file_components from the payload and returns them in the manifest', () => {
-    const r = mapChefsSubmission(baseRaw, cfg);
-    expect(r.attachments).toEqual([
-      { fileId: 'file-1', originalName: 'report.pdf' },
-      { fileId: 'file-2', originalName: 'summary.docx' }
-    ]);
-    expect((r.payload as Record<string, unknown>).simplefile).toBeUndefined();
-  });
-
-  it('strips the form metadata block from the payload', () => {
-    const r = mapChefsSubmission(baseRaw, cfg);
-    expect((r.payload as Record<string, unknown>).form).toBeUndefined();
-  });
-
-  it('validates the payload against submissionSchema (success path)', () => {
-    const r = mapChefsSubmission(baseRaw, cfg);
-    expect(r.validationErrors).toBeNull();
-  });
-
-  it('returns a validationErrors array when consent flags are missing', () => {
-    const bad = { ...baseRaw, consent: { informationAccurate: false, dataSharingConsent: true } };
-    const r = mapChefsSubmission(bad, cfg);
-    expect(r.validationErrors).not.toBeNull();
-    expect(Array.isArray(r.validationErrors)).toBe(true);
-  });
-
-  it('throws when neither submissionId nor confirmationId is present', () => {
-    const bad = { ...baseRaw, form: {} };
-    expect(() => mapChefsSubmission(bad, cfg)).toThrow(/submissionId/i);
-  });
-
-  it('honours additional fileComponents from config', () => {
-    const cfg2: ChefsConfig = { ...cfg, fileComponents: ['simplefile', 'supportingFiles'] };
-    const raw2 = {
-      ...baseRaw,
-      supportingFiles: [{ data: { id: 'sf-1' }, originalName: 'extra.png' }]
-    };
-    const r = mapChefsSubmission(raw2, cfg2);
-    expect(r.attachments).toHaveLength(3);
-    expect(r.attachments.map((a) => a.fileId).sort()).toEqual(['file-1', 'file-2', 'sf-1']);
-  });
+	it('extracts one attachment per assessment row, tagged with its index', () => {
+		const r = mapChefsSubmission(yes, cfg as any);
+		expect(r.validationErrors).toBeNull();
+		expect(r.attachments).toEqual([
+			{ fileId: 'file-aaaa', originalName: 'diagnosis.pdf', assessmentIndex: 0 },
+			{ fileId: 'file-bbbb', originalName: 'slp.pdf', assessmentIndex: 1 }
+		]);
+	});
+	it('produces a valid normalized payload', () => {
+		const r = mapChefsSubmission(yes, cfg as any);
+		expect(r.payload.screening).toBe('Yes');
+		expect(r.payload.editGrid?.[0].attachmentName).toBe('diagnosis.pdf');
+	});
+	it('derives submissionUuid from form.submissionId', () => {
+		const r = mapChefsSubmission(yes, cfg as any);
+		expect(r.submissionUuid).toBe('chefs_11111111-1111-1111-1111-111111111111');
+	});
+	it('maps the screening=No branch with no attachments', () => {
+		const r = mapChefsSubmission(no, cfg as any);
+		expect(r.validationErrors).toBeNull();
+		expect(r.attachments).toEqual([]);
+		expect(r.payload.screening).toBe('No');
+		expect(r.payload.simplecheckboxes).toEqual(['iDoNotHaveAnyAssessmentInformation']);
+	});
+	it('reports validationErrors (not throw) for an invalid submission', () => {
+		const bad = { ...yes, email: 'not-an-email' };
+		const r = mapChefsSubmission(bad, cfg as any);
+		expect(r.validationErrors).not.toBeNull();
+		expect(Array.isArray(r.validationErrors)).toBe(true);
+		// attachments are still extracted even when the payload is invalid
+		expect(r.attachments).toHaveLength(2);
+		// the raw payload is preserved for forensics
+		expect(JSON.parse(r.rawPayloadJson).email).toBe('not-an-email');
+	});
 });

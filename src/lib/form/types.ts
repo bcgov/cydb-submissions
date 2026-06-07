@@ -1,36 +1,33 @@
-// Mirrors the validated form payload accepted by the server action.
+// Mirrors the validated, normalized submission payload (see form/schema.ts).
+export interface Assessment {
+	assessmentType: string;
+	completedBy: string;
+	dateOfAssessment: string; // ISO yyyy-mm-dd
+	attachmentName: string; // original filename of the row's upload
+}
+
 export interface SubmissionPayload {
-  childInfo: {
-    dateOfBirth: string;        // ISO yyyy-mm-dd
-    primaryLanguage?: string;
-  };
-  developmentalHistory: {
-    developmentalConcerns?: boolean;
-    ageOfFirstConcern?: string; // shown only when developmentalConcerns === true
-  };
-  diagnosis: {
-    hasFormalDiagnosis: boolean;
-    diagnosticStatus?: string;
-    assessmentTools?: string[];
-  };
-  functionalImpact: {
-    communication?: string;
-    socialInteraction?: string;
-    dailyLivingSkills?: string;
-    behaviouralConcerns?: string;
-  };
-  coOccurringConditions: {
-    conditions?: string[];
-  };
-  currentSupports: {
-    services?: string[];
-    weeklyHours?: number;
-  };
-  consent: {
-    informationAccurate: true;
-    dataSharingConsent: true;
-  };
-  // Browser-supplied; validated but not authoritative.
-  browserFingerprint?: string;
-  csrfTokenEcho?: string;
+	childYouthsFirstName: string;
+	childYouthsMiddleNameS?: string;
+	childYouthsLegalLastName: string;
+	childYouthsDateOfBirth: string; // ISO yyyy-mm-dd
+	childYouthsGender: string;
+	agreementSignatorysLegalFirstName: string;
+	agreementSignatorysLegalLastName: string;
+	childYouthsDateOfBirth1: string; // signatory DOB
+	AgreementSigGender: string;
+	AgreementSigRelationship: string;
+	primaryPhoneNumber: string;
+	email: string;
+	screening: 'Yes' | 'No';
+	simplecheckboxes?: string[]; // not-submitting reasons (screening=No)
+	editGrid?: Assessment[]; // assessments (screening=Yes)
+	PrimaryCareAndControl: boolean;
+	iAmTheAgreementSignatory?: boolean; // consent to collection (screening=Yes)
+	iAmTheAgreementSignatory1?: boolean; // consent to disclosure (screening=Yes)
+	iAmTheAgreementSignatory2?: boolean; // confirm not submitting (screening=No)
+	signature: string; // data-URL PNG
+	dateSigned: string; // ISO yyyy-mm-dd
+	browserFingerprint?: string;
+	csrfTokenEcho?: string;
 }

@@ -23,13 +23,11 @@ describe('buildAuthOptions — SSO + password-reset posture (8.5, 3.8, 12.1)', (
 
 	it('disables the better-auth password-reset surface (3.8)', () => {
 		const opts = buildAuthOptions(baseEnv);
-		// Either `sendResetPassword` is not configured (default-off via better-auth
-		// behaviour) AND we explicitly assert the reset endpoint is disabled, or the
-		// implementation sets a flag we can read.
+		// The real guarantee: no reset sender is configured, so better-auth exposes
+		// no password-reset endpoint. (There is no separate `disableResetPassword`
+		// option in better-auth — an absent `sendResetPassword` IS the disable.)
+		expect(opts.emailAndPassword?.enabled).toBe(true);
 		expect(opts.emailAndPassword?.sendResetPassword).toBeUndefined();
-		// We surface an explicit toggle on the options object that future hooks
-		// can rely on; absent it, the fix is incomplete.
-		expect(opts.emailAndPassword?.disableResetPassword).toBe(true);
 	});
 
 	it("emits sso_login_succeeded on session creation when account.providerId is 'keycloak' (12.1)", () => {

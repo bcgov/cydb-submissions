@@ -20,27 +20,27 @@ export interface SubmissionRowForIndex {
 	submissionUuid: string;
 	status: string;
 	submitterSurname: string | null;
-	dateOfBirth?: string | null;
-	primaryLanguage?: string | null;
-	developmentalConcerns?: boolean | null;
-	ageOfFirstConcern?: string | null;
-	hasFormalDiagnosis?: boolean | null;
-	diagnosticStatus?: string | null;
-	assessmentTools?: string[] | null;
-	communication?: string | null;
-	socialInteraction?: string | null;
-	dailyLivingSkills?: string | null;
-	behaviouralConcerns?: string | null;
-	conditions?: string[] | null;
-	services?: string[] | null;
-	weeklyHours?: number | null;
+	childYouthFirstName: string;
+	childYouthMiddleNames?: string | null;
+	childYouthLastName: string;
+	childYouthDob: string;
+	childYouthGender: string;
+	signatoryFirstName: string;
+	signatoryLastName: string;
+	signatoryDob: string;
+	signatoryGender?: string | null;
+	signatoryRelationship?: string | null;
+	primaryPhone?: string | null;
+	email?: string | null;
+	screening: string;
+	notSubmittingReasons?: string[] | null;
+	assessments?: Array<{
+		assessmentType: string;
+		completedBy: string;
+		dateOfAssessment: string;
+		attachmentName: string;
+	}> | null;
 	createdAt: string;
-}
-
-function yesNo(v: boolean | null | undefined): string {
-	if (v === true) return 'yes';
-	if (v === false) return 'no';
-	return '';
 }
 
 /**
@@ -63,21 +63,17 @@ export function buildSearchDocument(
 	metadataText: string
 ): SearchDocument {
 	const parts: string[] = [
-		row.submitterSurname ?? '',
-		`date of birth: ${row.dateOfBirth ?? ''}`,
-		`primary language: ${labelFor('primaryLanguage', row.primaryLanguage ?? '')}`,
-		`developmental concerns: ${yesNo(row.developmentalConcerns)}`,
-		`age of first concern: ${row.ageOfFirstConcern ?? ''}`,
-		`formal diagnosis: ${yesNo(row.hasFormalDiagnosis)}`,
-		`diagnostic status: ${labelFor('diagnosticStatus', row.diagnosticStatus ?? '')}`,
-		`assessment tools: ${labelsFor('assessmentTools', row.assessmentTools).join(', ')}`,
-		`communication: ${labelFor('communication', row.communication ?? '')}`,
-		`social interaction: ${labelFor('socialInteraction', row.socialInteraction ?? '')}`,
-		`daily living skills: ${labelFor('dailyLivingSkills', row.dailyLivingSkills ?? '')}`,
-		`behavioural concerns: ${labelFor('behaviouralConcerns', row.behaviouralConcerns ?? '')}`,
-		`co-occurring conditions: ${labelsFor('conditions', row.conditions).join(', ')}`,
-		`current services: ${labelsFor('services', row.services).join(', ')}`,
-		`weekly hours: ${row.weeklyHours ?? ''}`,
+		`${row.childYouthFirstName ?? ''} ${row.childYouthLastName ?? ''}`.trim(),
+		`signatory: ${row.signatoryFirstName ?? ''} ${row.signatoryLastName ?? ''}`.trim(),
+		`child date of birth: ${row.childYouthDob ?? ''}`,
+		`gender: ${labelFor('childYouthsGender', row.childYouthGender ?? '')}`,
+		`screening: ${row.screening ?? ''}`,
+		...(row.assessments ?? []).flatMap((a) => [
+			`assessment: ${a.assessmentType}`,
+			`completed by: ${a.completedBy}`,
+			`assessment date: ${a.dateOfAssessment}`
+		]),
+		...labelsFor('simplecheckboxes', row.notSubmittingReasons).map((r) => `reason: ${r}`),
 		`status: ${row.status}`
 	];
 

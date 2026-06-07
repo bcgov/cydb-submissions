@@ -1,17 +1,24 @@
 import { describe, it, expect } from 'vitest';
-import { labelFor, labelsFor, buildSearchDocument, toUnixSeconds } from '$lib/server/search/document';
+import {
+	labelFor,
+	labelsFor,
+	buildSearchDocument,
+	toUnixSeconds
+} from '$lib/server/search/document';
+import type { SubmissionRowForIndex } from '$lib/server/search/document';
 
 describe('labelFor / labelsFor', () => {
 	it('maps a coded value to its human label', () => {
-		expect(labelFor('communication', '2')).toBe('Moderate');
-		expect(labelFor('diagnosticStatus', 'Confirmed')).toBe('Confirmed diagnosis');
+		expect(labelFor('childYouthsGender', 'nonBinaryPerson')).toMatch(/non.binary/i);
 	});
 	it('falls back to the raw value when there is no option list or match', () => {
-		expect(labelFor('communication', '99')).toBe('99');
 		expect(labelFor('noSuchKey', 'x')).toBe('x');
+		expect(labelFor('childYouthsGender', 'unknownCode')).toBe('unknownCode');
 	});
 	it('expands an array of coded values', () => {
-		expect(labelsFor('conditions', ['ID', 'ADHD'])).toEqual(['Intellectual disability', 'ADHD']);
+		const labels = labelsFor('simplecheckboxes', ['iDoNotHaveAnyAssessmentInformation']);
+		expect(labels.length).toBe(1);
+		expect(labels[0]).toBeTruthy();
 	});
 });
 
@@ -29,56 +36,72 @@ describe('toUnixSeconds', () => {
 	});
 });
 
-describe('buildSearchDocument', () => {
-	const row = {
-		id: 7,
-		submissionUuid: 'uuid-7',
-		status: 'OCR processed',
-		submitterSurname: 'Okafor',
-		dateOfBirth: '2018-04-12',
-		primaryLanguage: 'English',
-		developmentalConcerns: true,
-		ageOfFirstConcern: '18 months',
-		hasFormalDiagnosis: true,
-		diagnosticStatus: 'Confirmed',
-		assessmentTools: ['Vineland 3', 'BCAAN'],
-		communication: '2',
-		socialInteraction: '3',
-		dailyLivingSkills: '1',
-		behaviouralConcerns: '0',
-		conditions: ['ID', 'ADHD'],
-		services: ['SLP'],
-		weeklyHours: 4,
-		createdAt: '2026-06-01 09:30:00'
-	};
+const row: SubmissionRowForIndex = {
+	id: 1,
+	submissionUuid: 'chefs_x',
+	status: 'submitted',
+	submitterSurname: 'Smith',
+	childYouthFirstName: 'Jordan',
+	childYouthLastName: 'Smith',
+	childYouthDob: '2015-06-01',
+	childYouthGender: 'nonBinaryPerson',
+	signatoryFirstName: 'Alex',
+	signatoryLastName: 'Smith',
+	signatoryDob: '1985-02-20',
+	screening: 'Yes',
+	assessments: [
+		{
+			assessmentType: 'Pediatrician Report or Assessment',
+			completedBy: 'Pediatrician',
+			dateOfAssessment: '2024-09-10',
+			attachmentName: 'a.pdf'
+		}
+	],
+	notSubmittingReasons: null,
+	createdAt: '2026-06-01 10:00:00'
+};
 
-	it('builds a document with labels expanded and OCR/metadata text included', () => {
-		const doc = buildSearchDocument(row as never, 'Vineland assessment shows speech delay', 'Mozilla/5.0 en-CA');
-		expect(doc.id).toBe(7);
-		expect(doc.submissionUuid).toBe('uuid-7');
-		expect(doc.status).toBe('OCR processed');
-		expect(doc.surname).toBe('Okafor');
-		expect(doc.ocrText).toContain('speech delay');
-		expect(doc.metadataText).toContain('Mozilla');
-		// createdAt converted to unix seconds (SQLite 'YYYY-MM-DD HH:MM:SS' treated as UTC)
-		expect(doc.createdAt).toBe(Math.floor(Date.parse('2026-06-01T09:30:00Z') / 1000));
-		// structured text: surname + expanded labels + raw values
-		expect(doc.structuredText).toContain('Okafor');
-		expect(doc.structuredText).toContain('English');
-		expect(doc.structuredText).toContain('Confirmed diagnosis');
-		expect(doc.structuredText).toContain('Moderate'); // communication = 2
-		expect(doc.structuredText).toContain('Intellectual disability'); // conditions: ID
-		expect(doc.structuredText).toContain('ADHD');
-		expect(doc.structuredText).toContain('Vineland 3');
+describe('buildSearchDocument (new form)', () => {
+	it('includes child and signatory names and assessment types', () => {
+		const doc = buildSearchDocument(row, 'ocr words', 'meta words');
+		const text = (doc as any).body ?? (doc as any).structuredText;
+		expect(text).toContain('Jordan');
+		expect(text).toContain('Smith');
+		expect(text).toContain('Pediatrician Report or Assessment');
+		// OCR text is stored in doc.ocrText, not in structuredText
+		expect(doc.ocrText).toContain('ocr words');
+	});
+
+	it('populates id, submissionUuid, status, surname and unix createdAt', () => {
+		const doc = buildSearchDocument(row, '', '');
+		expect(doc.id).toBe(1);
+		expect(doc.submissionUuid).toBe('chefs_x');
+		expect(doc.status).toBe('submitted');
+		expect(doc.surname).toBe('Smith');
+		expect(doc.createdAt).toBe(Math.floor(Date.parse('2026-06-01T10:00:00Z') / 1000));
 	});
 
 	it('tolerates null/missing fields', () => {
-		const doc = buildSearchDocument(
-			{ id: 1, submissionUuid: 'u', status: 'submitted', submitterSurname: null, createdAt: '2026-06-01 00:00:00' } as never,
-			'',
-			''
-		);
+		const minimal: SubmissionRowForIndex = {
+			id: 2,
+			submissionUuid: 'u2',
+			status: 'submitted',
+			submitterSurname: null,
+			childYouthFirstName: 'Kai',
+			childYouthLastName: 'Lee',
+			childYouthDob: '2018-01-01',
+			childYouthGender: 'manBoy',
+			signatoryFirstName: 'Pat',
+			signatoryLastName: 'Lee',
+			signatoryDob: '1990-01-01',
+			screening: 'No',
+			notSubmittingReasons: null,
+			assessments: null,
+			createdAt: '2026-06-01 00:00:00'
+		};
+		const doc = buildSearchDocument(minimal, '', '');
 		expect(doc.surname).toBe('');
-		expect(doc.structuredText).toContain('status: submitted');
+		const text = (doc as any).body ?? (doc as any).structuredText;
+		expect(text).toContain('status: submitted');
 	});
 });

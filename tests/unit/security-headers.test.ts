@@ -19,20 +19,17 @@ describe('buildSecurityHeaders — response-header bundle (10.1, 10.2, 10.5, 10.
 		);
 	});
 
-	it('returns a Content-Security-Policy with frame-ancestors none', () => {
+	it('does not emit content-security-policy (owned by kit.csp in svelte.config.js)', () => {
 		const h = buildSecurityHeaders({ pathname: '/', isProduction: true });
-		expect(h['content-security-policy']).toMatch(/frame-ancestors\s+'none'/);
+		expect(h['content-security-policy']).toBeUndefined();
 	});
 
-	it("CSP default-src is 'self'", () => {
+	it('still sets the non-CSP hardening headers', () => {
 		const h = buildSecurityHeaders({ pathname: '/', isProduction: true });
-		expect(h['content-security-policy']).toMatch(/default-src\s+'self'/);
-	});
-
-	it("CSP forbids 'unsafe-eval' in script-src", () => {
-		const h = buildSecurityHeaders({ pathname: '/', isProduction: true });
-		const csp = h['content-security-policy'];
-		expect(csp).not.toMatch(/unsafe-eval/);
+		expect(h['x-frame-options']).toBe('DENY');
+		expect(h['x-content-type-options']).toBe('nosniff');
+		expect(h['referrer-policy']).toBe('same-origin');
+		expect(h['strict-transport-security']).toMatch(/max-age=/);
 	});
 
 	it('returns Strict-Transport-Security in production', () => {

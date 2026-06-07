@@ -4,6 +4,7 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import * as schema from '$lib/server/db/schema';
 import { enqueueAttachments } from '$lib/server/ocr/enqueue';
+import { insertValidSubmission } from '../helpers/insert-valid-submission';
 import path from 'node:path';
 
 let db: ReturnType<typeof drizzle<typeof schema>>;
@@ -16,16 +17,8 @@ beforeEach(() => {
 
 describe('enqueueAttachments', () => {
 	it('creates one ocr_jobs row per attachment id', () => {
-		const sub = db
-			.insert(schema.submissions)
-			.values({
-				submissionUuid: 't1',
-				informationAccurate: true,
-				dataSharingConsent: true,
-				rawPayload: {}
-			})
-			.returning({ id: schema.submissions.id })
-			.all();
+		const subId = insertValidSubmission(db, { submissionUuid: 't1' });
+		const sub = [{ id: subId }];
 		const attA = db
 			.insert(schema.submissionAttachments)
 			.values({

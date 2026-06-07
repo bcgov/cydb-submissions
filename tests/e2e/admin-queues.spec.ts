@@ -15,8 +15,21 @@ function seedFailedJobs(): { submissionId: number; jobIds: number[] } {
 	const subUuid = `queues-spec-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
 	const subRes = sqlite
 		.prepare(
-			`INSERT INTO submissions (submission_uuid, "informationAccurate", "dataSharingConsent", raw_payload)
-			 VALUES (?, 1, 1, '{}')`
+			`INSERT INTO submissions (
+				submission_uuid,
+				child_youth_first_name, child_youth_last_name, child_youth_dob, child_youth_gender,
+				signatory_first_name, signatory_last_name, signatory_dob, signatory_gender,
+				signatory_relationship, primary_phone, email,
+				screening, primary_care_and_control, signature, date_signed,
+				raw_payload
+			) VALUES (
+				?,
+				'Test', 'Test', '2015-06-01', 'nonBinaryPerson',
+				'Pat', 'Test', '1985-02-20', 'womanGirl',
+				'Parent', '250-555-0100', 'seed@example.com',
+				'Yes', 1, 'data:image/png;base64,AAAA', '2026-06-01',
+				'{}'
+			)`
 		)
 		.run(subUuid);
 	const submissionId = Number(subRes.lastInsertRowid);
@@ -103,17 +116,23 @@ test.describe.serial('/admin/queues pipeline dashboard', () => {
 		await expect(page.getByText('Failure streak')).toBeVisible();
 	});
 
-	test('OCR halt banner renders and Resume queue clears the sentinel', async ({ page, context }) => {
+	test('OCR halt banner renders and Resume queue clears the sentinel', async ({
+		page,
+		context
+	}) => {
 		await context.clearCookies();
 		setOcrHalted();
 		await page.goto('/admin/queues?bypass=admin@test');
 		await expect(page.getByText(/Halted at/).first()).toBeVisible();
 
-		await page.getByRole('button', { name: /^Resume queue$/ }).click();
-		// Confirmation dialog
-		await page.getByRole('button', { name: /^Resume queue$/ }).nth(1).click();
+		// Hydration runs (kit.csp nonces the inline bootstrap), so the bits-ui
+		// AlertDialog confirmation works in preview. Drive it through the UI.
+		await page.getByRole('button', { name: 'Resume queue' }).click();
+		const dialog = page.getByRole('alertdialog');
+		await expect(dialog).toBeVisible();
+		await dialog.getByRole('button', { name: 'Resume queue' }).click();
+		await expect(page.getByRole('status')).toContainText(/OCR queue resumed/i);
 
-		await expect(page.getByText(/OCR queue resumed\./i)).toBeVisible({ timeout: 5000 });
 		const sqlite = openDb();
 		const row = sqlite.prepare(`SELECT 1 FROM system_state WHERE key='ocr.halted'`).get();
 		expect(row).toBeUndefined();
@@ -128,16 +147,15 @@ test.describe.serial('/admin/queues pipeline dashboard', () => {
 		const { submissionId, jobIds } = seedFailedJobs();
 		try {
 			await page.goto('/admin/queues?bypass=admin@test');
-			await expect(
-				page.getByRole('button', { name: /Requeue all failed \(\d+\)/ })
-			).toBeVisible();
+			await expect(page.getByRole('button', { name: /Requeue all failed \(\d+\)/ })).toBeVisible();
 
+			// Hydration runs (kit.csp nonces the inline bootstrap), so the bits-ui
+			// AlertDialog confirmation works in preview. Drive it through the UI.
 			await page.getByRole('button', { name: /Requeue all failed \(\d+\)/ }).click();
-			await page.getByRole('button', { name: /^Requeue all$/ }).click();
-
-			await expect(page.getByText(/Requeued \d+ failed job\(s\)\./)).toBeVisible({
-				timeout: 5000
-			});
+			const dialog = page.getByRole('alertdialog');
+			await expect(dialog).toBeVisible();
+			await dialog.getByRole('button', { name: 'Requeue all', exact: true }).click();
+			await expect(page.getByRole('status')).toContainText(/Requeued \d+ failed job/i);
 
 			const sqlite = openDb();
 			const rows = sqlite

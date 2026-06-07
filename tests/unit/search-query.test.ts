@@ -26,15 +26,47 @@ beforeEach(() => {
 });
 
 function seed(surname: string, ocr: string, status = 'submitted'): number {
-	const sub = db.insert(schema.submissions).values({
-		submissionUuid: `u-${surname}`, status, submitterSurname: surname,
-		informationAccurate: true, dataSharingConsent: true, rawPayload: {}
-	}).returning({ id: schema.submissions.id }).all();
+	const sub = db
+		.insert(schema.submissions)
+		.values({
+			submissionUuid: `u-${surname}`,
+			status,
+			submitterSurname: surname,
+			childYouthFirstName: surname,
+			childYouthLastName: 'TestLast',
+			childYouthDob: '2018-01-01',
+			childYouthGender: 'nonBinaryPerson',
+			signatoryFirstName: 'Pat',
+			signatoryLastName: surname,
+			signatoryDob: '1985-01-01',
+			signatoryGender: 'womanGirl',
+			signatoryRelationship: 'Parent',
+			primaryPhone: '604-555-0100',
+			email: 'pat@example.com',
+			screening: 'Yes',
+			primaryCareAndControl: true,
+			signature: `Pat ${surname}`,
+			dateSigned: '2026-05-01',
+			rawPayload: {}
+		})
+		.returning({ id: schema.submissions.id })
+		.all();
 	const id = sub[0].id;
-	const att = db.insert(schema.submissionAttachments).values({
-		submissionId: id, originalFilename: 'r.pdf', storedPath: '/r.pdf', sizeBytes: 1, mimeType: 'application/pdf', sha256: 'h'
-	}).returning({ id: schema.submissionAttachments.id }).all();
-	db.insert(schema.ocrResults).values({ attachmentId: att[0].id, rawText: ocr, modelId: 'stub', apiVersion: 'v1' }).run();
+	const att = db
+		.insert(schema.submissionAttachments)
+		.values({
+			submissionId: id,
+			originalFilename: 'r.pdf',
+			storedPath: '/r.pdf',
+			sizeBytes: 1,
+			mimeType: 'application/pdf',
+			sha256: 'h'
+		})
+		.returning({ id: schema.submissionAttachments.id })
+		.all();
+	db.insert(schema.ocrResults)
+		.values({ attachmentId: att[0].id, rawText: ocr, modelId: 'stub', apiVersion: 'v1' })
+		.run();
 	return id;
 }
 
@@ -47,7 +79,12 @@ describe('runSearch', () => {
 		await indexSubmission(db, client, b);
 
 		const res = await runSearch(db, client, {
-			query: 'autism', statusNotEquals: 'invalid', limit: 25, offset: 0, fuzzy: true, fuzzyDistance: 2
+			query: 'autism',
+			statusNotEquals: 'invalid',
+			limit: 25,
+			offset: 0,
+			fuzzy: true,
+			fuzzyDistance: 2
 		});
 
 		expect(res.total).toBe(2);
@@ -61,7 +98,13 @@ describe('runSearch', () => {
 		const client = new InMemorySearchClient();
 		const a = seed('Alpha', 'autism');
 		await indexSubmission(db, client, a);
-		const res = await runSearch(db, client, { query: 'nonexistentterm', limit: 25, offset: 0, fuzzy: true, fuzzyDistance: 2 });
+		const res = await runSearch(db, client, {
+			query: 'nonexistentterm',
+			limit: 25,
+			offset: 0,
+			fuzzy: true,
+			fuzzyDistance: 2
+		});
 		expect(res.total).toBe(0);
 		expect(res.rows).toEqual([]);
 	});

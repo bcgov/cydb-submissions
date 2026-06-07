@@ -42,10 +42,7 @@
 	// Manticore highlight wraps matches in <b>…</b>. To render with {@html} safely,
 	// escape everything, then re-allow only those bold tags.
 	function sanitizeSnippet(s: string): string {
-		const escaped = s
-			.replace(/&/g, '&amp;')
-			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;');
+		const escaped = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 		return escaped.replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>');
 	}
 
@@ -58,7 +55,7 @@
 </script>
 
 <div class="p-6">
-	<h1 class="text-2xl font-semibold mb-4">Submissions</h1>
+	<h1 class="mb-4 text-2xl font-semibold">Submissions</h1>
 
 	<form method="GET" class="mb-4 flex items-center gap-2">
 		<input
@@ -77,7 +74,9 @@
 		{/if}
 		<details class="relative">
 			<summary class="cursor-pointer text-sm text-blue-700">Advanced syntax</summary>
-			<div class="absolute z-10 mt-1 w-80 rounded border border-gray-200 bg-white p-3 text-xs shadow">
+			<div
+				class="absolute z-10 mt-1 w-80 rounded border border-gray-200 bg-white p-3 text-xs shadow"
+			>
 				<ul class="space-y-1">
 					<li><code>aut*</code> / <code>*ism*</code> — wildcards</li>
 					<li><code>"speech delay"</code> — exact phrase</li>
@@ -97,15 +96,17 @@
 		</p>
 	{/if}
 	{#if hasQuery && !data.searchError}
-		<p class="mb-2 text-sm text-gray-600">{data.total} result{data.total === 1 ? '' : 's'} for "{data.query.q}", ranked by relevance.</p>
+		<p class="mb-2 text-sm text-gray-600">
+			{data.total} result{data.total === 1 ? '' : 's'} for "{data.query.q}", ranked by relevance.
+		</p>
 	{/if}
 
-	<div class="mb-4 flex gap-2 flex-wrap">
+	<div class="mb-4 flex flex-wrap gap-2">
 		{#each filterOptions as opt}
 			<a
 				href={statusFilterHref(opt.value)}
-				class="text-sm px-3 py-1 rounded border {data.query.statusFilter === opt.value
-					? 'bg-blue-50 border-blue-300'
+				class="rounded border px-3 py-1 text-sm {data.query.statusFilter === opt.value
+					? 'border-blue-300 bg-blue-50'
 					: 'border-gray-200'}"
 			>
 				{opt.label}
@@ -116,32 +117,47 @@
 	<Table.Root>
 		<Table.Header>
 			<Table.Row>
-				<Table.Head>{#if hasQuery}Surname{:else}<a href={sortHref('surname')}>Surname</a>{/if}</Table.Head>
-				<Table.Head>{#if hasQuery}Submitted{:else}<a href={sortHref('date')}>Submitted</a>{/if}</Table.Head>
-				<Table.Head>{#if hasQuery}Attachments{:else}<a href={sortHref('attachments')}>Attachments</a>{/if}</Table.Head>
-				<Table.Head>{#if hasQuery}Status{:else}<a href={sortHref('status')}>Status</a>{/if}</Table.Head>
+				<Table.Head
+					>{#if hasQuery}Submitted{:else}<a href={sortHref('date')}>Submitted</a>{/if}</Table.Head
+				>
+				<Table.Head>Child</Table.Head>
+				<Table.Head
+					>{#if hasQuery}Signatory surname{:else}<a href={sortHref('surname')}>Signatory surname</a
+						>{/if}</Table.Head
+				>
+				<Table.Head>Screening</Table.Head>
+				<Table.Head># Assessments</Table.Head>
+				<Table.Head
+					>{#if hasQuery}Status{:else}<a href={sortHref('status')}>Status</a>{/if}</Table.Head
+				>
 				<Table.Head></Table.Head>
 			</Table.Row>
 		</Table.Header>
 		<Table.Body>
 			{#each data.rows as row (row.uuid)}
 				<Table.Row>
-					<Table.Cell>{row.surname ?? '—'}</Table.Cell>
 					<Table.Cell>{new Date(row.submittedAt).toLocaleString()}</Table.Cell>
-					<Table.Cell>{row.attachmentCount}</Table.Cell>
+					<Table.Cell>{row.childYouthFirstName} {row.childYouthLastName}</Table.Cell>
+					<Table.Cell>{row.surname ?? '—'}</Table.Cell>
+					<Table.Cell>{row.screening}</Table.Cell>
+					<Table.Cell>{row.assessments?.length ?? 0}</Table.Cell>
 					<Table.Cell><StatusBadge status={row.status as never} /></Table.Cell>
-					<Table.Cell><a class="text-blue-700 underline" href="/submissions/{row.uuid}">View</a></Table.Cell>
+					<Table.Cell
+						><a class="text-blue-700 underline" href="/submissions/{row.uuid}">View</a></Table.Cell
+					>
 				</Table.Row>
 				{#if hasQuery && 'snippet' in row && row.snippet}
 					<Table.Row>
-						<Table.Cell colspan={5}>
-							<span class="text-xs text-gray-600">…{@html sanitizeSnippet(String(row.snippet))}…</span>
+						<Table.Cell colspan={7}>
+							<span class="text-xs text-gray-600"
+								>…{@html sanitizeSnippet(String(row.snippet))}…</span
+							>
 						</Table.Cell>
 					</Table.Row>
 				{/if}
 			{:else}
 				<Table.Row>
-					<Table.Cell colspan={5}>No submissions match this filter.</Table.Cell>
+					<Table.Cell colspan={7}>No submissions match this filter.</Table.Cell>
 				</Table.Row>
 			{/each}
 		</Table.Body>
@@ -151,10 +167,13 @@
 		<span>Page {data.query.page} of {data.totalPages} • {data.total} total</span>
 		<div class="flex gap-2">
 			{#if data.query.page > 1}
-				<a href={pageHref(data.query.page - 1)}><Button variant="outline" size="sm">Previous</Button></a>
+				<a href={pageHref(data.query.page - 1)}
+					><Button variant="outline" size="sm">Previous</Button></a
+				>
 			{/if}
 			{#if data.query.page < data.totalPages}
-				<a href={pageHref(data.query.page + 1)}><Button variant="outline" size="sm">Next</Button></a>
+				<a href={pageHref(data.query.page + 1)}><Button variant="outline" size="sm">Next</Button></a
+				>
 			{/if}
 		</div>
 	</div>

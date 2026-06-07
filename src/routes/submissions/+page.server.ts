@@ -16,7 +16,12 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	if (q.q) {
 		auditLog(
 			'submission_searched',
-			{ actorUserId: locals.user!.id, actorRole: [...locals.roles][0], route: url.pathname, requestId: locals.requestId },
+			{
+				actorUserId: locals.user!.id,
+				actorRole: [...locals.roles][0],
+				route: url.pathname,
+				requestId: locals.requestId
+			},
 			locals.logger
 		);
 		try {
@@ -72,6 +77,10 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		.select({
 			uuid: submissions.submissionUuid,
 			surname: submissions.submitterSurname,
+			childYouthFirstName: submissions.childYouthFirstName,
+			childYouthLastName: submissions.childYouthLastName,
+			screening: submissions.screening,
+			assessments: submissions.assessments,
 			submittedAt: submissions.createdAt,
 			status: submissions.status,
 			attachmentCount: attachmentCountExpr
@@ -79,8 +88,15 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		.from(submissions);
 
 	const rowsQuery = filterClause
-		? baseRows.where(filterClause).orderBy(orderExpr).limit(q.size).offset((q.page - 1) * q.size)
-		: baseRows.orderBy(orderExpr).limit(q.size).offset((q.page - 1) * q.size);
+		? baseRows
+				.where(filterClause)
+				.orderBy(orderExpr)
+				.limit(q.size)
+				.offset((q.page - 1) * q.size)
+		: baseRows
+				.orderBy(orderExpr)
+				.limit(q.size)
+				.offset((q.page - 1) * q.size);
 
 	const totalQuery = filterClause
 		? db.select({ n: count() }).from(submissions).where(filterClause)

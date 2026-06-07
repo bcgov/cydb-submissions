@@ -29,6 +29,15 @@ export interface RunSearchOptions extends StatusEngineFilter {
 export interface SearchRow {
 	uuid: string;
 	surname: string | null;
+	childYouthFirstName: string;
+	childYouthLastName: string;
+	screening: string;
+	assessments: Array<{
+		assessmentType: string;
+		completedBy: string;
+		dateOfAssessment: string;
+		attachmentName: string;
+	}> | null;
 	submittedAt: string;
 	status: string;
 	attachmentCount: number;
@@ -45,7 +54,11 @@ export interface RunSearchResult {
  * (the source of truth) preserving relevance order. Throws SearchQueryError on
  * a malformed query (propagated from the client).
  */
-export async function runSearch(db: Db, client: SearchClient, opts: RunSearchOptions): Promise<RunSearchResult> {
+export async function runSearch(
+	db: Db,
+	client: SearchClient,
+	opts: RunSearchOptions
+): Promise<RunSearchResult> {
 	// Status is filtered at the engine (statusEquals/NotEquals) AND every row is
 	// re-hydrated from SQLite below, where its TRUE current status is read for display.
 	// A briefly-stale index status entry self-heals via the reconciler. Phase-2
@@ -77,6 +90,10 @@ export async function runSearch(db: Db, client: SearchClient, opts: RunSearchOpt
 			id: schema.submissions.id,
 			uuid: schema.submissions.submissionUuid,
 			surname: schema.submissions.submitterSurname,
+			childYouthFirstName: schema.submissions.childYouthFirstName,
+			childYouthLastName: schema.submissions.childYouthLastName,
+			screening: schema.submissions.screening,
+			assessments: schema.submissions.assessments,
 			submittedAt: schema.submissions.createdAt,
 			status: schema.submissions.status,
 			attachmentCount: attachmentCountExpr
@@ -93,6 +110,10 @@ export async function runSearch(db: Db, client: SearchClient, opts: RunSearchOpt
 		rows.push({
 			uuid: r.uuid,
 			surname: r.surname,
+			childYouthFirstName: r.childYouthFirstName,
+			childYouthLastName: r.childYouthLastName,
+			screening: r.screening,
+			assessments: r.assessments,
 			submittedAt: r.submittedAt,
 			status: r.status,
 			attachmentCount: Number(r.attachmentCount),

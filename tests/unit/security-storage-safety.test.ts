@@ -5,7 +5,7 @@ import path from 'node:path';
 import { saveAttachments } from '$lib/server/storage';
 
 function file(name: string, type: string, bytes: Uint8Array): File {
-	return new File([bytes], name, { type });
+	return new File([bytes as BlobPart], name, { type });
 }
 
 const PDF_MAGIC = new TextEncoder().encode('%PDF-1.4\n%hi\n');

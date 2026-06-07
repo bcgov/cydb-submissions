@@ -1,3 +1,4 @@
+import type { BetterAuthOptions } from 'better-auth';
 import { genericOAuth, keycloak } from 'better-auth/plugins/generic-oauth';
 import { loadSsoConfig } from './sso-config';
 import { extractSsoRoles, syncUserRoles } from './sso-roles';
@@ -27,7 +28,7 @@ interface SsoSessionLike {
  * security suite can introspect plugin configuration (PKCE, password-reset,
  * audit hooks) without standing up a full Auth instance.
  */
-export function buildAuthOptions(env: AuthEnv) {
+export function buildAuthOptions(env: AuthEnv): BetterAuthOptions {
 	const ssoCfg = loadSsoConfig({
 		SSO_ISSUER_URL: env.SSO_ISSUER_URL,
 		SSO_CLIENT_ID: env.SSO_CLIENT_ID,
@@ -100,11 +101,10 @@ export function buildAuthOptions(env: AuthEnv) {
 			enabled: true,
 			minPasswordLength: 12,
 			autoSignIn: true,
-			requireEmailVerification: false,
-			// Explicit guardrail: do not expose the password-reset surface.
-			// better-auth treats `sendResetPassword: undefined` as "reset disabled"
-			// at runtime, but a flag we control makes the intent reviewable.
-			disableResetPassword: true
+			requireEmailVerification: false
+			// Password-reset surface is intentionally disabled: we never configure
+			// `sendResetPassword`, and better-auth treats an absent sender as
+			// "reset disabled" at runtime (no reset endpoint is exposed).
 		},
 		session: {
 			expiresIn: 8 * 60 * 60,

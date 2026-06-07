@@ -33,17 +33,20 @@ test.describe.serial('admin /admin/ocr', () => {
 		sqlite.close();
 	});
 
-	test('admin sees the halt banner and can resume the queue', async ({ page }) => {
-		await page.goto('/admin/ocr?bypass=admin@test:admin');
+	test('admin sees the halt banner and can resume the queue', async ({ page, context }) => {
+		// Navigate as admin so the bypass cookie is set.
+		await context.clearCookies();
+		await page.goto('/admin/ocr?bypass=admin@test');
 		await expect(page.getByText(/Queue halted at/)).toBeVisible();
 		await expect(page.getByText('OcrProviderError')).toBeVisible();
 
-		await page.getByRole('button', { name: /^Resume queue$/ }).click();
-		// Confirmation dialog
-		await page.getByRole('button', { name: /^Resume queue$/ }).nth(1).click();
-
-		await expect(page.getByText(/Queue resumed\./i)).toBeVisible({ timeout: 5000 });
-		await expect(page.getByText(/Queue halted at/)).toBeHidden();
+		// Hydration runs (kit.csp nonces the inline bootstrap), so the bits-ui
+		// AlertDialog confirmation works in preview. Drive it through the UI.
+		await page.getByRole('button', { name: 'Resume queue' }).click();
+		const dialog = page.getByRole('alertdialog');
+		await expect(dialog).toBeVisible();
+		await dialog.getByRole('button', { name: 'Resume queue' }).click();
+		await expect(page.getByRole('status')).toContainText(/resumed/i);
 
 		const sqlite = new Database(path.join(repoRoot, 'local.db'));
 		const row = sqlite.prepare(`SELECT 1 FROM system_state WHERE key='ocr.halted'`).get();

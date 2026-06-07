@@ -36,3 +36,6 @@ test-results
 # the shared deployment.yaml / pvc-*.yaml / route.yaml / service.yaml.
 openshift/secret.yaml
 openshift/configmap-*.yaml
+
+# Superseded earlier approach — not linted/maintained
+/archive/

@@ -4,23 +4,15 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import * as schema from '$lib/server/db/schema';
 import { leaseNextJob, releaseJob, markTerminal } from '$lib/server/ocr/lease';
+import { insertValidSubmission } from '../helpers/insert-valid-submission';
 import { eq } from 'drizzle-orm';
 import path from 'node:path';
-import { randomUUID } from 'node:crypto';
 
 let db: ReturnType<typeof drizzle<typeof schema>>;
 
 function seedJob(nextAt = new Date(0).toISOString()): number {
-	const sub = db
-		.insert(schema.submissions)
-		.values({
-			submissionUuid: randomUUID(),
-			informationAccurate: true,
-			dataSharingConsent: true,
-			rawPayload: {}
-		})
-		.returning({ id: schema.submissions.id })
-		.all();
+	const subId = insertValidSubmission(db);
+	const sub = [{ id: subId }];
 	const att = db
 		.insert(schema.submissionAttachments)
 		.values({

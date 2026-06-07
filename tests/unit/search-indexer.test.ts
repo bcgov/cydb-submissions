@@ -16,19 +16,65 @@ beforeEach(() => {
 	migrate(db, { migrationsFolder: path.resolve('src/lib/server/db/migrations') });
 });
 
+const SEED_DEFAULTS = {
+	childYouthFirstName: 'Jordan',
+	childYouthLastName: 'Okafor',
+	childYouthDob: '2018-04-12',
+	childYouthGender: 'nonBinaryPerson',
+	signatoryFirstName: 'Alex',
+	signatoryLastName: 'Okafor',
+	signatoryDob: '1985-06-01',
+	signatoryGender: 'womanGirl',
+	signatoryRelationship: 'Parent',
+	primaryPhone: '604-555-0100',
+	email: 'alex@example.com',
+	screening: 'Yes',
+	primaryCareAndControl: true,
+	signature: 'Alex Okafor',
+	dateSigned: '2026-05-01',
+	rawPayload: {}
+};
+
 function seedFull(): number {
-	const sub = db.insert(schema.submissions).values({
-		submissionUuid: 'u-1', status: 'OCR processed', submitterSurname: 'Okafor',
-		primaryLanguage: 'English', conditions: ['ADHD'], assessmentTools: ['Vineland 3'],
-		informationAccurate: true, dataSharingConsent: true, rawPayload: {}
-	}).returning({ id: schema.submissions.id }).all();
+	const sub = db
+		.insert(schema.submissions)
+		.values({
+			submissionUuid: 'u-1',
+			status: 'OCR processed',
+			submitterSurname: 'Okafor',
+			...SEED_DEFAULTS,
+			assessments: [
+				{
+					assessmentType: 'Vineland Adaptive Behavior Scales',
+					completedBy: 'Psychologist',
+					dateOfAssessment: '2024-09-10',
+					attachmentName: 'vineland.pdf'
+				}
+			]
+		})
+		.returning({ id: schema.submissions.id })
+		.all();
 	const id = sub[0].id;
-	const att = db.insert(schema.submissionAttachments).values({
-		submissionId: id, originalFilename: 'r.pdf', storedPath: '/r.pdf', sizeBytes: 1, mimeType: 'application/pdf', sha256: 'h'
-	}).returning({ id: schema.submissionAttachments.id }).all();
-	db.insert(schema.ocrResults).values({
-		attachmentId: att[0].id, rawText: 'autism speech delay noted', modelId: 'stub', apiVersion: 'v1'
-	}).run();
+	const att = db
+		.insert(schema.submissionAttachments)
+		.values({
+			submissionId: id,
+			originalFilename: 'r.pdf',
+			storedPath: '/r.pdf',
+			sizeBytes: 1,
+			mimeType: 'application/pdf',
+			sha256: 'h'
+		})
+		.returning({ id: schema.submissionAttachments.id })
+		.all();
+	db.insert(schema.ocrResults)
+		.values({
+			attachmentId: att[0].id,
+			rawText: 'autism speech delay noted',
+			modelId: 'stub',
+			apiVersion: 'v1'
+		})
+		.run();
 	db.insert(schema.submissionMetadata).values({ submissionId: id, userAgent: 'Mozilla/5.0' }).run();
 	return id;
 }
@@ -39,15 +85,38 @@ describe('indexSubmission', () => {
 		const id = seedFull();
 		await indexSubmission(db, client, id);
 
-		const r = await client.search({ match: 'autism', limit: 10, offset: 0, fuzzy: false, fuzzyDistance: 2 });
+		const r = await client.search({
+			match: 'autism',
+			limit: 10,
+			offset: 0,
+			fuzzy: false,
+			fuzzyDistance: 2
+		});
 		expect(r.hits.map((h) => h.id)).toEqual([id]);
-		const byTool = await client.search({ match: 'Vineland', limit: 10, offset: 0, fuzzy: false, fuzzyDistance: 2 });
+		// assessment type is indexed in structuredText
+		const byTool = await client.search({
+			match: 'Vineland',
+			limit: 10,
+			offset: 0,
+			fuzzy: false,
+			fuzzyDistance: 2
+		});
 		expect(byTool.hits.map((h) => h.id)).toEqual([id]);
 
-		const byMeta = await client.search({ match: 'Mozilla', limit: 10, offset: 0, fuzzy: false, fuzzyDistance: 2 });
+		const byMeta = await client.search({
+			match: 'Mozilla',
+			limit: 10,
+			offset: 0,
+			fuzzy: false,
+			fuzzyDistance: 2
+		});
 		expect(byMeta.hits.map((h) => h.id)).toEqual([id]);
 
-		const stamped = db.select({ idx: schema.submissions.searchIndexedAt }).from(schema.submissions).where(eq(schema.submissions.id, id)).get();
+		const stamped = db
+			.select({ idx: schema.submissions.searchIndexedAt })
+			.from(schema.submissions)
+			.where(eq(schema.submissions.id, id))
+			.get();
 		expect(stamped!.idx).not.toBeNull();
 	});
 
@@ -64,7 +133,13 @@ describe('deleteSubmission', () => {
 		const id = seedFull();
 		await indexSubmission(db, client, id);
 		await deleteSubmission(client, id);
-		const r = await client.search({ match: 'autism', limit: 10, offset: 0, fuzzy: false, fuzzyDistance: 2 });
+		const r = await client.search({
+			match: 'autism',
+			limit: 10,
+			offset: 0,
+			fuzzy: false,
+			fuzzyDistance: 2
+		});
 		expect(r.total).toBe(0);
 	});
 });

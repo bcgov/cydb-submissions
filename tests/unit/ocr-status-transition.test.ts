@@ -4,24 +4,14 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import * as schema from '$lib/server/db/schema';
 import { recomputeSubmissionStatus } from '$lib/server/ocr/status-transition';
+import { insertValidSubmission } from '../helpers/insert-valid-submission';
 import { eq } from 'drizzle-orm';
 import path from 'node:path';
-import { randomUUID } from 'node:crypto';
 
 let db: ReturnType<typeof drizzle<typeof schema>>;
 
 function seedSub(): number {
-	const r = db
-		.insert(schema.submissions)
-		.values({
-			submissionUuid: randomUUID(),
-			informationAccurate: true,
-			dataSharingConsent: true,
-			rawPayload: {}
-		})
-		.returning({ id: schema.submissions.id })
-		.all();
-	return r[0].id;
+	return insertValidSubmission(db);
 }
 
 function seedAttachmentWithJob(submissionId: number, jobStatus: string): number {
@@ -38,13 +28,20 @@ function seedAttachmentWithJob(submissionId: number, jobStatus: string): number 
 		.returning({ id: schema.submissionAttachments.id })
 		.all();
 	db.insert(schema.ocrJobs)
-		.values({ attachmentId: att[0].id, status: jobStatus as 'queued' | 'processing' | 'succeeded' | 'failed' | 'abandoned' })
+		.values({
+			attachmentId: att[0].id,
+			status: jobStatus as 'queued' | 'processing' | 'succeeded' | 'failed' | 'abandoned'
+		})
 		.run();
 	return att[0].id;
 }
 
 function statusOf(id: number): string {
-	return db.select({ s: schema.submissions.status }).from(schema.submissions).where(eq(schema.submissions.id, id)).get()!.s;
+	return db
+		.select({ s: schema.submissions.status })
+		.from(schema.submissions)
+		.where(eq(schema.submissions.id, id))
+		.get()!.s;
 }
 
 beforeEach(() => {

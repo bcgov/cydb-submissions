@@ -1,0 +1,45 @@
+{
+	"form": { "submissionId": "11111111-1111-1111-1111-111111111111", "confirmationId": "ABC123" },
+	"childYouthsFirstName": "Jordan",
+	"childYouthsMiddleNameS": "Lee",
+	"childYouthsLegalLastName": "Smith",
+	"childYouthsDateOfBirth": "2015-06-01",
+	"childYouthsGender": "nonBinaryPerson",
+	"agreementSignatorysLegalFirstName": "Alex",
+	"agreementSignatorysLegalLastName": "Smith",
+	"childYouthsDateOfBirth1": "1985-02-20",
+	"AgreementSigGender": "womanGirl",
+	"AgreementSigRelationship": "Parent",
+	"primaryPhoneNumber": "(250) 555-0100",
+	"email": "alex.smith@example.com",
+	"screening": "Yes",
+	"editGrid": [
+		{
+			"AssessmentType": {
+				"name": "Autism Diagnostic Assessment Report/ Assessment",
+				"professionals": [{ "name": "BCAAN (British Columbia Autism Assessment Network)" }]
+			},
+			"completedBy": { "name": "BCAAN (British Columbia Autism Assessment Network)" },
+			"dateOfAssessment": "2024-09-10",
+			"AttachAssessment": [{ "originalName": "diagnosis.pdf", "data": { "id": "file-aaaa" } }]
+		},
+		{
+			"AssessmentType": {
+				"name": "Speech and Language Pathology Report or Assessment",
+				"professionals": [{ "name": "Speech and Language Pathologist" }]
+			},
+			"completedBy": { "name": "Speech and Language Pathologist" },
+			"dateOfAssessment": "2024-10-02",
+			"AttachAssessment": [{ "originalName": "slp.pdf", "data": { "id": "file-bbbb" } }]
+		}
+	],
+	"PrimaryCareAndControl": { "Yes": true },
+	"iAmTheAgreementSignatory": {
+		"I am the Agreement Signatory having primary care and control of my child, or the legal guardian of this child.": true
+	},
+	"iAmTheAgreementSignatory1": {
+		"I am the Agreement Signatory having primary care and control of my child, or the legal guardian of this child.": true
+	},
+	"signature": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC",
+	"dateSigned": "2026-06-01"
+}

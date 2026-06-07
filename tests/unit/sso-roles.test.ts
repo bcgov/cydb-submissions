@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
 import { decodeJwtPayload, extractSsoRoles, syncUserRoles } from '$lib/server/sso-roles';
+import * as schema from '$lib/server/db/schema';
 import { userRoles } from '$lib/server/db/schema';
 
 function jwt(payload: object): string {
@@ -57,7 +58,7 @@ describe('extractSsoRoles', () => {
 });
 
 describe('syncUserRoles', () => {
-	let db: ReturnType<typeof drizzle>;
+	let db: ReturnType<typeof drizzle<typeof schema>>;
 
 	beforeEach(() => {
 		const sqlite = new Database(':memory:');
@@ -74,7 +75,7 @@ describe('syncUserRoles', () => {
 			);
 			CREATE UNIQUE INDEX user_roles_unique ON user_roles(user_id, role);
 		`);
-		db = drizzle(sqlite);
+		db = drizzle(sqlite, { schema });
 	});
 
 	it('inserts roles when set is non-empty', async () => {
@@ -103,9 +104,8 @@ describe('syncUserRoles', () => {
 		await db.insert(userRoles).values({ userId: 'u2', role: 'clinician' });
 		await syncUserRoles(db, 'u1', new Set(['admin']));
 		const rows = await db.select().from(userRoles);
-		expect(rows.sort((a, b) => a.userId.localeCompare(b.userId)).map((r) => `${r.userId}:${r.role}`)).toEqual([
-			'u1:admin',
-			'u2:clinician'
-		]);
+		expect(
+			rows.sort((a, b) => a.userId.localeCompare(b.userId)).map((r) => `${r.userId}:${r.role}`)
+		).toEqual(['u1:admin', 'u2:clinician']);
 	});
 });

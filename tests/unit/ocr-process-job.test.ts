@@ -5,6 +5,7 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import * as schema from '$lib/server/db/schema';
 import { processOneJob } from '$lib/server/ocr/process-job';
 import { StubProvider } from '$lib/server/ocr/provider-stub';
+import { insertValidSubmission } from '../helpers/insert-valid-submission';
 import { eq } from 'drizzle-orm';
 import { createLogger } from '$lib/server/log';
 import path from 'node:path';
@@ -15,16 +16,8 @@ let db: ReturnType<typeof drizzle<typeof schema>>;
 let tmpDir: string;
 
 async function seed(rawText = 'Patient autism diagnosis confirmed.') {
-	const sub = db
-		.insert(schema.submissions)
-		.values({
-			submissionUuid: 't',
-			informationAccurate: true,
-			dataSharingConsent: true,
-			rawPayload: {}
-		})
-		.returning({ id: schema.submissions.id })
-		.all();
+	const subId = insertValidSubmission(db, { submissionUuid: 't' });
+	const sub = [{ id: subId }];
 	const filePath = path.join(tmpDir, 'sample.pdf');
 	await fs.writeFile(filePath, Buffer.from('not a real pdf'));
 	await fs.writeFile(path.join(tmpDir, 'sample.txt'), rawText);
@@ -45,7 +38,12 @@ async function seed(rawText = 'Patient autism diagnosis confirmed.') {
 		.values({ attachmentId: att[0].id, status: 'processing', leasedBy: 'w1' })
 		.returning({ id: schema.ocrJobs.id })
 		.all();
-	return { submissionId: sub[0].id, jobId: job[0].id, attachmentId: att[0].id, storedPath: filePath };
+	return {
+		submissionId: sub[0].id,
+		jobId: job[0].id,
+		attachmentId: att[0].id,
+		storedPath: filePath
+	};
 }
 
 beforeEach(async () => {
@@ -81,7 +79,11 @@ describe('processOneJob', () => {
 		expect(hits.find((h) => h.keyword === 'IEP')?.count).toBe(1);
 		const job = db.select().from(schema.ocrJobs).where(eq(schema.ocrJobs.id, jobId)).get();
 		expect(job?.status).toBe('succeeded');
-		const sub = db.select().from(schema.submissions).where(eq(schema.submissions.id, submissionId)).get();
+		const sub = db
+			.select()
+			.from(schema.submissions)
+			.where(eq(schema.submissions.id, submissionId))
+			.get();
 		expect(sub?.status).toBe('OCR processed');
 	});
 
@@ -116,7 +118,11 @@ describe('processOneJob', () => {
 		expect(r.outcome).toBe('failed');
 		const job = db.select().from(schema.ocrJobs).where(eq(schema.ocrJobs.id, jobId)).get();
 		expect(job?.status).toBe('failed');
-		const sub = db.select().from(schema.submissions).where(eq(schema.submissions.id, submissionId)).get();
+		const sub = db
+			.select()
+			.from(schema.submissions)
+			.where(eq(schema.submissions.id, submissionId))
+			.get();
 		expect(sub?.status).toBe('OCR Error');
 	});
 
@@ -133,13 +139,23 @@ describe('processOneJob', () => {
 		// re-lease is implicit because we call processOneJob with the same jobId — flip 'queued' → 'processing'.
 		const r1 = await processOneJob({ db, jobId, provider, keywords: ['autism'], logger });
 		expect(r1.outcome).toBe('retried');
-		db.update(schema.ocrJobs).set({ status: 'processing' }).where(eq(schema.ocrJobs.id, jobId)).run();
+		db.update(schema.ocrJobs)
+			.set({ status: 'processing' })
+			.where(eq(schema.ocrJobs.id, jobId))
+			.run();
 		const r2 = await processOneJob({ db, jobId, provider, keywords: ['autism'], logger });
 		expect(r2.outcome).toBe('retried');
-		db.update(schema.ocrJobs).set({ status: 'processing' }).where(eq(schema.ocrJobs.id, jobId)).run();
+		db.update(schema.ocrJobs)
+			.set({ status: 'processing' })
+			.where(eq(schema.ocrJobs.id, jobId))
+			.run();
 		const r3 = await processOneJob({ db, jobId, provider, keywords: ['autism'], logger });
 		expect(r3.outcome).toBe('succeeded');
-		const sub = db.select().from(schema.submissions).where(eq(schema.submissions.id, submissionId)).get();
+		const sub = db
+			.select()
+			.from(schema.submissions)
+			.where(eq(schema.submissions.id, submissionId))
+			.get();
 		expect(sub?.status).toBe('OCR processed');
 	});
 

@@ -17,10 +17,31 @@ beforeEach(() => {
 });
 
 function seed(surname: string): number {
-	return db.insert(schema.submissions).values({
-		submissionUuid: `u-${surname}`, status: 'submitted', submitterSurname: surname,
-		informationAccurate: true, dataSharingConsent: true, rawPayload: {}
-	}).returning({ id: schema.submissions.id }).all()[0].id;
+	return db
+		.insert(schema.submissions)
+		.values({
+			submissionUuid: `u-${surname}`,
+			status: 'submitted',
+			submitterSurname: surname,
+			childYouthFirstName: surname,
+			childYouthLastName: 'TestLast',
+			childYouthDob: '2018-01-01',
+			childYouthGender: 'manBoy',
+			signatoryFirstName: 'Pat',
+			signatoryLastName: surname,
+			signatoryDob: '1985-01-01',
+			signatoryGender: 'womanGirl',
+			signatoryRelationship: 'Parent',
+			primaryPhone: '604-555-0100',
+			email: 'pat@example.com',
+			screening: 'No',
+			primaryCareAndControl: true,
+			signature: `Pat ${surname}`,
+			dateSigned: '2026-05-01',
+			rawPayload: {}
+		})
+		.returning({ id: schema.submissions.id })
+		.all()[0].id;
 }
 
 describe('selectDirty', () => {
@@ -33,11 +54,18 @@ describe('selectDirty', () => {
 describe('reconcileOnce', () => {
 	it('indexes all dirty rows and clears them from the dirty set', async () => {
 		const client = new InMemorySearchClient();
-		seed('A'); seed('B');
+		seed('A');
+		seed('B');
 		const n = await reconcileOnce(db, client, 50);
 		expect(n).toBe(2);
 		expect(selectDirty(db, 50)).toEqual([]);
-		const r = await client.search({ match: 'A', limit: 10, offset: 0, fuzzy: false, fuzzyDistance: 2 });
+		const r = await client.search({
+			match: 'A',
+			limit: 10,
+			offset: 0,
+			fuzzy: false,
+			fuzzyDistance: 2
+		});
 		expect(r.total).toBeGreaterThanOrEqual(1);
 	});
 

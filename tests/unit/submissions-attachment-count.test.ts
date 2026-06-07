@@ -15,13 +15,40 @@ beforeEach(() => {
 });
 
 function seed(uuid: string, attachments: number): number {
-	const id = db.insert(schema.submissions).values({
-		submissionUuid: uuid, informationAccurate: true, dataSharingConsent: true, rawPayload: {}
-	}).returning({ id: schema.submissions.id }).all()[0].id;
+	const id = db
+		.insert(schema.submissions)
+		.values({
+			submissionUuid: uuid,
+			childYouthFirstName: 'Test',
+			childYouthLastName: 'User',
+			childYouthDob: '2015-01-01',
+			childYouthGender: 'nonBinaryPerson',
+			signatoryFirstName: 'Parent',
+			signatoryLastName: 'User',
+			signatoryDob: '1985-01-01',
+			signatoryGender: 'womanGirl',
+			signatoryRelationship: 'Parent',
+			primaryPhone: '250-555-0000',
+			email: 'test@example.com',
+			screening: 'Yes',
+			primaryCareAndControl: true,
+			signature: 'sig',
+			dateSigned: '2026-06-01',
+			rawPayload: {}
+		})
+		.returning({ id: schema.submissions.id })
+		.all()[0].id;
 	for (let i = 0; i < attachments; i++) {
-		db.insert(schema.submissionAttachments).values({
-			submissionId: id, originalFilename: 'f', storedPath: '/f' + id + '-' + i, sizeBytes: 1, mimeType: 'application/pdf', sha256: 'h' + id + '-' + i
-		}).run();
+		db.insert(schema.submissionAttachments)
+			.values({
+				submissionId: id,
+				originalFilename: 'f',
+				storedPath: '/f' + id + '-' + i,
+				sizeBytes: 1,
+				mimeType: 'application/pdf',
+				sha256: 'h' + id + '-' + i
+			})
+			.run();
 	}
 	return id;
 }

@@ -19,7 +19,25 @@ describe('submissions.searchIndexedAt', () => {
 	it('defaults to null on insert and is writable', () => {
 		const r = db
 			.insert(schema.submissions)
-			.values({ submissionUuid: randomUUID(), informationAccurate: true, dataSharingConsent: true, rawPayload: {} })
+			.values({
+				submissionUuid: randomUUID(),
+				childYouthFirstName: 'Jordan',
+				childYouthLastName: 'Smith',
+				childYouthDob: '2018-01-01',
+				childYouthGender: 'nonBinaryPerson',
+				signatoryFirstName: 'Pat',
+				signatoryLastName: 'Smith',
+				signatoryDob: '1985-01-01',
+				signatoryGender: 'womanGirl',
+				signatoryRelationship: 'Parent',
+				primaryPhone: '604-555-0100',
+				email: 'pat@example.com',
+				screening: 'No',
+				primaryCareAndControl: true,
+				signature: 'Pat Smith',
+				dateSigned: '2026-05-01',
+				rawPayload: {}
+			})
 			.returning({ id: schema.submissions.id, idx: schema.submissions.searchIndexedAt })
 			.all();
 		expect(r[0].idx).toBeNull();

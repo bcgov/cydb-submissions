@@ -36,13 +36,13 @@ describe('seedMockSubmissions', () => {
 
 		const subRow = sqlite.prepare(`SELECT count(*) as n FROM submissions`).get() as { n: number };
 		expect(subRow.n).toBe(10);
-		const invRow = sqlite
-			.prepare(`SELECT count(*) as n FROM invalid_submissions`)
-			.get() as { n: number };
+		const invRow = sqlite.prepare(`SELECT count(*) as n FROM invalid_submissions`).get() as {
+			n: number;
+		};
 		expect(invRow.n).toBe(2);
-		const attRow = sqlite
-			.prepare(`SELECT count(*) as n FROM submission_attachments`)
-			.get() as { n: number };
+		const attRow = sqlite.prepare(`SELECT count(*) as n FROM submission_attachments`).get() as {
+			n: number;
+		};
 		expect(attRow.n).toBe(9);
 	});
 

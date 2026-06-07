@@ -11,14 +11,20 @@
 	let clearOpen = $state(false);
 </script>
 
-<div class="p-6 max-w-2xl mx-auto space-y-8">
+<div class="mx-auto max-w-2xl space-y-8 p-6">
 	<div>
-		<h1 class="text-2xl font-semibold mb-2">Administration</h1>
-		<p class="text-gray-700">Phase 2 admin tooling: database seed + clear. Role management and queue controls arrive in Phases 3–4.</p>
+		<h1 class="mb-2 text-2xl font-semibold">Administration</h1>
+		<p class="text-gray-700">
+			Phase 2 admin tooling: database seed + clear. Role management and queue controls arrive in
+			Phases 3–4.
+		</p>
 	</div>
 
 	{#if form?.success}
-		<p role="status" class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+		<p
+			role="status"
+			class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800"
+		>
 			{form.success}
 		</p>
 	{/if}
@@ -33,22 +39,24 @@
 
 		<div class="flex flex-wrap gap-3">
 			<Button variant="outline" onclick={() => (seedOpen = true)}>Seed mock submissions</Button>
-			<Button variant="destructive" onclick={() => (clearOpen = true)}>Clear all submissions</Button>
+			<Button variant="destructive" onclick={() => (clearOpen = true)}>Clear all submissions</Button
+			>
 		</div>
 
 		<p class="text-xs text-gray-600">
 			Seed inserts 12 mock submissions (10 valid, 2 invalid) plus a handful of placeholder
-			attachments. Clear removes all submissions, metadata, attachments, and invalid records — users
-			and roles are untouched.
+			attachments, including extracted OCR text on completed reports so document-content search is
+			testable. Clear removes all submissions, metadata, attachments, OCR results, and invalid
+			records — users and roles are untouched.
 		</p>
 	</section>
 
 	<section class="space-y-3">
 		<h2 class="text-lg font-semibold">Pipeline</h2>
 		<div class="flex flex-col gap-1">
-			<a href="/admin/queues" class="underline text-blue-700">Queue pipeline dashboard →</a>
-			<a href="/admin/chefs" class="underline text-blue-700">CHEFS configuration &amp; sync →</a>
-			<a href="/admin/ocr" class="underline text-blue-700">OCR queue detail →</a>
+			<a href="/admin/queues" class="text-blue-700 underline">Queue pipeline dashboard →</a>
+			<a href="/admin/chefs" class="text-blue-700 underline">CHEFS configuration &amp; sync →</a>
+			<a href="/admin/ocr" class="text-blue-700 underline">OCR queue detail →</a>
 		</div>
 	</section>
 
@@ -58,8 +66,8 @@
 			<AlertDialog.Header>
 				<AlertDialog.Title>Seed mock submissions?</AlertDialog.Title>
 				<AlertDialog.Description>
-					This will <strong>replace all existing submissions</strong> with 12 mock records and write
-					placeholder attachment files to disk. Useful for local testing — do not run in production.
+					This will <strong>replace all existing submissions</strong> with 12 mock records and write placeholder
+					attachment files to disk. Useful for local testing — do not run in production.
 				</AlertDialog.Description>
 			</AlertDialog.Header>
 			<AlertDialog.Footer>
@@ -67,10 +75,11 @@
 				<form
 					method="POST"
 					action="?/seed"
-					use:enhance={() => async ({ update }) => {
-						await update();
-						seedOpen = false;
-					}}
+					use:enhance={() =>
+						async ({ update }) => {
+							await update();
+							seedOpen = false;
+						}}
 				>
 					<input type="hidden" name="csrf" value={page.data.csrfToken} />
 					<AlertDialog.Action type="submit">Seed</AlertDialog.Action>
@@ -85,9 +94,8 @@
 			<AlertDialog.Header>
 				<AlertDialog.Title>Clear all submissions?</AlertDialog.Title>
 				<AlertDialog.Description>
-					This <strong>permanently deletes</strong> every submission, its metadata, all attachment
-					files on disk, and all invalid-submission records. Users and roles are not affected. There
-					is no undo.
+					This <strong>permanently deletes</strong> every submission, its metadata, all attachment files
+					on disk, and all invalid-submission records. Users and roles are not affected. There is no undo.
 				</AlertDialog.Description>
 			</AlertDialog.Header>
 			<AlertDialog.Footer>
@@ -95,13 +103,16 @@
 				<form
 					method="POST"
 					action="?/clear"
-					use:enhance={() => async ({ update }) => {
-						await update();
-						clearOpen = false;
-					}}
+					use:enhance={() =>
+						async ({ update }) => {
+							await update();
+							clearOpen = false;
+						}}
 				>
 					<input type="hidden" name="csrf" value={page.data.csrfToken} />
-					<AlertDialog.Action type="submit" class="bg-red-600 hover:bg-red-700 text-white">Clear all</AlertDialog.Action>
+					<AlertDialog.Action type="submit" class="bg-red-600 text-white hover:bg-red-700"
+						>Clear all</AlertDialog.Action
+					>
 				</form>
 			</AlertDialog.Footer>
 		</AlertDialog.Content>

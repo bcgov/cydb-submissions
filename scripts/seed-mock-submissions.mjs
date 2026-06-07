@@ -45,6 +45,46 @@ const ASSESSMENT_TYPES = [
 // Valid gender enum values
 const GENDERS = ['manBoy', 'nonBinaryPerson', 'womanGirl', 'preferNotToAnswerUnknown'];
 
+// Realistic OCR text per attachment, keyed by filename. The search indexer
+// (src/lib/server/search/indexer.ts:ocrTextFor) joins ocr_results.raw_text into
+// the Manticore `ocr_text` field, so this is what makes document-content search
+// testable. Only attachments on submissions whose status implies OCR has
+// completed (OCR processed → reviewed) get text — mirroring the real pipeline.
+// Terms are deliberately mixed: shared (ADOS-2, BCAAN, Autism Spectrum Disorder,
+// Vineland, IEP) for multi-hit relevance ranking, and unique (articulation,
+// ADHD, hyperactivity) for precise single-result queries + highlighting.
+const OCR_TEXT = {
+	'bcaan-assessment.pdf':
+		'British Columbia Autism Assessment Network (BCAAN) Diagnostic Report. ADOS-2 ' +
+		'administered, Module 3. The child presents with persistent deficits in social ' +
+		'communication and restricted, repetitive patterns of behaviour consistent with ' +
+		'Autism Spectrum Disorder (DSM-5 299.00). Vineland-3 adaptive behaviour composite ' +
+		'standard score 72. Recommends speech-language therapy and occupational therapy. ' +
+		'Diagnosing clinician: Dr. A. Patel, Registered Psychologist.',
+	'bcaan-full-report.pdf':
+		'BCAAN Autism Spectrum Disorder Assessment. ADOS-2 Module 4 and ADI-R completed. ' +
+		'The youth meets diagnostic criteria for Autism Spectrum Disorder requiring ' +
+		'substantial support (Level 2). Cognitive assessment WISC-V full scale IQ 88. ' +
+		'Sensory sensitivities to noise and texture noted. Recommends a structured ' +
+		'behavioural intervention plan and an updated IEP review at school.',
+	'clinician-slp-summary.pdf':
+		'Speech-Language Pathology Assessment Summary. The child presents with a moderate ' +
+		'expressive language delay and articulation errors affecting the /r/ and /s/ ' +
+		'phonemes. CELF-5 core language score 78. Receptive language is within normal ' +
+		'limits. Recommends weekly speech therapy targeting expressive vocabulary and ' +
+		'phonological awareness. Assessed by R. Singh, Speech-Language Pathologist (SLP).',
+	'gomez-pediatrician.pdf':
+		'Pediatric Developmental Assessment. Growth parameters within normal range; gross ' +
+		'and fine motor skills age-appropriate. Concerns noted regarding attention and ' +
+		'hyperactivity; screening positive for ADHD features. Referred for a ' +
+		'psychoeducational evaluation. Examined by Dr. L. Nguyen, Pediatrician, ' +
+		"BC Children's Hospital."
+};
+
+// Identifiers recorded on each seeded OCR result (mirrors the stub OCR provider).
+const OCR_MODEL_ID = 'stub-ocr';
+const OCR_API_VERSION = 'seed-v1';
+
 /**
  * @typedef {{
  *   assessmentType: string;
@@ -642,6 +682,12 @@ const tx = sqlite.transaction(() => {
 		 VALUES (?, ?, ?, ?, ?, ?, ?)`
 	);
 
+	const insOcrResult = sqlite.prepare(
+		`INSERT INTO ocr_results
+			(attachment_id, raw_text, pages, model_id, api_version, processed_at)
+		 VALUES (?, ?, ?, ?, ?, ?)`
+	);
+
 	const insInvalid = sqlite.prepare(
 		`INSERT INTO invalid_submissions
 			(submission_uuid, raw_payload, validation_errors, ip_address, user_agent, received_at)
@@ -729,7 +775,7 @@ const tx = sqlite.transaction(() => {
 				const stored = path.join(dir, a.name);
 				writeFileSync(stored, a.bytes);
 				const sha = createHash('sha256').update(a.bytes).digest('hex');
-				insAttachment.run(
+				const attRow = insAttachment.run(
 					submissionId,
 					a.assessmentIndex,
 					a.name,
@@ -738,6 +784,21 @@ const tx = sqlite.transaction(() => {
 					a.mime,
 					sha
 				);
+
+				// Seed extracted OCR text so document-content search is testable.
+				// Present only for attachments on OCR-completed submissions.
+				const ocrText = OCR_TEXT[a.name];
+				if (ocrText) {
+					const pages = Math.max(1, Math.round(ocrText.length / 700));
+					insOcrResult.run(
+						Number(attRow.lastInsertRowid),
+						ocrText,
+						pages,
+						OCR_MODEL_ID,
+						OCR_API_VERSION,
+						m.createdAt
+					);
+				}
 			}
 		}
 	}
@@ -771,8 +832,11 @@ const counts = (() => {
 	const att = /** @type {{ n: number }} */ (
 		db.prepare(`SELECT count(*) as n FROM submission_attachments`).get()
 	);
+	const ocr = /** @type {{ n: number }} */ (
+		db.prepare(`SELECT count(*) as n FROM ocr_results`).get()
+	);
 	db.close();
-	return { subs, inv: inv.n, att: att.n };
+	return { subs, inv: inv.n, att: att.n, ocr: ocr.n };
 })();
 
 console.log('seed-mock: done.');
@@ -780,3 +844,4 @@ console.log(`  submissions by status:`);
 for (const s of counts.subs) console.log(`    ${s.status.padEnd(20)} ${s.n}`);
 console.log(`  invalid_submissions: ${counts.inv}`);
 console.log(`  attachments:         ${counts.att}`);
+console.log(`  ocr_results:         ${counts.ocr}`);

@@ -6,6 +6,7 @@ import {
 	submissions,
 	submissionMetadata,
 	submissionAttachments,
+	ocrResults,
 	invalidSubmissions
 } from './db/schema';
 import type { DrizzleDb } from './roles';
@@ -17,6 +18,30 @@ const TINY_PNG = Buffer.from(
 	'89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c63600000000200015e8d8d010000000049454e44ae426082',
 	'hex'
 );
+
+// Realistic OCR text per attachment filename. Inserted into ocr_results so that
+// document-content search (Manticore `ocr_text`, via search/indexer.ts:ocrTextFor)
+// is testable from a single "Seed mock submissions" click; the "Clear" action
+// removes it (FK cascade from submission_attachments). Only attachments on
+// OCR-completed submissions get text. Text/terms match scripts/seed-mock-submissions.mjs
+// so the same search queries work regardless of which seeder ran.
+const OCR_TEXT: Record<string, string> = {
+	'bcaan-report.pdf':
+		'British Columbia Autism Assessment Network (BCAAN) Diagnostic Report. ADOS-2 ' +
+		'administered, Module 3. The child presents with persistent deficits in social ' +
+		'communication and restricted, repetitive patterns of behaviour consistent with ' +
+		'Autism Spectrum Disorder (DSM-5 299.00). Vineland-3 adaptive behaviour composite ' +
+		'standard score 72. Recommends speech-language therapy and occupational therapy. ' +
+		'Diagnosing clinician: Dr. A. Patel, Registered Psychologist.',
+	'clinician-summary.pdf':
+		'Speech-Language Pathology Assessment Summary. The child presents with a moderate ' +
+		'expressive language delay and articulation errors affecting the /r/ and /s/ ' +
+		'phonemes. CELF-5 core language score 78. Receptive language is within normal ' +
+		'limits. Recommends weekly speech therapy targeting expressive vocabulary and ' +
+		'phonological awareness. Assessed by R. Singh, Speech-Language Pathologist (SLP).'
+};
+const OCR_MODEL_ID = 'stub-ocr';
+const OCR_API_VERSION = 'seed-v1';
 
 const USER_AGENTS = [
 	'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0',
@@ -73,6 +98,8 @@ interface MockSubmission {
 // 10 valid + 2 invalid = 12 MOCKS total.
 // Valid rows have 9 attachments total:
 //   Adams(1), Brown(2), Chen(1), Davis(1), Edwards(0), Foster(1), Gomez(0), Harrison(0), Iyer(2), Liu(1) = 9
+// Of those, 2 OCR-completed attachments (Chen's bcaan-report.pdf, Foster's
+// clinician-summary.pdf) carry seeded OCR text — see OCR_TEXT — for search testing.
 const MOCKS: MockSubmission[] = [
 	{
 		uuid: 'mock-adams-2026-04-02',
@@ -487,6 +514,7 @@ export interface SeedResult {
 	submissions: number;
 	invalid: number;
 	attachments: number;
+	ocrResults: number;
 }
 
 export async function seedMockSubmissions(opts: {
@@ -496,6 +524,7 @@ export async function seedMockSubmissions(opts: {
 	await clearAllSubmissions(opts);
 
 	let attachmentCount = 0;
+	let ocrResultCount = 0;
 	let validCount = 0;
 	let invalidCount = 0;
 
@@ -601,22 +630,44 @@ export async function seedMockSubmissions(opts: {
 				const stored = path.join(dir, a.name);
 				writeFileSync(stored, a.bytes);
 				const sha = createHash('sha256').update(a.bytes).digest('hex');
-				await opts.db.insert(submissionAttachments).values({
-					submissionId,
-					assessmentIndex: a.assessmentIndex,
-					originalFilename: a.name,
-					storedPath: stored,
-					sizeBytes: a.bytes.length,
-					mimeType: a.mime,
-					sha256: sha,
-					uploadedAt: m.createdAt
-				});
+				const insertedAtt = await opts.db
+					.insert(submissionAttachments)
+					.values({
+						submissionId,
+						assessmentIndex: a.assessmentIndex,
+						originalFilename: a.name,
+						storedPath: stored,
+						sizeBytes: a.bytes.length,
+						mimeType: a.mime,
+						sha256: sha,
+						uploadedAt: m.createdAt
+					})
+					.returning({ id: submissionAttachments.id });
 				attachmentCount += 1;
+
+				// Seed extracted OCR text so document-content search is testable.
+				const ocrText = OCR_TEXT[a.name];
+				if (ocrText) {
+					await opts.db.insert(ocrResults).values({
+						attachmentId: insertedAtt[0].id,
+						rawText: ocrText,
+						pages: Math.max(1, Math.round(ocrText.length / 700)),
+						modelId: OCR_MODEL_ID,
+						apiVersion: OCR_API_VERSION,
+						processedAt: m.createdAt
+					});
+					ocrResultCount += 1;
+				}
 			}
 		}
 	}
 
-	return { submissions: validCount, invalid: invalidCount, attachments: attachmentCount };
+	return {
+		submissions: validCount,
+		invalid: invalidCount,
+		attachments: attachmentCount,
+		ocrResults: ocrResultCount
+	};
 }
 
 export async function clearAllSubmissions(opts: {

@@ -33,13 +33,13 @@ export const actions: Actions = {
 				actorRole: 'admin',
 				route: url.pathname,
 				requestId: locals.requestId,
-				reason: `seeded ${result.submissions} submissions, ${result.invalid} invalid, ${result.attachments} attachments`
+				reason: `seeded ${result.submissions} submissions, ${result.invalid} invalid, ${result.attachments} attachments, ${result.ocrResults} OCR results`
 			},
 			locals.logger
 		);
 		return {
 			action: 'seed',
-			success: `Seeded ${result.submissions} submissions, ${result.invalid} invalid, ${result.attachments} attachments.`
+			success: `Seeded ${result.submissions} submissions, ${result.invalid} invalid, ${result.attachments} attachments, ${result.ocrResults} OCR results.`
 		};
 	},
 

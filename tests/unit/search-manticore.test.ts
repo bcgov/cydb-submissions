@@ -24,30 +24,58 @@ describe('ManticoreClient.ensureIndex', () => {
 });
 
 describe('ManticoreClient.replaceDoc', () => {
-	it('REPLACEs with escaped values', async () => {
+	it('REPLACEs with backslash-escaped values (Manticore does not support quote doubling)', async () => {
 		const spy = mockFetch(() => new Response(JSON.stringify([{ total: 1 }]), { status: 200 }));
 		const c = new ManticoreClient('http://mc:9308');
 		await c.replaceDoc({
-			id: 5, submissionUuid: 'u5', status: 'submitted', createdAt: 1717230600,
-			surname: "O'Brien", structuredText: 'language English', ocrText: 'speech', metadataText: 'UA'
+			id: 5,
+			submissionUuid: 'u5',
+			status: 'submitted',
+			createdAt: 1717230600,
+			surname: "O'Brien",
+			structuredText: 'language English',
+			// Real OCR text routinely contains apostrophes (and occasionally backslashes).
+			ocrText: "BC Children's Hospital. Path C:\\scan",
+			metadataText: 'UA'
 		});
 		const body = decodeURIComponent(String(spy.mock.calls[0][1].body));
 		expect(body).toContain('REPLACE INTO submissions_idx');
-		expect(body).toContain("'O''Brien'"); // single quote escaped
+		// Single quotes are backslash-escaped, NOT doubled (doubling breaks Manticore SQL).
+		expect(body).toContain("'O\\'Brien'");
+		expect(body).toContain("Children\\'s Hospital");
+		expect(body).not.toContain("O''Brien");
+		// Backslashes are escaped too.
+		expect(body).toContain('C:\\\\scan');
 		expect(body).toContain('5');
 	});
 });
 
 describe('ManticoreClient.search', () => {
 	it('builds a bool query with status filter, fuzzy + highlight, and parses hits', async () => {
-		const spy = mockFetch(() => new Response(JSON.stringify({
-			hits: { total: 2, hits: [
-				{ _id: 5, _score: 99, highlight: { ocr_text: ['...<b>autism</b> noted...'] } },
-				{ _id: 6, _score: 80, highlight: { structured_text: ['ADHD'] } }
-			] }
-		}), { status: 200 }));
+		const spy = mockFetch(
+			() =>
+				new Response(
+					JSON.stringify({
+						hits: {
+							total: 2,
+							hits: [
+								{ _id: 5, _score: 99, highlight: { ocr_text: ['...<b>autism</b> noted...'] } },
+								{ _id: 6, _score: 80, highlight: { structured_text: ['ADHD'] } }
+							]
+						}
+					}),
+					{ status: 200 }
+				)
+		);
 		const c = new ManticoreClient('http://mc:9308');
-		const r = await c.search({ match: 'autism', statusNotEquals: 'invalid', limit: 25, offset: 0, fuzzy: true, fuzzyDistance: 2 });
+		const r = await c.search({
+			match: 'autism',
+			statusNotEquals: 'invalid',
+			limit: 25,
+			offset: 0,
+			fuzzy: true,
+			fuzzyDistance: 2
+		});
 
 		expect(spy.mock.calls[0][0]).toBe('http://mc:9308/search');
 		const sent = JSON.parse(String(spy.mock.calls[0][1].body));
@@ -63,9 +91,13 @@ describe('ManticoreClient.search', () => {
 	});
 
 	it('throws SearchQueryError on an engine error response', async () => {
-		mockFetch(() => new Response(JSON.stringify({ error: 'syntax error near "*"' }), { status: 400 }));
+		mockFetch(
+			() => new Response(JSON.stringify({ error: 'syntax error near "*"' }), { status: 400 })
+		);
 		const c = new ManticoreClient('http://mc:9308');
-		await expect(c.search({ match: '* bad', limit: 25, offset: 0, fuzzy: true, fuzzyDistance: 2 })).rejects.toBeInstanceOf(SearchQueryError);
+		await expect(
+			c.search({ match: '* bad', limit: 25, offset: 0, fuzzy: true, fuzzyDistance: 2 })
+		).rejects.toBeInstanceOf(SearchQueryError);
 	});
 });
 
@@ -74,23 +106,43 @@ describe('ManticoreClient.ping', () => {
 		mockFetch(() => new Response('[]', { status: 200 }));
 		expect(await new ManticoreClient('http://mc:9308').ping()).toBe(true);
 		vi.restoreAllMocks();
-		vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('conn refused'); }));
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => {
+				throw new Error('conn refused');
+			})
+		);
 		expect(await new ManticoreClient('http://mc:9308').ping()).toBe(false);
 	});
 });
 
 describe('ManticoreClient sql-path error handling', () => {
 	it('treats an array response with empty error as success (replaceDoc resolves)', async () => {
-		mockFetch(() => new Response(JSON.stringify([{ total: 1, error: '', warning: '' }]), { status: 200 }));
+		mockFetch(
+			() => new Response(JSON.stringify([{ total: 1, error: '', warning: '' }]), { status: 200 })
+		);
 		const c = new ManticoreClient('http://mc:9308');
-		await expect(c.replaceDoc({
-			id: 1, submissionUuid: 'u', status: 'submitted', createdAt: 1, surname: 'X',
-			structuredText: '', ocrText: '', metadataText: ''
-		})).resolves.toBeUndefined();
+		await expect(
+			c.replaceDoc({
+				id: 1,
+				submissionUuid: 'u',
+				status: 'submitted',
+				createdAt: 1,
+				surname: 'X',
+				structuredText: '',
+				ocrText: '',
+				metadataText: ''
+			})
+		).resolves.toBeUndefined();
 	});
 
 	it('throws when an array response carries a non-empty error (HTTP 200)', async () => {
-		mockFetch(() => new Response(JSON.stringify([{ total: 0, error: 'index already exists', warning: '' }]), { status: 200 }));
+		mockFetch(
+			() =>
+				new Response(JSON.stringify([{ total: 0, error: 'index already exists', warning: '' }]), {
+					status: 200
+				})
+		);
 		const c = new ManticoreClient('http://mc:9308');
 		await expect(c.deleteDoc(1)).rejects.toThrow(/manticore sql failed/);
 	});
@@ -102,7 +154,9 @@ describe('ManticoreClient sql-path error handling', () => {
 	});
 
 	it('omits must_not from the search payload when there is no statusNotEquals', async () => {
-		const spy = mockFetch(() => new Response(JSON.stringify({ hits: { total: 0, hits: [] } }), { status: 200 }));
+		const spy = mockFetch(
+			() => new Response(JSON.stringify({ hits: { total: 0, hits: [] } }), { status: 200 })
+		);
 		const c = new ManticoreClient('http://mc:9308');
 		await c.search({ match: 'x', limit: 10, offset: 0, fuzzy: false, fuzzyDistance: 2 });
 		const sent = JSON.parse(String(spy.mock.calls[0][1].body));

@@ -1,10 +1,21 @@
-import { SearchQueryError, type SearchClient, type SearchDocument, type SearchInput, type SearchResult } from './types';
+import {
+	SearchQueryError,
+	type SearchClient,
+	type SearchDocument,
+	type SearchInput,
+	type SearchResult
+} from './types';
 
 const INDEX = 'submissions_idx';
 const HIGHLIGHT_FIELDS = ['ocr_text', 'structured_text', 'surname', 'metadata_text'];
 
 function esc(v: string): string {
-	return v.replace(/'/g, "''");
+	// Manticore SQL string literals use BACKSLASH escaping — it does NOT support
+	// SQL-standard '' quote doubling (doubling is parsed as two adjacent strings
+	// → "unexpected string" syntax error). Escape backslashes first, then quotes,
+	// so document content (e.g. OCR text containing "Children's") can neither break
+	// nor inject into the REPLACE statement.
+	return v.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
 export class ManticoreClient implements SearchClient {
@@ -29,7 +40,7 @@ export class ManticoreClient implements SearchClient {
 			`CREATE TABLE IF NOT EXISTS ${INDEX} (` +
 				`surname text, structured_text text, ocr_text text, metadata_text text, ` +
 				`submission_uuid string, status string, created_at timestamp` +
-			`) morphology='lemmatize_en_all' min_infix_len='2' index_exact_words='1'`
+				`) morphology='lemmatize_en_all' min_infix_len='2' index_exact_words='1'`
 		);
 	}
 
@@ -67,7 +78,14 @@ export class ManticoreClient implements SearchClient {
 		});
 		const json = (await res.json().catch(() => null)) as {
 			error?: string;
-			hits?: { total?: number; hits?: Array<{ _id: number | string; _score?: number; highlight?: Record<string, string[]> }> };
+			hits?: {
+				total?: number;
+				hits?: Array<{
+					_id: number | string;
+					_score?: number;
+					highlight?: Record<string, string[]>;
+				}>;
+			};
 		} | null;
 
 		if (!res.ok || !json || json.error) {

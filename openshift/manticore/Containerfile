@@ -1,0 +1,30 @@
+# OpenShift-hardened Manticore image.
+#
+# The stock manticoresearch/manticore image is built to run as its own
+# `manticore` user (UID 999) and writes to root-owned dirs (/etc/ssl for the
+# entrypoint's cert symlink; /var/lib/manticore, /var/log/manticore,
+# /run/{manticore,mysqld} for searchd's data, logs, pid and socket). Under
+# OpenShift's restricted-v2 SCC the container runs as an arbitrary high UID
+# with primary GID 0 instead, so it can't write any of those — the entrypoint
+# aborts on `ln … /etc/ssl/cert.pem: Permission denied`.
+#
+# Fix per OpenShift's "support arbitrary user ids" guidance: make those dirs
+# group-0 owned and group-writable. The arbitrary UID is always in GID 0, so it
+# can then write everywhere it needs to and the stock entrypoint works as-is.
+# https://docs.openshift.com/container-platform/latest/openshift_images/create-images.html#use-uid_create-images
+#
+# Build (in your dev namespace):
+#   oc new-build --name=cydb-manticore --strategy=docker --binary
+#   oc patch bc/cydb-manticore --type=merge \
+#     -p '{"spec":{"strategy":{"dockerStrategy":{"dockerfilePath":"Containerfile"}}}}'
+#   oc start-build cydb-manticore --from-dir=openshift/manticore --follow
+# Then reference image-registry…svc:5000/<ns>/cydb-manticore:latest in the
+# deployment's manticore container (deployment.dev.yaml already does).
+FROM manticoresearch/manticore:25.0.0
+USER 0
+RUN set -eux; \
+    mkdir -p /var/lib/manticore /var/log/manticore /run/manticore /run/mysqld; \
+    # /var/run is a symlink to /run on Debian, so target /run directly.
+    chgrp -R 0 /etc/ssl /etc/manticoresearch /var/lib/manticore /var/log/manticore /run /var/log; \
+    chmod -R g+rwX /etc/ssl /etc/manticoresearch /var/lib/manticore /var/log/manticore /run /var/log
+USER 1000

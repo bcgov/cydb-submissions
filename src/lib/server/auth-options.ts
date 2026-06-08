@@ -46,7 +46,27 @@ export function buildAuthOptions(env: AuthEnv): BetterAuthOptions {
 							clientSecret: ssoCfg.clientSecret,
 							issuer: ssoCfg.issuer
 						}),
-						pkce: true
+						pkce: true,
+						// Request the email scope explicitly, and map BC Gov IDIR claims to
+						// better-auth's required `email` + `name` so a first-time IDIR user is
+						// provisioned (JIT) rather than failing with email_is_missing /
+						// name_is_missing. IDIR may supply the display name as `display_name`
+						// or only given/family parts rather than `name`.
+						scopes: ['openid', 'profile', 'email'],
+						mapProfileToUser: (profile: Record<string, unknown>) => {
+							const str = (v: unknown) => (typeof v === 'string' && v.length > 0 ? v : undefined);
+							const fullName = [str(profile.given_name), str(profile.family_name)]
+								.filter(Boolean)
+								.join(' ');
+							return {
+								email: str(profile.email),
+								name:
+									str(profile.name) ??
+									str(profile.display_name) ??
+									str(fullName) ??
+									str(profile.preferred_username)
+							};
+						}
 					}
 				]
 			})
@@ -88,10 +108,7 @@ export function buildAuthOptions(env: AuthEnv): BetterAuthOptions {
 		// point; if the user's most-recent account is the keycloak one, that's
 		// almost certainly the IdP that just produced this session.
 		if (!session?.userId) return;
-		logger.info(
-			{ event: 'sso_login_succeeded', userId: session.userId },
-			'sso session created'
-		);
+		logger.info({ event: 'sso_login_succeeded', userId: session.userId }, 'sso session created');
 	};
 
 	return {

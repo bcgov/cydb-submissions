@@ -43,11 +43,25 @@ spec:
       labels:
         app: cydb-submissions
     spec:
-      securityContext:
-        fsGroup: 0
+      initContainers:
+        # The stock Manticore image isn't OpenShift-arbitrary-UID friendly: its
+        # entrypoint and searchd write to root-owned dirs (/etc/ssl, /var/run,
+        # /var/log). Seed a WRITABLE copy of /etc/ssl from the image so the
+        # entrypoint can create /etc/ssl/cert.pem; the emptyDir mounts on the
+        # manticore container below cover the remaining runtime dirs. The
+        # SCC-assigned fsGroup makes all of these group-writable.
+        - name: manticore-seed-ssl
+          image: manticoresearch/manticore:25.0.0
+          # cp -RL (not -a): the arbitrary UID can't preserve ownership, so -a
+          # would exit non-zero and fail the init. -L dereferences the cert
+          # symlinks into regular files.
+          command: ['sh', '-c', 'cp -RL /etc/ssl/. /seed/ && ls /seed/certs/ca-certificates.crt']
+          volumeMounts:
+            - name: manticore-etc-ssl
+              mountPath: /seed
       containers:
         - name: app
-          image: image-registry.openshift-image-registry.svc:5000/cydb/cydb-submissions:latest
+          image: image-registry.openshift-image-registry.svc:5000/ea77d9-dev/cydb-submissions:latest
           ports:
             - containerPort: 3000
           # Config comes from the Secret + the dev ConfigMap. No inline env:
@@ -91,6 +105,14 @@ spec:
           volumeMounts:
             - name: search-index
               mountPath: /var/lib/manticore
+            - name: manticore-etc-ssl
+              mountPath: /etc/ssl
+            - name: manticore-run-manticore
+              mountPath: /var/run/manticore
+            - name: manticore-run-mysqld
+              mountPath: /var/run/mysqld
+            - name: manticore-log
+              mountPath: /var/log/manticore
           readinessProbe:
             tcpSocket:
               port: 9308
@@ -118,3 +140,14 @@ spec:
         - name: search-index
           emptyDir:
             sizeLimit: 256Mi
+        # Writable runtime dirs for the non-OpenShift-hardened Manticore image
+        # (entrypoint cert symlink, pid, mysql socket, logs). Seeded/empty;
+        # group-writable via the SCC-assigned fsGroup.
+        - name: manticore-etc-ssl
+          emptyDir: {}
+        - name: manticore-run-manticore
+          emptyDir: {}
+        - name: manticore-run-mysqld
+          emptyDir: {}
+        - name: manticore-log
+          emptyDir: {}

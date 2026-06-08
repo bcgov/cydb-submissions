@@ -4,8 +4,17 @@
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
+	import { formatDate } from '$lib/format-date';
 
 	let { data }: { data: PageData } = $props();
+
+	// Whole-row navigation (mouse enhancement; the "View" link remains the
+	// keyboard-accessible path). Don't navigate when the user is selecting text.
+	function openRow(uuid: string) {
+		if (window.getSelection()?.toString()) return;
+		goto(`/submissions/${uuid}`);
+	}
 
 	function sortHref(col: string) {
 		const params = new URLSearchParams(page.url.searchParams);
@@ -135,8 +144,8 @@
 		</Table.Header>
 		<Table.Body>
 			{#each data.rows as row (row.uuid)}
-				<Table.Row>
-					<Table.Cell>{new Date(row.submittedAt).toLocaleString()}</Table.Cell>
+				<Table.Row class="cursor-pointer hover:bg-muted/50" onclick={() => openRow(row.uuid)}>
+					<Table.Cell class="whitespace-nowrap">{formatDate(row.submittedAt)}</Table.Cell>
 					<Table.Cell>{row.childYouthFirstName} {row.childYouthLastName}</Table.Cell>
 					<Table.Cell>{row.surname ?? '—'}</Table.Cell>
 					<Table.Cell>{row.screening}</Table.Cell>

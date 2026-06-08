@@ -1,0 +1,22 @@
+# Single shared data volume for storage-constrained namespaces (e.g. a dev
+# namespace capped at 1Gi total / one PVC). Holds BOTH the SQLite database and
+# the attachments, separated by subPath in deployment.dev.yaml:
+#   /data/db          -> subPath db
+#   /data/attachments -> subPath attachments
+# The Manticore search index does NOT use a PVC here — deployment.dev.yaml
+# puts it on an emptyDir, since it is rebuildable from SQLite by the reconciler.
+#
+# Use this with openshift/deployment.dev.yaml INSTEAD OF the three separate
+# pvc-db / pvc-attachments / pvc-search PVCs.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cydb-submissions-data
+  labels:
+    app: cydb-submissions
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

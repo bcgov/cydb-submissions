@@ -26,12 +26,14 @@ spec:
         fsGroup: 0
       containers:
         - name: app
-          image: image-registry.openshift-image-registry.svc:5000/cydb/cydb-submissions:latest
+          image: image-registry.openshift-image-registry.svc:5000/ea77d9-dev/cydb-submissions:latest
           ports:
             - containerPort: 3000
           envFrom:
             - secretRef:
                 name: cydb-submissions-secrets
+            - configMapRef:
+                name: cydb-submissions-config
           env:
             - name: NODE_ENV
               value: production

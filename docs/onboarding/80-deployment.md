@@ -84,6 +84,25 @@ The search PVC is the only one that **doesn't need its own backup**: the index i
 
 If the attachments PVC fills up, increase the `storage: 10Gi` value in `pvc-attachments.yaml` and `oc apply -f`. OpenShift will resize the underlying volume online.
 
+### Constrained dev (1Gi PVC quota / one PVC)
+
+Some dev namespaces are capped at **1Gi of PVC storage** — and because most BC Gov storage classes round every PVC up to a **1Gi minimum**, three PVCs cost 3Gi regardless of the requested sizes, so the default three-PVC layout is rejected by the ResourceQuota. For those namespaces, deploy the **dev variant**, which uses a single PVC plus an ephemeral search index:
+
+- `openshift/pvc-data.yaml` — one `cydb-submissions-data` PVC (1Gi, RWO) holding **both** the SQLite db and attachments, split by `subPath` (`/data/db` ← `db`, `/data/attachments` ← `attachments`).
+- `openshift/deployment.dev.yaml` — same as `deployment.yaml` but mounts that one PVC by subPath and puts the **Manticore index on an `emptyDir`** (it's rebuildable from SQLite, so it needs no PVC). It also drops the inline `env:` block so the values from `configmap-dev.yaml` actually apply (a container `env:` entry overrides `envFrom`, so an inline block would silently win over the ConfigMap).
+
+```bash
+# Instead of the three pvc-*.yaml files and deployment.yaml:
+oc apply -f openshift/pvc-data.yaml
+oc apply -f openshift/secret.yaml
+oc apply -f openshift/configmap-dev.yaml
+oc apply -f openshift/deployment.dev.yaml
+oc apply -f openshift/service.yaml
+oc apply -f openshift/route.yaml
+```
+
+Total PVC footprint: **1Gi, one PVC.** Trade-off: the search index resets on pod restart and is rebuilt from SQLite by the reconciler (no data loss — search is briefly empty until it catches up). The db + attachments stay persistent in the shared PVC. If you don't even need that persistence, you can instead make all three volumes `emptyDir` (zero PVC) — the app re-runs `migrate` + `seed-admin` on every boot and you re-seed mock data from `/admin`. The committed `deployment.yaml` (three PVCs) remains the layout for test/prod, which aren't storage-constrained.
+
 ## The Containerfile
 
 Three stages: `deps` → `build` → `runtime`. The runtime image:

@@ -1,8 +1,15 @@
 <script lang="ts">
-	import type { SubmissionRow, SubmissionAttachmentRow } from '$lib/types';
-	import { lookupLabel, yesNo } from './labels';
+	import type { SubmissionRow, AttachmentWithOcr } from '$lib/types';
+	import { lookupLabel } from './labels';
+	import { formatDate } from '$lib/format-date';
+	import { Badge } from '$lib/components/ui/badge';
+	import PhoneIcon from '@lucide/svelte/icons/phone';
+	import MailIcon from '@lucide/svelte/icons/mail';
+	import CheckIcon from '@lucide/svelte/icons/check';
+	import MinusIcon from '@lucide/svelte/icons/minus';
+	import PaperclipIcon from '@lucide/svelte/icons/paperclip';
 
-	let { data, attachments = [] }: { data: SubmissionRow; attachments?: SubmissionAttachmentRow[] } =
+	let { data, attachments = [] }: { data: SubmissionRow; attachments?: AttachmentWithOcr[] } =
 		$props();
 
 	// Map each assessment (editGrid row) to its uploaded file via assessment_index.
@@ -26,135 +33,146 @@
 	const notSubmittingReasons = $derived((data.notSubmittingReasons ?? []) as string[]);
 </script>
 
-<div class="space-y-8">
-	<!-- Child / Youth -->
-	<section>
-		<h2 class="mb-2 text-lg font-semibold">Child / Youth</h2>
-		<dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-sm">
-			<dt class="font-medium">Full name</dt>
-			<dd>{childName}</dd>
-			<dt class="font-medium">Date of birth</dt>
-			<dd>{data.childYouthDob}</dd>
-			<dt class="font-medium">Gender</dt>
-			<dd>{lookupLabel('childYouthsGender', data.childYouthGender)}</dd>
-		</dl>
+{#snippet eyebrow(text: string)}
+	<p class="text-xs font-medium tracking-wide text-gray-500 uppercase">{text}</p>
+{/snippet}
+
+{#snippet attest(checked: boolean | null | undefined, label: string)}
+	<li class="flex items-start gap-2.5">
+		{#if checked}
+			<CheckIcon class="mt-0.5 size-4 shrink-0 text-green-600" />
+			<span class="text-gray-700">{label}</span>
+		{:else}
+			<MinusIcon class="mt-0.5 size-4 shrink-0 text-gray-300" />
+			<span class="text-gray-400">{label}</span>
+		{/if}
+	</li>
+{/snippet}
+
+<div class="space-y-10">
+	<!-- Child / youth — led by the name; DOB + gender as a quiet meta line -->
+	<header class="space-y-1.5">
+		{@render eyebrow('Child / youth')}
+		<h2 class="text-2xl font-semibold tracking-tight text-gray-900">{childName}</h2>
+		<p class="text-sm text-gray-500">
+			Born {formatDate(data.childYouthDob)} · {lookupLabel(
+				'childYouthsGender',
+				data.childYouthGender
+			)}
+		</p>
+	</header>
+
+	<!-- Agreement signatory -->
+	<section class="space-y-2">
+		{@render eyebrow('Agreement signatory')}
+		<p class="text-base text-gray-900">
+			<span class="font-medium">{data.signatoryFirstName} {data.signatoryLastName}</span>
+			<span class="text-gray-500"> · {data.signatoryRelationship}</span>
+		</p>
+		<p class="text-sm text-gray-500">
+			Born {formatDate(data.signatoryDob)} · {lookupLabel(
+				'AgreementSigGender',
+				data.signatoryGender
+			)}
+		</p>
+		<div class="flex flex-wrap gap-x-6 gap-y-1 pt-1 text-sm text-gray-600">
+			<span class="inline-flex items-center gap-1.5">
+				<PhoneIcon class="size-3.5 text-gray-400" />{data.primaryPhone}
+			</span>
+			<a href="mailto:{data.email}" class="inline-flex items-center gap-1.5 hover:text-blue-700">
+				<MailIcon class="size-3.5 text-gray-400" />{data.email}
+			</a>
+		</div>
 	</section>
 
-	<!-- Agreement Signatory -->
-	<section>
-		<h2 class="mb-2 text-lg font-semibold">Agreement Signatory</h2>
-		<dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-sm">
-			<dt class="font-medium">Name</dt>
-			<dd>{data.signatoryFirstName} {data.signatoryLastName}</dd>
-			<dt class="font-medium">Date of birth</dt>
-			<dd>{data.signatoryDob}</dd>
-			<dt class="font-medium">Gender</dt>
-			<dd>{lookupLabel('AgreementSigGender', data.signatoryGender)}</dd>
-			<dt class="font-medium">Relationship to child/youth</dt>
-			<dd>{data.signatoryRelationship}</dd>
-			<dt class="font-medium">Phone</dt>
-			<dd>{data.primaryPhone}</dd>
-			<dt class="font-medium">Email</dt>
-			<dd>{data.email}</dd>
-		</dl>
-	</section>
+	<!-- Assessment information (screening + branch) -->
+	<section class="space-y-4">
+		<div class="flex items-center gap-3">
+			{@render eyebrow('Assessment information')}
+			{#if data.screening === 'Yes'}
+				<Badge variant="outline" class="border-green-200 bg-green-50 text-green-800"
+					>Submitting</Badge
+				>
+			{:else}
+				<Badge variant="outline" class="border-gray-200 bg-gray-50 text-gray-600"
+					>Not submitting</Badge
+				>
+			{/if}
+		</div>
 
-	<!-- Screening -->
-	<section>
-		<h2 class="mb-2 text-lg font-semibold">Screening</h2>
-		<dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-sm">
-			<dt class="font-medium">Submitting assessment</dt>
-			<dd>{data.screening}</dd>
-		</dl>
-	</section>
-
-	{#if data.screening === 'Yes'}
-		<!-- Assessments -->
-		<section>
-			<h2 class="mb-2 text-lg font-semibold">Assessments</h2>
+		{#if data.screening === 'Yes'}
+			<!-- Assessments as self-describing cards (type is the heading; no field labels needed) -->
 			{#if assessments.length === 0}
-				<p class="text-sm text-gray-600">No assessments recorded.</p>
+				<p class="text-sm text-gray-500">No assessments recorded.</p>
 			{:else}
-				<table class="w-full border-collapse text-sm">
-					<thead>
-						<tr class="border-b text-left">
-							<th class="py-1 pr-4 font-medium">Type</th>
-							<th class="py-1 pr-4 font-medium">Completed by</th>
-							<th class="py-1 pr-4 font-medium">Date</th>
-							<th class="py-1 font-medium">Attachment</th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each assessments as assessment, i (i)}
-							<tr class="border-b last:border-0">
-								<td class="py-1 pr-4">{lookupLabel('AssessmentType', assessment.assessmentType)}</td
+				<div class="space-y-3">
+					{#each assessments as a, i (i)}
+						{@const att = attachmentForIndex(i)}
+						<div class="rounded-lg border border-gray-200 p-4">
+							<p class="font-medium text-gray-900">
+								{lookupLabel('AssessmentType', a.assessmentType)}
+							</p>
+							<p class="mt-0.5 text-sm text-gray-500">
+								Completed by {a.completedBy} · {formatDate(a.dateOfAssessment)}
+							</p>
+							{#if att}
+								<a
+									class="mt-2.5 inline-flex items-center gap-1.5 text-sm text-blue-700 hover:underline"
+									href="/attachments/{att.id}?download=1"
 								>
-								<td class="py-1 pr-4">{assessment.completedBy}</td>
-								<td class="py-1 pr-4">{assessment.dateOfAssessment}</td>
-								<td class="py-1">
-									{#if attachmentForIndex(i)}
-										<a
-											class="text-blue-700 underline"
-											href="/attachments/{attachmentForIndex(i)!.id}?download=1"
-										>
-											{attachmentForIndex(i)!.originalFilename}
-										</a>
-									{:else if assessment.attachmentName}
-										{assessment.attachmentName}
-									{:else}
-										—
-									{/if}
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
-			{/if}
-			<dl class="mt-4 grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-sm">
-				<dt class="font-medium">Consent — collection</dt>
-				<dd>{yesNo(data.consentCollection)}</dd>
-				<dt class="font-medium">Consent — disclosure</dt>
-				<dd>{yesNo(data.consentDisclosure)}</dd>
-			</dl>
-		</section>
-	{:else if data.screening === 'No'}
-		<!-- Not submitting reasons -->
-		<section>
-			<h2 class="mb-2 text-lg font-semibold">Reasons for not submitting</h2>
-			{#if notSubmittingReasons.length === 0}
-				<p class="text-sm text-gray-600">No reasons recorded.</p>
-			{:else}
-				<ul class="list-disc space-y-1 pl-5 text-sm">
-					{#each notSubmittingReasons as reason (reason)}
-						<li>{lookupLabel('simplecheckboxes', reason)}</li>
+									<PaperclipIcon class="size-3.5" />{att.originalFilename}
+								</a>
+							{:else if a.attachmentName}
+								<p class="mt-2.5 inline-flex items-center gap-1.5 text-sm text-gray-500">
+									<PaperclipIcon class="size-3.5" />{a.attachmentName}
+								</p>
+							{/if}
+						</div>
 					{/each}
-				</ul>
+				</div>
 			{/if}
-			<dl class="mt-4 grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-sm">
-				<dt class="font-medium">Confirmed not submitting</dt>
-				<dd>{yesNo(data.confirmNotSubmitting)}</dd>
-			</dl>
-		</section>
-	{/if}
 
-	<!-- Signature -->
-	<section>
-		<h2 class="mb-2 text-lg font-semibold">Signature</h2>
-		<dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-sm">
-			{#if data.signature}
-				<dt class="font-medium">Signature</dt>
-				<dd>
-					<img
-						src={data.signature}
-						alt="Applicant signature"
-						class="max-h-24 rounded border border-gray-200 bg-white"
-					/>
-				</dd>
+			<ul class="space-y-1.5 text-sm">
+				{@render attest(data.consentCollection, 'Consent to the collection of information')}
+				{@render attest(
+					data.consentDisclosure,
+					'Consent to the disclosure of personal information'
+				)}
+			</ul>
+		{:else if data.screening === 'No'}
+			{#if notSubmittingReasons.length > 0}
+				<div class="space-y-1.5">
+					<p class="text-sm text-gray-500">Reasons given</p>
+					<ul class="list-disc space-y-1 pl-5 text-sm text-gray-700">
+						{#each notSubmittingReasons as reason (reason)}
+							<li>{lookupLabel('simplecheckboxes', reason)}</li>
+						{/each}
+					</ul>
+				</div>
 			{/if}
-			<dt class="font-medium">Date signed</dt>
-			<dd>{data.dateSigned}</dd>
-			<dt class="font-medium">Primary care and control</dt>
-			<dd>{yesNo(data.primaryCareAndControl)}</dd>
-		</dl>
+			<ul class="space-y-1.5 text-sm">
+				{@render attest(
+					data.confirmNotSubmitting,
+					'Confirmed not submitting assessment information at this time'
+				)}
+			</ul>
+		{/if}
+	</section>
+
+	<!-- Declaration -->
+	<section class="space-y-3">
+		{@render eyebrow('Declaration')}
+		<ul class="space-y-1.5 text-sm">
+			{@render attest(
+				data.primaryCareAndControl,
+				'Agreement signatory with primary care and control, or legal guardian'
+			)}
+		</ul>
+		{#if data.signature}
+			<div class="inline-block rounded-lg border border-gray-200 bg-white p-3">
+				<img src={data.signature} alt="Applicant signature" class="max-h-20" />
+			</div>
+		{/if}
+		<p class="text-sm text-gray-500">Signed {formatDate(data.dateSigned)}</p>
 	</section>
 </div>

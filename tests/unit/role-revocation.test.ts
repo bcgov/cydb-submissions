@@ -10,6 +10,7 @@ import {
 	restoreRole,
 	isSelfAdminRevoke
 } from '$lib/server/roles';
+import { shapeUserRoleRows } from '$lib/server/role-admin';
 
 describe('getUserRoles overlay', () => {
 	let sqlite: Database.Database;
@@ -57,5 +58,43 @@ describe('isSelfAdminRevoke', () => {
 		expect(isSelfAdminRevoke('u1', 'u1', 'admin')).toBe(true);
 		expect(isSelfAdminRevoke('u1', 'u1', 'cfd_worker')).toBe(false);
 		expect(isSelfAdminRevoke('u1', 'u2', 'admin')).toBe(false);
+	});
+});
+
+describe('shapeUserRoleRows', () => {
+	it('computes granted / revoked / effective per user', () => {
+		const out = shapeUserRoleRows(
+			[{ id: 'u1', name: 'U', email: 'u@x' }],
+			[
+				{ userId: 'u1', role: 'admin' },
+				{ userId: 'u1', role: 'cfd_worker' }
+			],
+			[{ userId: 'u1', role: 'admin', reason: 'x', revokedAt: 't', revokedBy: 'a1' }]
+		);
+		expect(out).toHaveLength(1);
+		expect(out[0].granted.sort()).toEqual(['admin', 'cfd_worker']);
+		expect(out[0].revoked.map((r) => r.role)).toEqual(['admin']);
+		expect(out[0].effective).toEqual(['cfd_worker']);
+	});
+
+	it('returns [] for empty inputs', () => {
+		expect(shapeUserRoleRows([], [], [])).toEqual([]);
+	});
+
+	it('sorts rows by email', () => {
+		const out = shapeUserRoleRows(
+			[
+				{ id: 'z', name: 'Z', email: 'z@x' },
+				{ id: 'a', name: 'A', email: 'a@x' }
+			],
+			[],
+			[]
+		);
+		expect(out.map((r) => r.email)).toEqual(['a@x', 'z@x']);
+	});
+
+	it('gives a user with no grants/revocations empty role arrays', () => {
+		const out = shapeUserRoleRows([{ id: 'u9', name: 'N', email: 'n@x' }], [], []);
+		expect(out[0]).toMatchObject({ granted: [], revoked: [], effective: [] });
 	});
 });

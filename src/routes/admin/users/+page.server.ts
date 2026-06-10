@@ -27,7 +27,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 			.from(revokedUserRoles)
 	]);
 	return {
-		rows: shapeUserRoleRows(users, grants as GrantInput[], revocations as RevokedRowInput[])
+		rows: shapeUserRoleRows(users, grants as GrantInput[], revocations as RevokedRowInput[]),
+		currentUserId: locals.user!.id
 	};
 };
 

@@ -36,6 +36,13 @@
       "when": 1780709431552,
       "tag": "0004_far_the_hunter",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1781054278881,
+      "tag": "0005_real_ma_gnuci",
+      "breakpoints": true
     }
   ]
 }

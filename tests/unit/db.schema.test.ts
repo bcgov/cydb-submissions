@@ -172,3 +172,35 @@ describe('status enum + roles', () => {
 		).toThrow(/CHECK/i);
 	});
 });
+
+describe('revoked_user_roles schema', () => {
+	it('has the overlay table with role CHECK + unique (user_id, role)', () => {
+		const { sqlite } = freshDb();
+		const c = cols(sqlite, 'revoked_user_roles');
+		for (const col of ['id', 'user_id', 'role', 'reason', 'revoked_by', 'revoked_at']) {
+			expect(c, col).toContain(col);
+		}
+		// unknown role rejected by CHECK
+		sqlite.exec(`INSERT INTO user (id, name, email, email_verified) VALUES ('ru1','R','r@x',0)`);
+		expect(() =>
+			sqlite
+				.prepare(
+					`INSERT INTO revoked_user_roles (user_id, role, revoked_by) VALUES ('ru1','wizard','ru1')`
+				)
+				.run()
+		).toThrow(/CHECK/i);
+		// duplicate (user_id, role) rejected by unique
+		sqlite
+			.prepare(
+				`INSERT INTO revoked_user_roles (user_id, role, revoked_by) VALUES ('ru1','admin','ru1')`
+			)
+			.run();
+		expect(() =>
+			sqlite
+				.prepare(
+					`INSERT INTO revoked_user_roles (user_id, role, revoked_by) VALUES ('ru1','admin','ru1')`
+				)
+				.run()
+		).toThrow(/UNIQUE/i);
+	});
+});

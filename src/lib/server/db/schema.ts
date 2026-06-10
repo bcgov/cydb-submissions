@@ -144,6 +144,30 @@ export const userRoles = sqliteTable(
 	})
 );
 
+export const revokedUserRoles = sqliteTable(
+	'revoked_user_roles',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		role: text('role').notNull(),
+		reason: text('reason'),
+		revokedBy: text('revoked_by').notNull(),
+		revokedAt: text('revoked_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`)
+	},
+	(t) => ({
+		uniqByUserRole: uniqueIndex('revoked_user_roles_unique').on(t.userId, t.role),
+		byUser: index('revoked_user_roles_user_idx').on(t.userId),
+		roleCheck: check(
+			'revoked_user_roles_role_check',
+			sql`${t.role} IN ('admin','cfd_worker','clinician')`
+		)
+	})
+);
+
 export const ocrJobs = sqliteTable(
 	'ocr_jobs',
 	{

@@ -22,7 +22,10 @@ export function extractSsoRoles(accessToken: string, clientId: string): Set<Role
 	if (!payload) return new Set();
 	const out = new Set<Role>();
 
-	const top = Array.isArray(payload.client_roles) ? (payload.client_roles as unknown[]) : [];
+	// Accept either claim name a Keycloak mapper might emit for the role list.
+	const claimArray = (key: string) =>
+		Array.isArray(payload[key]) ? (payload[key] as unknown[]) : [];
+	const top = [...claimArray('client_roles'), ...claimArray('user_roles')];
 	const ra = payload.resource_access;
 	const nested =
 		ra && typeof ra === 'object'
@@ -32,6 +35,24 @@ export function extractSsoRoles(accessToken: string, clientId: string): Set<Role
 
 	for (const r of [...top, ...nestedArr]) {
 		if (typeof r === 'string' && ROLE_SET.has(r)) out.add(r as Role);
+	}
+	return out;
+}
+
+/**
+ * Union the recognised roles found across several JWTs (e.g. the OAuth access
+ * token AND id token). BC Gov's standard realm may carry `client_roles` on the
+ * id token rather than the access token, so we check both rather than assume.
+ * Null/empty/undefined tokens are ignored.
+ */
+export function extractRolesFromTokens(
+	tokens: Array<string | null | undefined>,
+	clientId: string
+): Set<Role> {
+	const out = new Set<Role>();
+	for (const token of tokens) {
+		if (typeof token !== 'string' || token.length === 0) continue;
+		for (const role of extractSsoRoles(token, clientId)) out.add(role);
 	}
 	return out;
 }

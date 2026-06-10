@@ -1,7 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
-import { decodeJwtPayload, extractSsoRoles, syncUserRoles } from '$lib/server/sso-roles';
+import {
+	decodeJwtPayload,
+	extractSsoRoles,
+	extractRolesFromTokens,
+	syncUserRoles
+} from '$lib/server/sso-roles';
 import * as schema from '$lib/server/db/schema';
 import { userRoles } from '$lib/server/db/schema';
 
@@ -30,6 +35,11 @@ describe('extractSsoRoles', () => {
 		expect(extractSsoRoles(t, cid)).toEqual(new Set(['admin', 'cfd_worker']));
 	});
 
+	it('also reads a top-level user_roles claim (alternate mapper name)', () => {
+		const t = jwt({ user_roles: ['clinician', 'unknown_role'] });
+		expect(extractSsoRoles(t, cid)).toEqual(new Set(['clinician']));
+	});
+
 	it('reads resource_access.<cid>.roles', () => {
 		const t = jwt({ resource_access: { [cid]: { roles: ['clinician'] } } });
 		expect(extractSsoRoles(t, cid)).toEqual(new Set(['clinician']));
@@ -54,6 +64,29 @@ describe('extractSsoRoles', () => {
 
 	it('returns empty set on a broken token', () => {
 		expect(extractSsoRoles('broken', cid).size).toBe(0);
+	});
+});
+
+describe('extractRolesFromTokens', () => {
+	const cid = 'cydb-submissions-6444';
+
+	it('finds a role carried only on the id token (not the access token)', () => {
+		const accessJwt = jwt({ client_roles: [] });
+		const idJwt = jwt({ client_roles: ['admin'] });
+		expect(extractRolesFromTokens([accessJwt, idJwt], cid)).toEqual(new Set(['admin']));
+	});
+
+	it('unions recognised roles across both JWTs and ignores unknown ones', () => {
+		const accessJwt = jwt({ resource_access: { [cid]: { roles: ['cfd_worker'] } } });
+		const idJwt = jwt({ client_roles: ['clinician', 'root'] });
+		expect(extractRolesFromTokens([accessJwt, idJwt], cid)).toEqual(
+			new Set(['cfd_worker', 'clinician'])
+		);
+	});
+
+	it('ignores null/undefined/empty entries', () => {
+		const t = jwt({ client_roles: ['admin'] });
+		expect(extractRolesFromTokens([null, undefined, '', t], cid)).toEqual(new Set(['admin']));
 	});
 });
 

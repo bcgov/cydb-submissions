@@ -1,7 +1,7 @@
 import type { BetterAuthOptions } from 'better-auth';
 import { genericOAuth, keycloak } from 'better-auth/plugins/generic-oauth';
 import { loadSsoConfig } from './sso-config';
-import { extractSsoRoles, syncUserRoles } from './sso-roles';
+import { extractRolesFromTokens, syncUserRoles } from './sso-roles';
 import { logger } from './log';
 import { db } from './db';
 
@@ -17,6 +17,7 @@ interface SsoAccountLike {
 	providerId?: string;
 	userId?: string;
 	accessToken?: string | null;
+	idToken?: string | null;
 }
 
 interface SsoSessionLike {
@@ -74,10 +75,17 @@ export function buildAuthOptions(env: AuthEnv): BetterAuthOptions {
 	}
 
 	const ssoRoleSync = async (account: SsoAccountLike) => {
-		if (!ssoCfg || account.providerId !== 'keycloak' || !account.accessToken || !account.userId)
+		if (
+			!ssoCfg ||
+			account.providerId !== 'keycloak' ||
+			!account.userId ||
+			(!account.accessToken && !account.idToken)
+		)
 			return;
 		try {
-			const roles = extractSsoRoles(account.accessToken, ssoCfg.clientId);
+			// Roles may live on the access token OR the id token depending on the
+			// realm's mapper config — check both.
+			const roles = extractRolesFromTokens([account.accessToken, account.idToken], ssoCfg.clientId);
 			await syncUserRoles(db, account.userId, roles);
 			if (roles.size > 0) {
 				logger.info(

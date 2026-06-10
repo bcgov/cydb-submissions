@@ -100,3 +100,21 @@ export function seedAttachments(atts: SeededAttachment[]) {
 	}
 	db.close();
 }
+
+export function seedUserWithRole(id: string, email: string, role: string) {
+	const db = new Database(dbPath());
+	db.pragma('foreign_keys = ON');
+	db.prepare(
+		`INSERT OR IGNORE INTO "user" (id, name, email, email_verified) VALUES (?, ?, ?, 0)`
+	).run(id, email.split('@')[0], email);
+	db.prepare(`INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, ?)`).run(id, role);
+	db.close();
+}
+
+export function deleteUser(id: string) {
+	const db = new Database(dbPath());
+	db.pragma('foreign_keys = ON');
+	// CASCADE deletes user_roles and revoked_user_roles for this user.
+	db.prepare(`DELETE FROM "user" WHERE id = ?`).run(id);
+	db.close();
+}

@@ -23,6 +23,21 @@
 		return row.revoked.some((r) => r.role === role);
 	}
 
+	// Resolve an actor's user id (stored on a revocation) to a human label.
+	function userLabel(id: string): string {
+		return data.rows.find((r) => r.id === id)?.email ?? id;
+	}
+
+	// How many users currently hold `admin` as an EFFECTIVE role.
+	const effectiveAdminCount = $derived(
+		data.rows.filter((r) => r.effective.includes('admin')).length
+	);
+
+	// Revoking admin from the only remaining effective admin would leave none.
+	function isLastEffectiveAdmin(row: PageData['rows'][number], role: string): boolean {
+		return role === 'admin' && row.effective.includes('admin') && effectiveAdminCount <= 1;
+	}
+
 	const roleBadgeVariant: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
 		admin: 'default',
 		cfd_worker: 'secondary',
@@ -93,7 +108,7 @@
 										<span class="text-xs text-gray-600">{rev.reason}</span>
 									{/if}
 									<span class="text-xs text-gray-400"
-										>by {rev.revokedBy} on {formatDate(rev.revokedAt)}</span
+										>by {userLabel(rev.revokedBy)} on {formatDate(rev.revokedAt)}</span
 									>
 								</div>
 							{:else}
@@ -172,6 +187,15 @@
 										<strong>{row.email}</strong>, overriding the identity provider until you
 										explicitly restore it. This action is logged.
 									</AlertDialog.Description>
+									{#if isLastEffectiveAdmin(row, role)}
+										<p
+											role="alert"
+											class="mt-2 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+										>
+											Warning: this is the last remaining admin. Revoking it will leave no one with
+											admin access.
+										</p>
+									{/if}
 								</AlertDialog.Header>
 								<div class="px-6 pb-2">
 									<label class="block text-sm font-medium text-gray-700" for="reason-{key}">

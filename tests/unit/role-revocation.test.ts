@@ -8,7 +8,8 @@ import {
 	getRevokedRoles,
 	revokeRole,
 	restoreRole,
-	isSelfAdminRevoke
+	isSelfAdminRevoke,
+	requireRole
 } from '$lib/server/roles';
 import { shapeUserRoleRows } from '$lib/server/role-admin';
 
@@ -50,6 +51,16 @@ describe('getUserRoles overlay', () => {
 		await revokeRole(db as never, { userId: 'u1', role: 'admin', revokedBy: 'u1' });
 		await restoreRole(db as never, 'u1', 'admin');
 		expect(await getUserRoles(db as never, 'u1')).toEqual(new Set(['admin', 'cfd_worker']));
+	});
+
+	it('a granted-but-revoked admin is denied by requireRole (guard integration)', async () => {
+		await revokeRole(db as never, { userId: 'u1', role: 'admin', revokedBy: 'u1' });
+		const roles = await getUserRoles(db as never, 'u1');
+		expect(roles.has('admin')).toBe(false);
+		// requireRole reads the (already-reduced) role set the guard would see.
+		expect(() => requireRole({ user: { id: 'u1' }, roles }, 'admin')).toThrow();
+		// ...but a role they still hold is allowed.
+		expect(() => requireRole({ user: { id: 'u1' }, roles }, 'cfd_worker')).not.toThrow();
 	});
 });
 

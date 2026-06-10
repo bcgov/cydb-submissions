@@ -131,6 +131,18 @@ export function buildAuthOptions(env: AuthEnv): BetterAuthOptions {
 			// `sendResetPassword`, and better-auth treats an absent sender as
 			// "reset disabled" at runtime (no reset endpoint is exposed).
 		},
+		account: {
+			// Let a Keycloak (IDIR) sign-in attach to an existing email-matched
+			// account — chiefly the seeded bootstrap admin — instead of failing
+			// with "account not linked". Safe here because the only email/password
+			// account is the operator-seeded bootstrap admin: there is no public
+			// registration route, so an attacker cannot pre-register someone's
+			// email to be linked. Keycloak is the only trusted linking provider.
+			accountLinking: {
+				enabled: true,
+				trustedProviders: ['keycloak']
+			}
+		},
 		session: {
 			expiresIn: 8 * 60 * 60,
 			updateAge: 60 * 60

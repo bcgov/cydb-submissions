@@ -64,8 +64,8 @@ function parseObj(env: Env, key: string): Record<string, unknown> | undefined {
 
 function envOverrides(env: Env): Partial<ChefsConfig> {
 	const out: Partial<ChefsConfig> = {};
-	if (env.CHEFS_FORM_ID) out.formId = env.CHEFS_FORM_ID;
-	if (env.CHEFS_API_TOKEN) out.apiToken = env.CHEFS_API_TOKEN;
+	if (env.CHEFS_FORM_ID) out.formId = env.CHEFS_FORM_ID.trim();
+	if (env.CHEFS_API_TOKEN) out.apiToken = env.CHEFS_API_TOKEN.trim();
 	if (env.CHEFS_VERSION) out.version = env.CHEFS_VERSION;
 	if (env.CHEFS_BASE_URL) out.baseUrl = env.CHEFS_BASE_URL;
 	const fc = parseList(env, 'CHEFS_FILE_COMPONENTS');

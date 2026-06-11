@@ -24,16 +24,10 @@ const itemName = (v: unknown): string => {
 	return '';
 };
 
-const isoDate = (label: string) =>
-	z
-		.string()
-		.refine((s) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s + 'T00:00:00Z')), {
-			message: `${label} must be ISO yyyy-mm-dd`
-		});
-const notFuture = (s: string) => Date.parse(s + 'T00:00:00Z') <= Date.now();
+const notFuture = (s: string) => Date.parse(s) <= Date.now();
 const yearsBetween = (dob: string, asOf: string) => {
-	const a = new Date(asOf + 'T00:00:00Z'),
-		b = new Date(dob + 'T00:00:00Z');
+	const a = new Date(asOf),
+		b = new Date(dob);
 	let age = a.getUTCFullYear() - b.getUTCFullYear();
 	const m = a.getUTCMonth() - b.getUTCMonth();
 	if (m < 0 || (m === 0 && a.getUTCDate() < b.getUTCDate())) age--;
@@ -47,7 +41,7 @@ const assessmentRow = z
 	.object({
 		AssessmentType: z.unknown(),
 		completedBy: z.unknown(),
-		dateOfAssessment: isoDate('date of assessment'),
+		dateOfAssessment: z.iso.datetime({ offset: true }),
 		AttachAssessment: z.array(z.unknown()).optional()
 	})
 	.transform((row) => ({
@@ -63,11 +57,11 @@ export const submissionSchema = z
 		childYouthsFirstName: z.string().min(1),
 		childYouthsMiddleNameS: z.string().optional().default(''),
 		childYouthsLegalLastName: z.string().min(1),
-		childYouthsDateOfBirth: isoDate('child date of birth'),
+		childYouthsDateOfBirth: z.iso.datetime({ offset: true }),
 		childYouthsGender: z.enum(values('childYouthsGender')),
 		agreementSignatorysLegalFirstName: z.string().min(1),
 		agreementSignatorysLegalLastName: z.string().min(1),
-		childYouthsDateOfBirth1: isoDate('signatory date of birth'),
+		childYouthsDateOfBirth1: z.iso.datetime({ offset: true }),
 		AgreementSigGender: z.enum(values('AgreementSigGender')),
 		AgreementSigRelationship: z.string().min(1),
 		primaryPhoneNumber: z.string().min(1),
@@ -87,7 +81,7 @@ export const submissionSchema = z
 			.refine((s) => s.startsWith('data:image/'), {
 				message: 'signature must be an image data URL'
 			}),
-		dateSigned: isoDate('date signed'),
+		dateSigned: z.iso.datetime({ offset: true }),
 		browserFingerprint: z.string().max(256).optional(),
 		csrfTokenEcho: z.string().max(256).optional()
 	})

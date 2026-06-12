@@ -45,8 +45,7 @@ jobs:
         env:
           DOCKER_BUILD_SUMMARY: false
         with:
-          context: ./openshift/manticore
-          file: Containerfile
+          file: ./openshift/manticore/Containerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

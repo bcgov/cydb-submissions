@@ -56,13 +56,7 @@ spec:
           image: "{{ .Values.image.tag }}"
           ports:
             - containerPort: 3000
-          # Config comes from the Secret + the dev ConfigMap. No inline env:
-          # block here (see header) so the ConfigMap values take effect.
-          envFrom:
-            - secretRef:
-                name: cydb-submissions-secrets
-            - configMapRef:
-                name: cydb-submissions-config
+          env: {{- toYaml .Values.env | nindent 12 }}
           volumeMounts:
             - name: db
               mountPath: /data/db

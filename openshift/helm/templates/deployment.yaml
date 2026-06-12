@@ -1,0 +1,128 @@
+# Dev variant of deployment.yaml for a storage-constrained namespace
+# (1Gi PVC quota / effectively one PVC). Differences from deployment.yaml:
+#
+#   1. Storage: ONE PVC (cydb-submissions-data, see pvc-data.yaml) holds both
+#      the SQLite db and attachments via subPath; the Manticore search index
+#      lives on an emptyDir (rebuildable from SQLite, so no PVC needed).
+#      Total PVC footprint = 1Gi (one PVC) instead of three.
+#
+#   2. Env: the inline `env:` block is removed. Config comes entirely from the
+#      Secret + the dev ConfigMap via envFrom, so the dev settings (OCR worker
+#      ON with the stub provider, LOG_LEVEL=debug, dev SSO issuer) actually
+#      apply. NOTE: a container `env:` entry overrides `envFrom`, so an inline
+#      block would silently win over the ConfigMap — that is why it is dropped
+#      here. Image defaults (Containerfile) still cover NODE_ENV/HOST/PORT/
+#      DATABASE_URL/ATTACHMENTS_DIR if the ConfigMap is ever missing.
+#
+# PREREQUISITES (apply these first):
+#   oc apply -f openshift/pvc-data.yaml
+#   oc apply -f openshift/secret.yaml          # from secret.example.yaml
+#   oc apply -f openshift/configmap-dev.yaml
+# Then:
+#   oc apply -f openshift/deployment.dev.yaml
+#   oc apply -f openshift/service.yaml
+#   oc apply -f openshift/route.yaml
+#
+# Remember to point `image:` at YOUR dev namespace's image stream, e.g.
+#   image-registry.openshift-image-registry.svc:5000/<licenseplate>-dev/cydb-submissions:latest
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cydb-submissions
+  labels:
+    app: cydb-submissions
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: cydb-submissions
+  template:
+    metadata:
+      labels:
+        app: cydb-submissions
+    spec:
+      # fsGroup ensures the PVC mounts at /data/db and /data/attachments are
+      # owned by the supplemental group the container runs in, so the
+      # arbitrary OpenShift UID can write the SQLite file and attachment
+      # subdirs. The Restricted SCC would normally pick this up automatically,
+      # but stating it makes the intent explicit and works on platforms with
+      # stricter defaults.
+      securityContext:
+        fsGroup: 0
+      containers:
+        - name: app
+          image: "{{ .Values.image.tag }}"
+          ports:
+            - containerPort: 3000
+          # Config comes from the Secret + the dev ConfigMap. No inline env:
+          # block here (see header) so the ConfigMap values take effect.
+          envFrom:
+            - secretRef:
+                name: cydb-submissions-secrets
+            - configMapRef:
+                name: cydb-submissions-config
+          volumeMounts:
+            - name: db
+              mountPath: /data/db
+            - name: attachments
+              mountPath: /data/attachments
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+        - name: manticore
+          # OpenShift-hardened wrapper (build from openshift/manticore/Containerfile)
+          # — makes Manticore's writable dirs group-0-writable so it runs under the
+          # restricted-v2 SCC. The stock manticoresearch/manticore:25.0.0 image
+          # crash-loops here (arbitrary UID can't write /etc/ssl, /var/run, …).
+          image: "{{ .Values.image.manticore_tag }}"
+          ports:
+            - containerPort: 9308
+            - containerPort: 9306
+          volumeMounts:
+            - name: search-index
+              mountPath: /var/lib/manticore
+          readinessProbe:
+            tcpSocket:
+              port: 9308
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 9308
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+      volumes:
+        - name: db
+          persistentVolumeClaim:
+            claimName: cydb-submissions-db
+        - name: attachments
+          persistentVolumeClaim:
+            claimName: cydb-submissions-attachments
+        - name: search-index
+          persistentVolumeClaim:
+            claimName: cydb-submissions-search

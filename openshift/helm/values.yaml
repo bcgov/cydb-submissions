@@ -1,0 +1,5 @@
+image:
+  repository: ghcr.io/bcgov/cydb-submissions
+  tag: '<set by CI/CD>'
+  manticore_tag: -manticore:latest
+  pullPolicy: Always

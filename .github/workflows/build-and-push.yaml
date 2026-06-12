@@ -1,0 +1,100 @@
+name: Build and Deploy
+permissions:
+  contents: read
+  deployments: write
+  packages: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to build package for'
+        type: environment
+        required: true
+
+env:
+  HELM_RELEASE_NAME: cydb-submissions-deployment
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+
+  build_and_push:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 #v3.10.0
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 #v3.4.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804 #v5.7.0
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@14487ce63c7a62a4a324b0bfb37086795e31c6c1 #v6.16.0
+        env:
+          DOCKER_BUILD_SUMMARY: false
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+
+  deploy:
+    needs: build_and_push
+    environment: ${{ github.ref_name }}
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4
+
+      - name: 'YAML poke: Set App Environment'
+        uses: fjogeleit/yaml-update-action@b75e8a929eb61bff6b67a6114943c9468f0bd933 #v0.16.0
+        with:
+          valueFile: 'openshift/helm/values.yaml'
+          changes: |
+            {
+              "image.tag": "${{ github.ref_name }}"
+            }
+          commitChange: false
+
+      - name: Authenticate with OpenShift
+        uses: redhat-actions/oc-login@5eb45e848b168b6bf6b8fe7f1561003c12e3c99d #v1.3
+        with:
+          openshift_server_url: ${{ secrets.OPENSHIFT_SERVER }}
+          namespace: ${{ secrets.OPENSHIFT_NAMESPACE }}
+          openshift_token: ${{ secrets.OPENSHIFT_SERVICE_ACCOUNT_TOKEN }}
+          insecure_skip_tls_verify: true
+
+      - name: Deploy with Helm
+        run: |
+          helm upgrade -f openshift/helm/values.yaml -f openshift/helm/cydb-config-values.yaml \
+            --install ${{ env.HELM_RELEASE_NAME }} ./openshift/helm \
+            --namespace ${{ secrets.OPENSHIFT_NAMESPACE }} \
+            --set image.repository=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }} \
+            --set image.tag=${{ needs.build_and_push.outputs.image_tag }}
+
+      - name: Restart Pod after image update
+        run: |
+          oc rollout restart deployment \
+            --namespace ${{ secrets.OPENSHIFT_NAMESPACE }} \
+            --selector=app.kubernetes.io/name=cydb-submissions

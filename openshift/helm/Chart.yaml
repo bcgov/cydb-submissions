@@ -1,0 +1,4 @@
+apiVersion: v2
+name: cydb-submissions
+description: A Helm chart for deploying cydb-submissions
+version: 1.0.0

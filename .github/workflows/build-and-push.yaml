@@ -61,7 +61,7 @@ jobs:
 
   deploy:
     needs: build_and_push
-    environment: ${{ github.ref_name }}
+    environment: ${{ inputs.environment }}
     runs-on: ubuntu-22.04
 
     steps:
@@ -74,7 +74,7 @@ jobs:
           valueFile: 'openshift/helm/values.yaml'
           changes: |
             {
-              "image.tag": "${{ github.ref_name }}"
+              "image.tag": "${{ inputs.environment }}"
             }
           commitChange: false
 

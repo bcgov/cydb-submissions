@@ -1,0 +1,191 @@
+env:
+  - name: ALLOWED_UPLOAD_MIME
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: ALLOWED_UPLOAD_MIME
+  - name: ATTACHMENTS_DIR
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: ATTACHMENTS_DIR
+  - name: AZURE_DI_API_VERSION
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: AZURE_DI_API_VERSION
+  - name: BCGOV_DI_BASE_URL
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: BCGOV_DI_BASE_URL
+  - name: BCGOV_DI_WORKFLOW_SLUG
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: BCGOV_DI_WORKFLOW_SLUG
+  - name: BODY_SIZE_LIMIT
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: BODY_SIZE_LIMIT
+  - name: CHEFS_API_PARAMS
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: CHEFS_API_PARAMS
+  - name: CHEFS_BASE_URL
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: CHEFS_BASE_URL
+  - name: CHEFS_FILE_COMPONENTS
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: CHEFS_FILE_COMPONENTS
+  - name: CHEFS_FORM_ID
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: CHEFS_FORM_ID
+  - name: CHEFS_POLL_INTERVAL_MS
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: CHEFS_POLL_INTERVAL_MS
+  - name: CHEFS_POLLER_ENABLED
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: CHEFS_POLLER_ENABLED
+  - name: CHEFS_VERSION
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: CHEFS_VERSION
+  - name: CHES_BASE_URL
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: CHES_BASE_URL
+  - name: CHES_TOKEN_URL
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: CHES_TOKEN_URL
+  - name: DATABASE_URL
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: DATABASE_URL
+  - name: DEV_AUTH_BYPASS
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: DEV_AUTH_BYPASS
+  - name: HOST
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: HOST
+  - name: LOG_LEVEL
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: LOG_LEVEL
+  - name: MAIL_TRANSPORT
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: MAIL_TRANSPORT
+  - name: MANTICORE_URL
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: MANTICORE_URL
+  - name: MAX_UPLOAD_BYTES
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: MAX_UPLOAD_BYTES
+  - name: NODE_ENV
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: NODE_ENV
+  - name: OCR_ALERT_FROM
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: OCR_ALERT_FROM
+  - name: OCR_FAILURE_BREAKER
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: OCR_FAILURE_BREAKER
+  - name: OCR_MAX_ATTEMPTS
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: OCR_MAX_ATTEMPTS
+  - name: OCR_MAX_CONCURRENCY
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: OCR_MAX_CONCURRENCY
+  - name: OCR_MODEL_ID
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: OCR_MODEL_ID
+  - name: OCR_POLL_INTERVAL_MS
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: OCR_POLL_INTERVAL_MS
+  - name: OCR_PROVIDER
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: OCR_PROVIDER
+  - name: OCR_WORKER_ENABLED
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: OCR_WORKER_ENABLED
+  - name: ORIGIN
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: ORIGIN
+  - name: PORT
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: PORT
+  - name: RATE_LIMIT_PER_IP
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: RATE_LIMIT_PER_IP
+  - name: RATE_LIMIT_WINDOW_MS
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: RATE_LIMIT_WINDOW_MS
+  - name: SEARCH_RECONCILE_BATCH
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: SEARCH_RECONCILE_BATCH
+  - name: SEARCH_RECONCILE_INTERVAL_MS
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: SEARCH_RECONCILE_INTERVAL_MS
+  - name: SSO_ISSUER_URL
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: SSO_ISSUER_URL

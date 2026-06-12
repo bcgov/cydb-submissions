@@ -39,6 +39,12 @@ export const AUDIT_EVENTS = [
 	'sso_role_sync_succeeded',
 	'sso_role_sync_failed',
 	'role_revoked',
-	'role_restored'
+	'role_restored',
+	'submission_decided',
+	'submission_decision_reset',
+	'reason_added',
+	'reason_edited',
+	'reason_deactivated',
+	'reason_reactivated'
 ] as const;
 export type AuditEvent = (typeof AUDIT_EVENTS)[number];

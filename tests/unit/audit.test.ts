@@ -107,3 +107,20 @@ describe('chefs events', () => {
 		});
 	}
 });
+
+describe('submission decision + reason events', () => {
+	it('accepts the new decision/reason audit events', () => {
+		const { log, lines } = captureLogger();
+		for (const event of [
+			'submission_decided',
+			'submission_decision_reset',
+			'reason_added',
+			'reason_edited',
+			'reason_deactivated',
+			'reason_reactivated'
+		] as const) {
+			auditLog(event, { route: '/x', requestId: 'r' }, log);
+		}
+		expect(lines).toHaveLength(6);
+	});
+});

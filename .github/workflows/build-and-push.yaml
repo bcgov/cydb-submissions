@@ -51,6 +51,7 @@ jobs:
           DOCKER_BUILD_SUMMARY: false
         with:
           context: .
+          file: Containerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

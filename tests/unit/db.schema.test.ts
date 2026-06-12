@@ -136,16 +136,8 @@ describe('status enum + roles', () => {
 
 	it('accepts every documented status value', () => {
 		const { sqlite } = freshDb();
-		const statuses = [
-			'submitted',
-			'OCR queued',
-			'OCR Error',
-			'OCR processed',
-			'ready for review',
-			'ready for clinician',
-			'reviewed',
-			'invalid'
-		];
+		// Derive from the source of truth so this stays exhaustive as statuses grow.
+		const statuses = schema.SUBMISSION_STATUSES;
 		for (const status of statuses) insertSub(sqlite, `u-${status}`, status);
 		const count = sqlite.prepare('SELECT count(*) as n FROM submissions').get() as { n: number };
 		expect(count.n).toBe(statuses.length);
@@ -170,6 +162,52 @@ describe('status enum + roles', () => {
 		expect(() =>
 			sqlite.prepare(`INSERT INTO user_roles (user_id, role) VALUES ('u2', 'wizard')`).run()
 		).toThrow(/CHECK/i);
+	});
+});
+
+describe('submission decision schema', () => {
+	it('status CHECK accepts accepted/rejected and rejects bogus', () => {
+		const { sqlite } = freshDb();
+		insertSub(sqlite, 'dec-1');
+		expect(() =>
+			sqlite.prepare(`UPDATE submissions SET status='accepted' WHERE submission_uuid='dec-1'`).run()
+		).not.toThrow();
+		expect(() =>
+			sqlite.prepare(`UPDATE submissions SET status='rejected' WHERE submission_uuid='dec-1'`).run()
+		).not.toThrow();
+		expect(() =>
+			sqlite.prepare(`UPDATE submissions SET status='banana' WHERE submission_uuid='dec-1'`).run()
+		).toThrow(/CHECK/i);
+	});
+
+	it('submissions has decision columns with a decision CHECK', () => {
+		const { sqlite } = freshDb();
+		const c = cols(sqlite, 'submissions');
+		for (const col of ['decision', 'decision_reasons', 'decided_by', 'decided_at'])
+			expect(c, col).toContain(col);
+		insertSub(sqlite, 'dec-2');
+		expect(() =>
+			sqlite.prepare(`UPDATE submissions SET decision='maybe' WHERE submission_uuid='dec-2'`).run()
+		).toThrow(/CHECK/i);
+		expect(() =>
+			sqlite
+				.prepare(`UPDATE submissions SET decision='accepted' WHERE submission_uuid='dec-2'`)
+				.run()
+		).not.toThrow();
+	});
+
+	it('rejection_reasons table: unique text, active default, seeded rows present', () => {
+		const { sqlite } = freshDb();
+		const c = cols(sqlite, 'rejection_reasons');
+		for (const col of ['id', 'text', 'active']) expect(c, col).toContain(col);
+		const seeded = sqlite.prepare(`SELECT count(*) n FROM rejection_reasons`).get() as {
+			n: number;
+		};
+		expect(seeded.n).toBeGreaterThan(0);
+		sqlite.prepare(`INSERT INTO rejection_reasons (text) VALUES ('Unique-A')`).run();
+		expect(() =>
+			sqlite.prepare(`INSERT INTO rejection_reasons (text) VALUES ('Unique-A')`).run()
+		).toThrow(/UNIQUE/i);
 	});
 });
 

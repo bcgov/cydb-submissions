@@ -10,6 +10,8 @@ export const SUBMISSION_STATUSES = [
 	'ready for review',
 	'ready for clinician',
 	'reviewed',
+	'accepted',
+	'rejected',
 	'invalid'
 ] as const;
 export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number];
@@ -68,7 +70,12 @@ export const submissions = sqliteTable(
 			.default(sql`CURRENT_TIMESTAMP`),
 		// Null (or older than updatedAt) means this row is not yet reflected in the
 		// Manticore search index. The reconciler indexes any such "dirty" row.
-		searchIndexedAt: text('search_indexed_at')
+		searchIndexedAt: text('search_indexed_at'),
+		// Decision fields — set when a submission is accepted or rejected
+		decision: text('decision'),
+		decisionReasons: text('decision_reasons', { mode: 'json' }).$type<string[]>(),
+		decidedBy: text('decided_by'),
+		decidedAt: text('decided_at')
 	},
 	(t) => ({
 		byStatus: index('submissions_status_idx').on(t.status),
@@ -77,7 +84,11 @@ export const submissions = sqliteTable(
 		bySearchIndexed: index('submissions_search_indexed_idx').on(t.searchIndexedAt),
 		statusCheck: check(
 			'submissions_status_check',
-			sql`${t.status} IN ('submitted','OCR queued','OCR Error','OCR processed','ready for review','ready for clinician','reviewed','invalid')`
+			sql`${t.status} IN ('submitted','OCR queued','OCR Error','OCR processed','ready for review','ready for clinician','reviewed','accepted','rejected','invalid')`
+		),
+		decisionCheck: check(
+			'submissions_decision_check',
+			sql`${t.decision} IS NULL OR ${t.decision} IN ('accepted','rejected')`
 		)
 	})
 );
@@ -167,6 +178,18 @@ export const revokedUserRoles = sqliteTable(
 		)
 	})
 );
+
+export const rejectionReasons = sqliteTable('rejection_reasons', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	text: text('text').notNull().unique(),
+	active: integer('active', { mode: 'boolean' }).notNull().default(true),
+	createdAt: text('created_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text('updated_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`)
+});
 
 export const ocrJobs = sqliteTable(
 	'ocr_jobs',

@@ -1,4 +1,7 @@
 env:
+
+  # ConfigMap env
+
   - name: ALLOWED_UPLOAD_MIME
     valueFrom:
       configMapKeyRef:
@@ -189,3 +192,51 @@ env:
       configMapKeyRef:
         name: cydb-submissions-config
         key: SSO_ISSUER_URL
+
+  # Secrets
+
+  - name: ADMIN_BOOTSTRAP_EMAIL
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: ADMIN_BOOTSTRAP_EMAIL
+  - name: ADMIN_BOOTSTRAP_PASSWORD
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: ADMIN_BOOTSTRAP_PASSWORD
+  - name: BCGOV_DI_API_KEY
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: BCGOV_DI_API_KEY
+  - name: BETTER_AUTH_SECRET
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: BETTER_AUTH_SECRET
+  - name: CHEFS_API_TOKEN
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: CHEFS_API_TOKEN
+  - name: CHES_CLIENT_ID
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: CHES_CLIENT_ID
+  - name: CHES_CLIENT_SECRET
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: CHES_CLIENT_SECRET
+  - name: SSO_CLIENT_ID
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: SSO_CLIENT_ID
+  - name: SSO_CLIENT_SECRET
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: SSO_CLIENT_SECRET

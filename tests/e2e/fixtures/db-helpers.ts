@@ -118,3 +118,25 @@ export function deleteUser(id: string) {
 	db.prepare(`DELETE FROM "user" WHERE id = ?`).run(id);
 	db.close();
 }
+
+export function seedDecidableSubmission(uuid: string) {
+	const db = new Database(dbPath());
+	db.pragma('foreign_keys = ON');
+	db.prepare(
+		`INSERT OR IGNORE INTO submissions
+		 (submission_uuid, status, child_youth_first_name, child_youth_last_name, child_youth_dob, child_youth_gender,
+		  signatory_first_name, signatory_last_name, signatory_dob, signatory_gender, signatory_relationship,
+		  primary_phone, email, screening, primary_care_and_control, signature, date_signed, raw_payload)
+		 VALUES (?, 'ready for review', 'Jordan', 'Smith', '2015-06-01', 'nonBinaryPerson',
+		  'Alex', 'Smith', '1985-02-20', 'womanGirl', 'Parent',
+		  '250-555-0100', 'a@x.com', 'Yes', 1, 'data:image/png;base64,AAAA', '2026-06-01', '{}')`
+	).run(uuid);
+	db.close();
+}
+
+export function deleteSubmission(uuid: string) {
+	const db = new Database(dbPath());
+	db.pragma('foreign_keys = ON');
+	db.prepare(`DELETE FROM submissions WHERE submission_uuid = ?`).run(uuid);
+	db.close();
+}

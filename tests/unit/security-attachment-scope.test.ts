@@ -17,18 +17,19 @@ describe('canAccessAttachmentByStatus — per-status authorization (4.4)', () =>
 		}
 	});
 
-	it('cfd_worker can access intake + processing statuses, but not clinician or terminal/decided statuses', () => {
+	it('cfd_worker can access intake/processing + decided statuses, but not clinician or reviewed', () => {
 		const allowed: SubmissionStatus[] = [
 			'submitted',
 			'OCR queued',
 			'OCR Error',
 			'OCR processed',
 			'ready for review',
+			// Workers keep download access to submissions they have decided.
+			'accepted',
+			'rejected',
 			'invalid'
 		];
-		// Terminal/decided states are admin-only for attachment download (accepted/rejected
-		// follow the same rule as 'reviewed').
-		const denied: SubmissionStatus[] = ['ready for clinician', 'reviewed', 'accepted', 'rejected'];
+		const denied: SubmissionStatus[] = ['ready for clinician', 'reviewed'];
 		for (const s of allowed) {
 			expect(canAccessAttachmentByStatus(rolesOf('cfd_worker'), s)).toBe(true);
 		}

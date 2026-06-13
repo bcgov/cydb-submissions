@@ -85,4 +85,31 @@ test.describe.serial('submission decision flow', () => {
 		await expect(page.getByRole('radio', { name: /accept/i })).toBeVisible();
 		await expect(page.getByRole('radio', { name: /reject/i })).toBeVisible();
 	});
+
+	test('accept flow: cfd_worker can accept a submission (no reasons)', async ({
+		page,
+		context
+	}) => {
+		// Runs after the reset test, so the submission is 'ready for review' again.
+		await context.clearCookies();
+		await page.goto('/?bypass=worker@test');
+		await page.goto(`/submissions/${SUBMISSION_UUID}`);
+
+		await expect(page.getByRole('radio', { name: /accept/i })).toBeVisible();
+
+		// Choosing Accept shows NO reason checkboxes
+		await page.getByRole('radio', { name: /accept/i }).click();
+		await expect(page.getByRole('checkbox')).toHaveCount(0);
+
+		// Record via the confirm dialog
+		await page.getByRole('button', { name: /record decision/i }).click();
+		const dialog = page.getByRole('alertdialog');
+		await expect(dialog).toBeVisible();
+		await dialog.getByRole('button', { name: /confirm/i }).click();
+
+		// Success + Accepted badge + radios gone
+		await expect(page.getByRole('status')).toBeVisible();
+		await expect(page.getByText('Accepted', { exact: true })).toBeVisible();
+		await expect(page.getByRole('radio', { name: /accept/i })).not.toBeVisible();
+	});
 });

@@ -1,18 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { canAccessAttachmentByStatus } from '$lib/server/security/attachment-scope';
 import type { Role } from '$lib/server/auth-types';
-import type { SubmissionStatus } from '$lib/server/db/schema';
+import { SUBMISSION_STATUSES, type SubmissionStatus } from '$lib/server/db/schema';
 
-const ALL_STATUSES: SubmissionStatus[] = [
-	'submitted',
-	'OCR queued',
-	'OCR Error',
-	'OCR processed',
-	'ready for review',
-	'ready for clinician',
-	'reviewed',
-	'invalid'
-];
+// Derive from the source of truth so admin/clinician coverage stays exhaustive.
+const ALL_STATUSES: SubmissionStatus[] = [...SUBMISSION_STATUSES];
 
 function rolesOf(...rs: Role[]): Set<Role> {
 	return new Set(rs);
@@ -25,7 +17,7 @@ describe('canAccessAttachmentByStatus — per-status authorization (4.4)', () =>
 		}
 	});
 
-	it("cfd_worker can access intake + processing statuses, but not 'ready for clinician' or 'reviewed'", () => {
+	it('cfd_worker can access intake + processing statuses, but not clinician or terminal/decided statuses', () => {
 		const allowed: SubmissionStatus[] = [
 			'submitted',
 			'OCR queued',
@@ -34,7 +26,9 @@ describe('canAccessAttachmentByStatus — per-status authorization (4.4)', () =>
 			'ready for review',
 			'invalid'
 		];
-		const denied: SubmissionStatus[] = ['ready for clinician', 'reviewed'];
+		// Terminal/decided states are admin-only for attachment download (accepted/rejected
+		// follow the same rule as 'reviewed').
+		const denied: SubmissionStatus[] = ['ready for clinician', 'reviewed', 'accepted', 'rejected'];
 		for (const s of allowed) {
 			expect(canAccessAttachmentByStatus(rolesOf('cfd_worker'), s)).toBe(true);
 		}

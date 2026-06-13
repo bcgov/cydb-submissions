@@ -170,6 +170,7 @@ export const actions: Actions = {
 			'submission_decided',
 			{
 				actorUserId: locals.user!.id,
+				actorRole: [...locals.roles][0],
 				submissionUuid: params.uuid,
 				submissionId: sub.id,
 				decision: v.decision,
@@ -201,6 +202,7 @@ export const actions: Actions = {
 			'submission_decision_reset',
 			{
 				actorUserId: locals.user!.id,
+				actorRole: [...locals.roles][0],
 				submissionUuid: params.uuid,
 				submissionId: sub.id,
 				decision: sub.decision as DecisionOutcome,

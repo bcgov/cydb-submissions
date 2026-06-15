@@ -12,11 +12,13 @@ test.describe.serial('submission detail page', () => {
 		await context.clearCookies();
 		await page.goto('/?bypass=worker@test');
 		await page.goto('/submissions/sub-detail');
-		await expect(page.getByRole('heading', { name: /child \/ youth/i })).toBeVisible();
-		await expect(page.getByRole('heading', { name: /agreement signatory/i })).toBeVisible();
-		await expect(page.getByRole('heading', { name: /screening/i })).toBeVisible();
-		await expect(page.getByRole('heading', { name: /assessments/i })).toBeVisible();
-		await expect(page.getByRole('heading', { name: /signature/i })).toBeVisible();
+		// Section labels are eyebrow <p> elements after the view redesign (screening
+		// folded into "Assessment information"; "Signature" became "Declaration").
+		await expect(page.getByText('Child / youth', { exact: true })).toBeVisible();
+		await expect(page.getByText('Agreement signatory', { exact: true })).toBeVisible();
+		await expect(page.getByText('Assessment information', { exact: true })).toBeVisible();
+		await expect(page.getByText('Declaration', { exact: true })).toBeVisible();
+		// Attachments is still an <h2> heading.
 		await expect(page.getByRole('heading', { name: /attachments \(0\)/i })).toBeVisible();
 	});
 

@@ -26,11 +26,11 @@ const oneValid = (id: string) => ({
 	form: { submissionId: id },
 	childYouthsFirstName: 'Jordan',
 	childYouthsLegalLastName: 'Smith',
-	childYouthsDateOfBirth: '2015-06-01',
+	childYouthsDateOfBirth: '2015-06-01T00:00:00-07:00',
 	childYouthsGender: 'nonBinaryPerson',
 	agreementSignatorysLegalFirstName: 'Alex',
 	agreementSignatorysLegalLastName: 'Smith',
-	childYouthsDateOfBirth1: '1985-02-20',
+	childYouthsDateOfBirth1: '1985-02-20T00:00:00-07:00',
 	AgreementSigGender: 'womanGirl',
 	AgreementSigRelationship: 'Parent',
 	primaryPhoneNumber: '604-555-0100',
@@ -40,7 +40,7 @@ const oneValid = (id: string) => ({
 		{
 			AssessmentType: { name: 'Autism Diagnostic Assessment Report/ Assessment' },
 			completedBy: { name: 'BCAAN (British Columbia Autism Assessment Network)' },
-			dateOfAssessment: '2024-09-10',
+			dateOfAssessment: '2024-09-10T00:00:00-07:00',
 			AttachAssessment: [{ originalName: `report-${id}.pdf`, data: { id: `file-${id}` } }]
 		}
 	],
@@ -53,7 +53,7 @@ const oneValid = (id: string) => ({
 	},
 	signature:
 		'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC',
-	dateSigned: '2026-06-01'
+	dateSigned: '2026-06-01T00:00:00-07:00'
 });
 
 let db: ReturnType<typeof drizzle<typeof schema>>;

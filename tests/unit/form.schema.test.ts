@@ -22,7 +22,7 @@ describe('submissionSchema — screening=Yes', () => {
 		expect(r.data.editGrid![0]).toMatchObject({
 			assessmentType: 'Autism Diagnostic Assessment Report/ Assessment',
 			completedBy: 'BCAAN (British Columbia Autism Assessment Network)',
-			dateOfAssessment: '2024-09-10',
+			dateOfAssessment: '2024-09-10T00:00:00-07:00',
 			attachmentName: 'diagnosis.pdf'
 		});
 	});
@@ -42,19 +42,19 @@ describe('submissionSchema — screening=Yes', () => {
 
 	it('rejects a child DOB before 2008-03-31', () => {
 		const bad = strip(yes);
-		bad.childYouthsDateOfBirth = '2007-01-01';
+		bad.childYouthsDateOfBirth = '2007-01-01T00:00:00-07:00';
 		expect(submissionSchema.safeParse(bad).success).toBe(false);
 	});
 
 	it('rejects an assessment dated in the future', () => {
 		const bad = strip(yes);
-		bad.editGrid = [{ ...yes.editGrid[0], dateOfAssessment: '2999-01-01' }];
+		bad.editGrid = [{ ...yes.editGrid[0], dateOfAssessment: '2999-01-01T00:00:00-07:00' }];
 		expect(submissionSchema.safeParse(bad).success).toBe(false);
 	});
 
 	it('rejects a signatory under 19 at date signed', () => {
 		const bad = strip(yes);
-		bad.childYouthsDateOfBirth1 = '2010-01-01';
+		bad.childYouthsDateOfBirth1 = '2010-01-01T00:00:00-07:00';
 		expect(submissionSchema.safeParse(bad).success).toBe(false);
 	});
 });

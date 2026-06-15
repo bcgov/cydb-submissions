@@ -3,11 +3,11 @@
 	"childYouthsFirstName": "Jordan",
 	"childYouthsMiddleNameS": "Lee",
 	"childYouthsLegalLastName": "Smith",
-	"childYouthsDateOfBirth": "2015-06-01",
+	"childYouthsDateOfBirth": "2015-06-01T00:00:00-07:00",
 	"childYouthsGender": "nonBinaryPerson",
 	"agreementSignatorysLegalFirstName": "Alex",
 	"agreementSignatorysLegalLastName": "Smith",
-	"childYouthsDateOfBirth1": "1985-02-20",
+	"childYouthsDateOfBirth1": "1985-02-20T00:00:00-07:00",
 	"AgreementSigGender": "womanGirl",
 	"AgreementSigRelationship": "Parent",
 	"primaryPhoneNumber": "(250) 555-0100",
@@ -23,5 +23,5 @@
 	},
 	"PrimaryCareAndControl": { "Yes": true },
 	"signature": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC",
-	"dateSigned": "2026-06-01"
+	"dateSigned": "2026-06-01T00:00:00-07:00"
 }

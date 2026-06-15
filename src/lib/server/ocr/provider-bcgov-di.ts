@@ -16,20 +16,18 @@ export interface BcgovDiOpts {
 
 const MIME_TO_FILE_TYPE: Record<string, string> = {
 	'application/pdf': 'pdf',
-	'image/jpeg': 'jpg',
-	'image/jpg': 'jpg',
-	'image/png': 'png',
-	'image/heic': 'heic',
-	'image/heif': 'heif',
-	'image/tiff': 'tiff'
+	'image/jpeg': 'image',
+	'image/jpg': 'image',
+	'image/png': 'image',
+	'image/heic': 'image',
+	'image/heif': 'image',
+	'image/tiff': 'image'
 };
 
-function mimeToFileType(mime: string, fileName: string): string {
+function mimeToFileType(mime: string): string {
 	const mapped = MIME_TO_FILE_TYPE[mime.toLowerCase()];
 	if (mapped) return mapped;
-	const ext = path.extname(fileName).replace(/^\./, '').toLowerCase();
-	if (ext === 'jpeg') return 'jpg';
-	return ext || 'bin';
+	return 'bin';
 }
 
 export class BcgovDiProvider implements OcrProvider {
@@ -42,14 +40,15 @@ export class BcgovDiProvider implements OcrProvider {
 		this.fetch = opts.fetch ?? fetch;
 	}
 
-	async analyze(buf: Buffer, mime: string, fileName: string): Promise<OcrAnalysis> {
+	async analyze(buf: Buffer, mime: string, fileName: string, submissionId?: number, assessmentIndex?: number| null): Promise<OcrAnalysis> {
 		const headers = { 'x-api-key': this.opts.apiKey, 'content-type': 'application/json' };
 		const uploadRes = await this.fetch(`${this.opts.baseUrl}/api/upload`, {
 			method: 'POST',
 			headers,
 			body: JSON.stringify({
+				title: `${submissionId ?? '-1'}-${fileName}-${assessmentIndex ?? '-1'}`,
 				file: buf.toString('base64'),
-				file_type: mimeToFileType(mime, fileName),
+				file_type: mimeToFileType(mime),
 				original_filename: fileName,
 				workflow_slug: this.opts.workflowSlug
 			})

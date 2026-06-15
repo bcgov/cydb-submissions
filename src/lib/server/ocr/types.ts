@@ -27,5 +27,5 @@ export class OcrProviderError extends OcrError {
 export interface OcrProvider {
 	readonly modelId: string;
 	readonly apiVersion: string;
-	analyze(buf: Buffer, mimeType: string, fileName: string): Promise<OcrAnalysis>;
+	analyze(buf: Buffer, mimeType: string, fileName: string, submissionId?: number, assessmentIndex?: number | null): Promise<OcrAnalysis>;
 }

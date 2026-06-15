@@ -19,7 +19,7 @@ export class StubProvider implements OcrProvider {
 
 	constructor(private opts: StubOpts) {}
 
-	async analyze(_buf: Buffer, _mime: string, fileName: string): Promise<OcrAnalysis> {
+	async analyze(_buf: Buffer, _mime: string, fileName: string, _submissionId?: number, _assessmentIndex?: number | null): Promise<OcrAnalysis> {
 		if (this.opts.delayMs) await new Promise((r) => setTimeout(r, this.opts.delayMs));
 		if (this.opts.mode === 'stub-fail') throw new OcrProviderError('OcrProviderError');
 		if (this.opts.mode === 'stub-flaky') {

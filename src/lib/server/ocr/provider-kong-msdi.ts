@@ -25,7 +25,7 @@ export class KongMsDiProvider implements OcrProvider {
 		this.fetch = opts.fetch ?? fetch;
 	}
 
-	async analyze(buf: Buffer, mime: string, _fileName: string): Promise<OcrAnalysis> {
+	async analyze(buf: Buffer, mime: string, _fileName: string, _submissionId?: number, _assessmentIndex?: number | null): Promise<OcrAnalysis> {
 		const token = await this.opts.tokenCache.token();
 		const submitUrl = `${this.opts.baseUrl}/documentintelligence/documentModels/${this.modelId}:analyze?api-version=${this.apiVersion}`;
 		// Node's fetch accepts a Buffer at runtime; lib.dom's BodyInit is narrower

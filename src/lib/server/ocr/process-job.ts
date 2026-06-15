@@ -58,7 +58,7 @@ export async function processOneJob(opts: ProcessOpts): Promise<ProcessResult> {
 	);
 
 	try {
-		const analysis = await provider.analyze(buf, attachment.mimeType, attachment.originalFilename);
+		const analysis = await provider.analyze(buf, attachment.mimeType, attachment.originalFilename, attachment.submissionId, attachment.assessmentIndex);
 		db.transaction((tx) => {
 			tx.insert(schema.ocrResults)
 				.values({

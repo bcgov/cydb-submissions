@@ -84,7 +84,6 @@ jobs:
           openshift_server_url: ${{ secrets.OPENSHIFT_SERVER }}
           namespace: ${{ secrets.OPENSHIFT_NAMESPACE }}
           openshift_token: ${{ secrets.OPENSHIFT_SERVICE_ACCOUNT_TOKEN }}
-          insecure_skip_tls_verify: true
 
       - name: Deploy with Helm
         run: |

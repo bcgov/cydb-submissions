@@ -1,5 +1,6 @@
 import type { Logger } from 'pino';
 import { AUDIT_EVENTS, type AuditEvent, type Role } from './auth-types';
+import type { DecisionOutcome } from './decision';
 
 const KNOWN = new Set<AuditEvent>(AUDIT_EVENTS);
 
@@ -7,6 +8,8 @@ export interface AuditPayload {
 	submissionUuid?: string;
 	submissionId?: number;
 	attachmentId?: number;
+	decision?: DecisionOutcome;
+	reasonId?: number;
 	jobId?: number;
 	actorUserId?: string;
 	actorRole?: Role;

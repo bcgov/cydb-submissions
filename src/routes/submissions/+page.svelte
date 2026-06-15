@@ -59,6 +59,8 @@
 		{ value: 'exclude_invalid', label: 'All except invalid' },
 		{ value: 'all', label: 'All' },
 		{ value: 'submitted', label: 'Submitted' },
+		{ value: 'accepted', label: 'Accepted' },
+		{ value: 'rejected', label: 'Rejected' },
 		{ value: 'invalid', label: 'Invalid' }
 	];
 </script>

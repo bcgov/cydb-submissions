@@ -197,46 +197,46 @@ env:
 
   - name: ADMIN_BOOTSTRAP_EMAIL
     valueFrom:
-      configMapKeyRef:
-        name: cydb-submissions-config
+      secretKeyRef:
+        name: cydb-submissions-secrets
         key: ADMIN_BOOTSTRAP_EMAIL
   - name: ADMIN_BOOTSTRAP_PASSWORD
     valueFrom:
-      configMapKeyRef:
-        name: cydb-submissions-config
+      secretKeyRef:
+        name: cydb-submissions-secrets
         key: ADMIN_BOOTSTRAP_PASSWORD
   - name: BCGOV_DI_API_KEY
     valueFrom:
-      configMapKeyRef:
-        name: cydb-submissions-config
+      secretKeyRef:
+        name: cydb-submissions-secrets
         key: BCGOV_DI_API_KEY
   - name: BETTER_AUTH_SECRET
     valueFrom:
-      configMapKeyRef:
-        name: cydb-submissions-config
+      secretKeyRef:
+        name: cydb-submissions-secrets
         key: BETTER_AUTH_SECRET
   - name: CHEFS_API_TOKEN
     valueFrom:
-      configMapKeyRef:
-        name: cydb-submissions-config
+      secretKeyRef:
+        name: cydb-submissions-secrets
         key: CHEFS_API_TOKEN
   - name: CHES_CLIENT_ID
     valueFrom:
-      configMapKeyRef:
-        name: cydb-submissions-config
+      secretKeyRef:
+        name: cydb-submissions-secrets
         key: CHES_CLIENT_ID
   - name: CHES_CLIENT_SECRET
     valueFrom:
-      configMapKeyRef:
-        name: cydb-submissions-config
+      secretKeyRef:
+        name: cydb-submissions-secrets
         key: CHES_CLIENT_SECRET
   - name: SSO_CLIENT_ID
     valueFrom:
-      configMapKeyRef:
-        name: cydb-submissions-config
+      secretKeyRef:
+        name: cydb-submissions-secrets
         key: SSO_CLIENT_ID
   - name: SSO_CLIENT_SECRET
     valueFrom:
-      configMapKeyRef:
-        name: cydb-submissions-config
+      secretKeyRef:
+        name: cydb-submissions-secrets
         key: SSO_CLIENT_SECRET

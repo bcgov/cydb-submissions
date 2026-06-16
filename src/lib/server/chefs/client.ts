@@ -1,3 +1,4 @@
+import type { Logger } from 'pino';
 import { ChefsClientError, type ChefsConfig } from './types';
 
 export interface Deps {
@@ -86,7 +87,8 @@ export interface DownloadedFile {
 export async function downloadFile(
   cfg: ChefsConfig,
   fileId: string,
-  deps: Deps
+  deps: Deps,
+  logger: Logger
 ): Promise<DownloadedFile> {
   assertConfigured(cfg);
   const url = `${cfg.baseUrl}/app/api/v1/files/${encodeURIComponent(fileId)}`;
@@ -97,10 +99,18 @@ export async function downloadFile(
       headers: { Authorization: basicAuthHeader(cfg) }
     });
   } catch (e) {
+    logger.error(
+      { event: 'chefs_download_file_failed', message: (e as Error).message },
+      'NetworkError: not able to download file from chefs'
+    );
     throw new ChefsClientError('NetworkError', `fetch failed: ${(e as Error).message}`);
   }
   if (!res.ok) {
     const body = await safeText(res);
+    logger.error(
+      { event: 'chefs_download_file_failed', message: `HTTP ${res.status} -> ${body}` },
+      'HTTP error: not able to download file from chefs'
+    );
     throw classifyStatus(res.status, body);
   }
   const ab = await res.arrayBuffer();

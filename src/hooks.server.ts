@@ -141,7 +141,8 @@ function maybeStartChefsPoller() {
 				downloadFile(
 					getEffectiveConfig(db, env as Record<string, string | undefined>),
 					fileId,
-					{ fetch }
+					{ fetch },
+					logger
 				),
 		attachmentsDir: env.ATTACHMENTS_DIR ?? './attachments'
 	});

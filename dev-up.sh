@@ -190,7 +190,7 @@ fi
 
 # 2) Manticore image
 log "Pulling search image '$MANTICORE_IMAGE' (if not already present)…"
-podman pull "$MANTICORE_IMAGE" >/dev/null
+podman pull --policy=missing "$MANTICORE_IMAGE" >/dev/null
 ok "Have $MANTICORE_IMAGE"
 
 # 3) Pod (publishes the app + Manticore ports at the pod level)

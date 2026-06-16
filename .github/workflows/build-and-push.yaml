@@ -75,6 +75,7 @@ jobs:
           changes: |
             {
               "image.tag": "${{ inputs.environment }}"
+              "route.name": "${{ secrets.ROUTE_NAME }}"
             }
           commitChange: false
 

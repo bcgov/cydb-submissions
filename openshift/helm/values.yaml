@@ -3,3 +3,5 @@ image:
   tag: '<set by CI/CD>'
   manticore_tag: ghcr.io/bcgov/cydb-submissions-manticore:main
   pullPolicy: Always
+route:
+  name: '<set by CI/CD>'

@@ -25,7 +25,6 @@ export function leaseNextJob(db: Db, workerId: string): LeasedJob | null {
 			.orderBy(asc(schema.ocrJobs.nextAttemptAt), asc(schema.ocrJobs.id))
 			.limit(1)
 			.get();
-			console.log('leaseNextJob candidate: ', candidate);
 		if (!candidate) return null;
 
 		const updated = tx
@@ -38,7 +37,6 @@ export function leaseNextJob(db: Db, workerId: string): LeasedJob | null {
 			})
 			.where(and(eq(schema.ocrJobs.id, candidate.id), eq(schema.ocrJobs.status, 'queued')))
 			.run();
-			console.log('leaseNextJob update: ', updated);
 		if (updated.changes === 0) return null; // lost the race
 		return { id: candidate.id, attachmentId: candidate.attachmentId, attempts: candidate.attempts };
 	});

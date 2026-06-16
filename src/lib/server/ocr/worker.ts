@@ -48,11 +48,8 @@ export function startWorker(opts: WorkerOpts): WorkerHandle {
 		if (!running) return;
 		if (breaker.isTripped()) return;
 		while (inFlight < concurrency) {
-			console.log('tickOnce: inFlict is less than concurrency');
-
 			const lease = leaseNextJob(opts.db, workerId);
 			if (!lease) return;
-			console.log('tickOnce: has lease');
 			inFlight++;
 			processOneJob({
 				db: opts.db,
@@ -63,7 +60,6 @@ export function startWorker(opts: WorkerOpts): WorkerHandle {
 				onIndexed: opts.onIndexed
 			})
 				.then(async (r) => {
-					console.log('tickOnce.then: ', r);
 					if (r.outcome === 'succeeded') breaker.recordSuccess();
 					else if (r.outcome === 'failed')
 						await breaker.recordFailure({ jobId: lease.id, errorClass: r.errorClass ?? 'UnknownError' });

@@ -101,7 +101,7 @@ export async function processOneJob(opts: ProcessOpts): Promise<ProcessResult> {
 		}
 		return { outcome: 'succeeded' };
 	} catch (e) {
-		const errorClass = e instanceof OcrError ? e.errorClass : 'UnexpectedError';
+		const errorClass = e instanceof OcrError ? e.errorClass : (e as Error)?.message ?? 'UnexpectedError';
 		return finishFailure(opts, errorClass, job.attempts, attachment.submissionId);
 	}
 }

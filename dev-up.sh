@@ -221,20 +221,7 @@ wait_for_manticore
 # 5) App container — its CMD runs migrate → seed-admin → node build
 log "Starting app container '$APP_CTR'…"
 podman run -d --pod "$POD_NAME" --name "$APP_CTR" \
-  -e NODE_ENV=development \
-  -e ORIGIN="http://localhost:${APP_PORT}" \
-  -e DATABASE_URL=/data/db/local.db \
-  -e ATTACHMENTS_DIR=/data/attachments \
-  -e BETTER_AUTH_SECRET="$BETTER_AUTH_SECRET" \
-  -e ADMIN_BOOTSTRAP_EMAIL="$ADMIN_EMAIL" \
-  -e ADMIN_BOOTSTRAP_PASSWORD="$ADMIN_PASSWORD" \
-  -e DEV_AUTH_BYPASS="$DEV_AUTH_BYPASS" \
-  -e MANTICORE_URL="http://localhost:9308" \
-  -e SEARCH_RECONCILE_INTERVAL_MS=2000 \
-  -e SEARCH_RECONCILE_BATCH=50 \
-  -e OCR_WORKER_ENABLED=1 \
-  -e OCR_PROVIDER=stub \
-  -e MAIL_TRANSPORT=log \
+  --env-file .env \
   -v "${VOL_DB}:/data/db" \
   -v "${VOL_ATTACH}:/data/attachments" \
   "$APP_IMAGE" >/dev/null

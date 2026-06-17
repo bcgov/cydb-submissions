@@ -22,8 +22,6 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/src/lib/server/db/migrations ./migrations
 COPY --from=build /app/scripts ./scripts
-# Phase 3: keyword list for OCR. Edit and rebuild to change.
-COPY --from=build /app/config ./config
 # OpenShift's Restricted SCC overrides the image USER with an arbitrary high UID
 # and adds it to GID 0. Make /data/{db,attachments} and /app owned by root
 # group with group-write so the container can run as either `node` (local

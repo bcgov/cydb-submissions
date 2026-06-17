@@ -74,8 +74,7 @@ jobs:
           valueFile: 'openshift/helm/values.yaml'
           changes: |
             {
-              "image.tag": "${{ inputs.environment }}",
-              "route.name": "${{ secrets.ROUTE_NAME }}"
+              "image.tag": "${{ inputs.environment }}"
             }
           commitChange: false
 

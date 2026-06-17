@@ -3,7 +3,6 @@ kind: Route
 metadata:
   name: cydb-submissions
 spec:
-  host: "{{ .Values.route.name }}"
   to:
     kind: Service
     name: cydb-submissions

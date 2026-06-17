@@ -97,4 +97,4 @@ jobs:
         run: |
           oc rollout restart deployment \
             --namespace ${{ secrets.OPENSHIFT_NAMESPACE }} \
-            --selector=app.kubernetes.io/name=cydb-submissions
+            --selector=app=cydb-submissions

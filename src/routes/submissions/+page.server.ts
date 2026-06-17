@@ -1,13 +1,14 @@
 import type { PageServerLoad } from './$types';
-import { sql, and, eq, desc, asc, ne, count } from 'drizzle-orm';
+import { sql, eq, desc, asc, ne, count } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { submissions } from '$lib/server/db/schema';
+import { keywordHits, submissions } from '$lib/server/db/schema';
 import { parseSubmissionsQuery } from '$lib/server/sort';
 import { requireRole } from '$lib/server/roles';
 import { auditLog } from '$lib/server/audit';
 import { getSearchClient } from '$lib/server/search/instance';
 import { runSearch, buildStatusFilter } from '$lib/server/search/query';
 import { SearchQueryError } from '$lib/server/search/types';
+import { getCategoryMapping } from '$lib/server/ocr/keywords';
 
 export const load: PageServerLoad = async ({ url, locals }) => {
 	requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker');
@@ -83,9 +84,24 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			assessments: submissions.assessments,
 			submittedAt: submissions.createdAt,
 			status: submissions.status,
-			attachmentCount: attachmentCountExpr
+			attachmentCount: attachmentCountExpr,
+			category1: count(keywordHits.category1),
+			category2: count(keywordHits.category2),
+			category3: count(keywordHits.category3),
+			category4: count(keywordHits.category4),
+			category5: count(keywordHits.category5),
+			category6: count(keywordHits.category6),
+			category7: count(keywordHits.category7),
+			category8: count(keywordHits.category8),
+			category9: count(keywordHits.category9),
+			category10: count(keywordHits.category10),
+			category11: count(keywordHits.category11),
+			category12: count(keywordHits.category12),
+			category13: count(keywordHits.category13),
 		})
-		.from(submissions);
+		.from(submissions)
+		.leftJoin(keywordHits, eq(submissions.id, keywordHits.submissionId))
+		.groupBy(submissions.id);
 
 	const rowsQuery = filterClause
 		? baseRows
@@ -116,11 +132,14 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		locals.logger
 	);
 
+	const categoryMap = await getCategoryMapping();
+
 	return {
 		rows,
 		total,
 		query: q,
 		totalPages: Math.max(1, Math.ceil(total / q.size)),
-		searchError: null as string | null
+		searchError: null as string | null,
+		categoryMap
 	};
 };

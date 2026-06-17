@@ -246,14 +246,43 @@ export const keywordHits = sqliteTable(
 		submissionId: integer('submission_id')
 			.notNull()
 			.references(() => submissions.id, { onDelete: 'cascade' }),
+		attachmentId: integer('attachment_id')
+			.notNull()
+			.references(() => submissionAttachments.id, { onDelete: 'cascade' }),
 		keyword: text('keyword').notNull(),
 		count: integer('count').notNull(),
+		category1: integer('category1').notNull().default(0),
+		category2: integer('category2').notNull().default(0),
+		category3: integer('category3').notNull().default(0),
+		category4: integer('category4').notNull().default(0),
+		category5: integer('category5').notNull().default(0),
+		category6: integer('category6').notNull().default(0),
+		category7: integer('category7').notNull().default(0),
+		category8: integer('category8').notNull().default(0),
+		category9: integer('category9').notNull().default(0),
+		category10: integer('category10').notNull().default(0),
+		category11: integer('category11').notNull().default(0),
+		category12: integer('category12').notNull().default(0),
+		category13: integer('category13').notNull().default(0),
 		computedAt: text('computed_at')
 			.notNull()
 			.default(sql`CURRENT_TIMESTAMP`)
 	},
 	(t) => ({
-		uniqByPair: uniqueIndex('keyword_hits_submission_keyword_unique').on(t.submissionId, t.keyword)
+		uniqByPair: uniqueIndex('keyword_hits_submission_attachment_keyword_unique').on(t.submissionId, t.keyword, t.attachmentId),
+		category1_idx: index("category1_idx").on(t.category1),
+		category2_idx: index("category2_idx").on(t.category2),
+		category3_idx: index("category3_idx").on(t.category3),
+		category4_idx: index("category4_idx").on(t.category4),
+		category5_idx: index("category5_idx").on(t.category5),
+		category6_idx: index("category6_idx").on(t.category6),
+		category7_idx: index("category7_idx").on(t.category7),
+		category8_idx: index("category8_idx").on(t.category8),
+		category9_idx: index("category9_idx").on(t.category9),
+		category10_idx: index("category10_idx").on(t.category10),
+		category11_idx: index("category11_idx").on(t.category11),
+		category12_idx: index("category12_idx").on(t.category12),
+		category13_idx: index("category13_idx").on(t.category13)
 	})
 );
 

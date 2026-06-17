@@ -16,7 +16,7 @@ export interface ProcessOpts {
 	db: Db;
 	jobId: number;
 	provider: OcrProvider;
-	keywords: readonly string[];
+	keywords: Map<string, Map<string, string | string []>>;
 	logger: Logger;
 	/** Optional: push the submission to the search index after a successful OCR commit. */
 	onIndexed?: (submissionId: number) => Promise<void>;
@@ -72,14 +72,23 @@ export async function processOneJob(opts: ProcessOpts): Promise<ProcessResult> {
 				.run();
 
 			const hits = scanKeywords(analysis.rawText, keywords);
-			for (const [keyword, count] of hits) {
-				tx.insert(schema.keywordHits)
-					.values({ submissionId: attachment.submissionId, keyword, count })
-					.onConflictDoUpdate({
-						target: [schema.keywordHits.submissionId, schema.keywordHits.keyword],
-						set: { count, computedAt: sql`CURRENT_TIMESTAMP` }
-					})
-					.run();
+			for (const [category, info] of hits) {
+				for (const [keyword, count] of info) {
+					if (keyword === 'count') continue;
+					tx.insert(schema.keywordHits)
+						.values({ 
+							submissionId: attachment.submissionId, 
+							attachmentId: attachment.id, 
+							keyword, 
+							count, 
+							[category]: info.get('count') ?? 0 
+						}) 
+						.onConflictDoUpdate({
+							target: [schema.keywordHits.submissionId, schema.keywordHits.keyword, schema.keywordHits.attachmentId], 
+							set: { count, computedAt: sql`CURRENT_TIMESTAMP` }
+						})
+						.run();
+				}
 			}
 			markTerminal(tx, jobId, 'succeeded');
 			recomputeSubmissionStatus(tx, attachment.submissionId);

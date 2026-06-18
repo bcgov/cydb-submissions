@@ -69,6 +69,15 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		SELECT COALESCE( SUM("keyword_hits"."count"), 0 ) 
 		FROM keyword_hits WHERE keyword_hits.submission_id = "submissions"."id" `);
 
+	function popAndPushCategoryChunk(chunk: SQL<number>, array: SQL<number>[]): SQL<number>[] {
+		const functionArray = structuredClone(array)
+		if (functionArray.length === 2) {
+			functionArray.pop();
+		}
+		functionArray.push(chunk);
+		return functionArray;
+	}
+
 	const orderColumn =
 		q.sort === 'date'
 			? submissions.createdAt
@@ -90,19 +99,19 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			assessments: submissions.assessments,
 			submittedAt: submissions.createdAt,
 			status: submissions.status,
-			category1: sql.join(categorySqlChunks, sql`AND category1 >= 1)`),
-			category2: sql.join(categorySqlChunks, sql`AND category2 >= 1)`),
-			category3: sql.join(categorySqlChunks, sql`AND category3 >= 1)`),
-			category4: sql.join(categorySqlChunks, sql`AND category4 >= 1)`),
-			category5: sql.join(categorySqlChunks, sql`AND category5 >= 1)`),
-			category6: sql.join(categorySqlChunks, sql`AND category6 >= 1)`),
-			category7: sql.join(categorySqlChunks, sql`AND category7 >= 1)`),
-			category8: sql.join(categorySqlChunks, sql`AND category8 >= 1)`),
-			category9: sql.join(categorySqlChunks, sql`AND category9 >= 1)`),
-			category10: sql.join(categorySqlChunks, sql`AND category10 >= 1)`),
-			category11: sql.join(categorySqlChunks, sql`AND category11 >= 1)`),
-			category12: sql.join(categorySqlChunks, sql`AND category12 >= 1)`),
-			category13: sql.join(categorySqlChunks, sql`AND category13 >= 1)`),
+			category1: sql.join(popAndPushCategoryChunk(sql`AND category1 >= 1)`, categorySqlChunks)),
+			category2: sql.join(popAndPushCategoryChunk(sql`AND category2 >= 1)`, categorySqlChunks)),
+			category3: sql.join(popAndPushCategoryChunk(sql`AND category3 >= 1)`, categorySqlChunks)),
+			category4: sql.join(popAndPushCategoryChunk(sql`AND category4 >= 1)`, categorySqlChunks)),
+			category5: sql.join(popAndPushCategoryChunk(sql`AND category5 >= 1)`, categorySqlChunks)),
+			category6: sql.join(popAndPushCategoryChunk(sql`AND category6 >= 1)`, categorySqlChunks)),
+			category7: sql.join(popAndPushCategoryChunk(sql`AND category7 >= 1)`, categorySqlChunks)),
+			category8: sql.join(popAndPushCategoryChunk(sql`AND category8 >= 1)`, categorySqlChunks)),
+			category9: sql.join(popAndPushCategoryChunk(sql`AND category9 >= 1)`, categorySqlChunks)),
+			category10: sql.join(popAndPushCategoryChunk(sql`AND category10 >= 1)`, categorySqlChunks)),
+			category11: sql.join(popAndPushCategoryChunk(sql`AND category11 >= 1)`, categorySqlChunks)),
+			category12: sql.join(popAndPushCategoryChunk(sql`AND category12 >= 1)`, categorySqlChunks)),
+			category13: sql.join(popAndPushCategoryChunk(sql`AND category13 >= 1)`, categorySqlChunks)),
 			attachmentCount: attachmentCountExpr,
 		})
 		.from(submissions)

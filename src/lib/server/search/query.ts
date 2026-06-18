@@ -55,6 +55,7 @@ export interface SearchRow {
 	category11: number;
 	category12: number;
 	category13: number;
+	total: number;
 }
 
 export interface RunSearchResult {

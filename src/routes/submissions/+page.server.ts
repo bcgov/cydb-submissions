@@ -72,6 +72,25 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		return sqlout;
 	}
 
+	const totalExpr = sql<number>`(
+		SELECT COALESCE(SUM(
+			(CASE WHEN category1  >= 1 THEN "count" ELSE 0 END) +
+			(CASE WHEN category2  >= 1 THEN "count" ELSE 0 END) +
+			(CASE WHEN category3  >= 1 THEN "count" ELSE 0 END) +
+			(CASE WHEN category4  >= 1 THEN "count" ELSE 0 END) +
+			(CASE WHEN category5  >= 1 THEN "count" ELSE 0 END) +
+			(CASE WHEN category6  >= 1 THEN "count" ELSE 0 END) +
+			(CASE WHEN category7  >= 1 THEN "count" ELSE 0 END) +
+			(CASE WHEN category8  >= 1 THEN "count" ELSE 0 END) +
+			(CASE WHEN category9  >= 1 THEN "count" ELSE 0 END) +
+			(CASE WHEN category10 >= 1 THEN "count" ELSE 0 END) +
+			(CASE WHEN category11 >= 1 THEN "count" ELSE 0 END) +
+			(CASE WHEN category12 >= 1 THEN "count" ELSE 0 END) +
+			(CASE WHEN category13 >= 1 THEN "count" ELSE 0 END)
+		), 0)
+		FROM keyword_hits WHERE keyword_hits.submission_id = "submissions"."id"
+	)`;
+
 	const orderColumn =
 		q.sort === 'date'
 			? submissions.createdAt
@@ -79,9 +98,11 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 				? submissions.submitterSurname
 				: q.sort === 'status'
 					? submissions.status
-					: q.sort.startsWith('category')
-						? createCategorySQLStatement(q.sort.replace('category', ''))
-						: attachmentCountExpr;
+					: q.sort === 'total'
+						? totalExpr
+						: q.sort.startsWith('category')
+							? createCategorySQLStatement(q.sort.replace('category', ''))
+							: attachmentCountExpr;
 
 	const orderExpr = q.order === 'asc' ? asc(orderColumn) : desc(orderColumn);
 
@@ -108,6 +129,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			category11: createCategorySQLStatement('11'),
 			category12: createCategorySQLStatement('12'),
 			category13: createCategorySQLStatement('13'),
+			total: totalExpr,
 			attachmentCount: attachmentCountExpr,
 		})
 		.from(submissions);

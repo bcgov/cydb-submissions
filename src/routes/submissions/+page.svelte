@@ -180,6 +180,7 @@
 				<Table.Head
 					>{#if hasQuery}{data.categoryMap?.get('category13') ?? 'Undefined'}{:else}<a href={sortHref('category13')}>{data.categoryMap?.get('category13') ?? 'Undefined'}</a>{/if}</Table.Head
 				>
+				<Table.Head>Total from all categories</Table.Head>
 				<Table.Head></Table.Head>
 			</Table.Row>
 		</Table.Header>
@@ -205,6 +206,7 @@
 					<Table.Cell>{row.category11}</Table.Cell>
 					<Table.Cell>{row.category12}</Table.Cell>
 					<Table.Cell>{row.category13}</Table.Cell>
+					<Table.Cell>{row.total}</Table.Cell>
 					<Table.Cell
 						><a class="text-blue-700 underline" href="/submissions/{row.uuid}">View</a></Table.Cell
 					>

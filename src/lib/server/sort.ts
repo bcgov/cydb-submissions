@@ -17,7 +17,8 @@ export const SORT_COLUMNS = [
 	'category10',
 	'category11',
 	'category12',
-	'category13'
+	'category13',
+	'total'
 ] as const;
 export type SortColumn = (typeof SORT_COLUMNS)[number];
 export type SortOrder = 'asc' | 'desc';

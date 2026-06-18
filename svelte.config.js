@@ -16,7 +16,7 @@ const config = {
         'img-src': ['self', 'data:', 'blob:'],
         'font-src': ['self', 'data:'],
         'connect-src': ['self'],
-        'frame-ancestors': ['none'],
+        'frame-ancestors': ['self'],
         'base-uri': ['self'],
         'form-action': ['self'],
         'object-src': ['none']

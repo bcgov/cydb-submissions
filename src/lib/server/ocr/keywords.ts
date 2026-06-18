@@ -58,7 +58,7 @@ export function scanKeywords(text: string, keywordMap: Map<string, Map<string, s
 	if (!text || keywordMap.size === 0) return hits;
 	const categories = keywordMap.entries();
 	for (const [category, info] of categories) {
-		hits.set(category,new Map<string, number>().set('count', 0));
+		hits.set(category,new Map<string, number>());
 		const keywords = info.get('keywords');
 		if (keywords) {
 			for (const kw of keywords) {
@@ -66,10 +66,9 @@ export function scanKeywords(text: string, keywordMap: Map<string, Map<string, s
 				const re = new RegExp(`\\b${escapeRegex(kw)}\\b`, 'gi');
 				const matches = text.match(re);
 				const hitsCategory = hits.get(category);
-				const hitsCategoryCount = hitsCategory ? hitsCategory.get('count') ?? 0 : 0
+				const keywordHitCount = hitsCategory ? hitsCategory.get(kw) ?? 0 : 0
 				if (matches && matches.length > 0 && hitsCategory) {
-					hitsCategory.set('count', hitsCategoryCount + matches.length)
-					hitsCategory.set(kw, matches.length);
+					hitsCategory.set(kw, keywordHitCount + matches.length);
 				}
 			}
 		}

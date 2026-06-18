@@ -74,18 +74,17 @@ export async function processOneJob(opts: ProcessOpts): Promise<ProcessResult> {
 			const hits = scanKeywords(analysis.rawText, keywords);
 			for (const [category, info] of hits) {
 				for (const [keyword, count] of info) {
-					if (keyword === 'count') continue;
 					tx.insert(schema.keywordHits)
 						.values({ 
 							submissionId: attachment.submissionId, 
 							attachmentId: attachment.id, 
 							keyword, 
-							count, 
-							[category]: info.get('count') ?? 0 
+							count: count, 
+							[category]: 1
 						}) 
 						.onConflictDoUpdate({
 							target: [schema.keywordHits.submissionId, schema.keywordHits.keyword, schema.keywordHits.attachmentId], 
-							set: { count, computedAt: sql`CURRENT_TIMESTAMP` }
+							set: { count: count, computedAt: sql`CURRENT_TIMESTAMP` }
 						})
 						.run();
 				}

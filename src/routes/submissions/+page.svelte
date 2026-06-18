@@ -141,6 +141,7 @@
 				<Table.Head
 					>{#if hasQuery}Status{:else}<a href={sortHref('status')}>Status</a>{/if}</Table.Head
 				>
+				<Table.Head>{#if hasQuery}{'Total from all categories'}{:else}<a href={sortHref('total')}>{'Total from all categories'}</a>{/if}</Table.Head>
 				<Table.Head
 					>{#if hasQuery}{data.categoryMap?.get('category1') ?? 'Undefined'}{:else}<a href={sortHref('category1')}>{data.categoryMap?.get('category1') ?? 'Undefined'}</a>{/if}</Table.Head
 				>
@@ -180,7 +181,6 @@
 				<Table.Head
 					>{#if hasQuery}{data.categoryMap?.get('category13') ?? 'Undefined'}{:else}<a href={sortHref('category13')}>{data.categoryMap?.get('category13') ?? 'Undefined'}</a>{/if}</Table.Head
 				>
-				<Table.Head>Total from all categories</Table.Head>
 				<Table.Head></Table.Head>
 			</Table.Row>
 		</Table.Header>

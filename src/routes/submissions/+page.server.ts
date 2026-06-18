@@ -63,6 +63,11 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		SELECT count(*) FROM submission_attachments WHERE submission_id = "submissions"."id"
 	)`;
 
+	const categoryCountExpr = sql<number>`(
+		SELECT COALESCE( SUM("keyword_hits"."count"), 0 ) 
+		FROM keyword_hits WHERE keyword_hits.submission_id = "submissions"."id"`;
+
+
 	const orderColumn =
 		q.sort === 'date'
 			? submissions.createdAt
@@ -84,20 +89,20 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			assessments: submissions.assessments,
 			submittedAt: submissions.createdAt,
 			status: submissions.status,
+			category1: categoryCountExpr.append( sql`AND category1 >= 1)`),
+			category2: categoryCountExpr.append( sql`AND category2 >= 1)`),
+			category3: categoryCountExpr.append( sql`AND category3 >= 1)`),
+			category4: categoryCountExpr.append( sql`AND category4 >= 1)`),
+			category5: categoryCountExpr.append( sql`AND category5 >= 1)`),
+			category6: categoryCountExpr.append( sql`AND category6 >= 1)`),
+			category7: categoryCountExpr.append( sql`AND category7 >= 1)`),
+			category8: categoryCountExpr.append( sql`AND category8 >= 1)`),
+			category9: categoryCountExpr.append( sql`AND category9 >= 1)`),
+			category10: categoryCountExpr.append( sql`AND category10 >= 1)`),
+			category11: categoryCountExpr.append( sql`AND category11 >= 1)`),
+			category12: categoryCountExpr.append( sql`AND category12 >= 1)`),
+			category13: categoryCountExpr.append( sql`AND category13 >= 1)`),
 			attachmentCount: attachmentCountExpr,
-			category1: count(keywordHits.category1),
-			category2: count(keywordHits.category2),
-			category3: count(keywordHits.category3),
-			category4: count(keywordHits.category4),
-			category5: count(keywordHits.category5),
-			category6: count(keywordHits.category6),
-			category7: count(keywordHits.category7),
-			category8: count(keywordHits.category8),
-			category9: count(keywordHits.category9),
-			category10: count(keywordHits.category10),
-			category11: count(keywordHits.category11),
-			category12: count(keywordHits.category12),
-			category13: count(keywordHits.category13),
 		})
 		.from(submissions)
 		.leftJoin(keywordHits, eq(submissions.id, keywordHits.submissionId))

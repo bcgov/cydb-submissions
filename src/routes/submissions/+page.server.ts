@@ -64,10 +64,12 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	)`;
 
 	function createCategorySQLStatement(categoryNumber: string): SQL<number> {
-		return sql<number>`(
-		SELECT COALESCE( SUM("keyword_hits"."count"), 0 ) 
-		FROM keyword_hits WHERE keyword_hits.submission_id = "submissions"."id" 
-		AND category${categoryNumber} >= 1)`
+		const name = sql.raw(`category${categoryNumber}`);
+		const sqlout = sql<number>`(
+			SELECT COALESCE( SUM("keyword_hits"."count"), 0 ) 
+			FROM keyword_hits WHERE keyword_hits.submission_id = "submissions"."id" 
+			AND ${name} >= 1)`
+		return sqlout;
 	}
 
 	const orderColumn =

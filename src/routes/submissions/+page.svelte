@@ -193,6 +193,7 @@
 					<Table.Cell>{row.screening}</Table.Cell>
 					<Table.Cell>{row.assessments?.length ?? 0}</Table.Cell>
 					<Table.Cell><StatusBadge status={row.status as never} /></Table.Cell>
+					<Table.Cell>{row.total}</Table.Cell>
 					<Table.Cell>{row.category1}</Table.Cell>
 					<Table.Cell>{row.category2}</Table.Cell>
 					<Table.Cell>{row.category3}</Table.Cell>
@@ -206,7 +207,6 @@
 					<Table.Cell>{row.category11}</Table.Cell>
 					<Table.Cell>{row.category12}</Table.Cell>
 					<Table.Cell>{row.category13}</Table.Cell>
-					<Table.Cell>{row.total}</Table.Cell>
 					<Table.Cell
 						><a class="text-blue-700 underline" href="/submissions/{row.uuid}">View</a></Table.Cell
 					>

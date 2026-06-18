@@ -11,7 +11,7 @@ function isStaffPath(pathname: string): boolean {
 
 export function buildSecurityHeaders(args: BuildSecurityHeadersArgs): Record<string, string> {
 	const headers: Record<string, string> = {
-		'x-frame-options': 'DENY',
+		'x-frame-options': 'SAMEORIGIN',
 		'x-content-type-options': 'nosniff',
 		'referrer-policy': 'same-origin'
 	};

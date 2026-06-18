@@ -1,5 +1,5 @@
 import type { PageServerLoad } from './$types';
-import { sql, eq, desc, asc, ne, count } from 'drizzle-orm';
+import { sql, eq, desc, asc, ne, count, SQL } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { keywordHits, submissions } from '$lib/server/db/schema';
 import { parseSubmissionsQuery } from '$lib/server/sort';
@@ -63,9 +63,11 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		SELECT count(*) FROM submission_attachments WHERE submission_id = "submissions"."id"
 	)`;
 
-	const categoryCountExpr = sql<number>`(
+	const categorySqlChunks: SQL<number>[] = [];
+
+	categorySqlChunks.push( sql<number>`(
 		SELECT COALESCE( SUM("keyword_hits"."count"), 0 ) 
-		FROM keyword_hits WHERE keyword_hits.submission_id = "submissions"."id" `;
+		FROM keyword_hits WHERE keyword_hits.submission_id = "submissions"."id" `);
 
 	const orderColumn =
 		q.sort === 'date'
@@ -88,19 +90,19 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			assessments: submissions.assessments,
 			submittedAt: submissions.createdAt,
 			status: submissions.status,
-			category1: categoryCountExpr.append( sql`AND category1 >= 1)`),
-			category2: categoryCountExpr.append( sql`AND category2 >= 1)`),
-			category3: categoryCountExpr.append( sql`AND category3 >= 1)`),
-			category4: categoryCountExpr.append( sql`AND category4 >= 1)`),
-			category5: categoryCountExpr.append( sql`AND category5 >= 1)`),
-			category6: categoryCountExpr.append( sql`AND category6 >= 1)`),
-			category7: categoryCountExpr.append( sql`AND category7 >= 1)`),
-			category8: categoryCountExpr.append( sql`AND category8 >= 1)`),
-			category9: categoryCountExpr.append( sql`AND category9 >= 1)`),
-			category10: categoryCountExpr.append( sql`AND category10 >= 1)`),
-			category11: categoryCountExpr.append( sql`AND category11 >= 1)`),
-			category12: categoryCountExpr.append( sql`AND category12 >= 1)`),
-			category13: categoryCountExpr.append( sql`AND category13 >= 1)`),
+			category1: sql.join(categorySqlChunks, sql`AND category1 >= 1)`),
+			category2: sql.join(categorySqlChunks, sql`AND category2 >= 1)`),
+			category3: sql.join(categorySqlChunks, sql`AND category3 >= 1)`),
+			category4: sql.join(categorySqlChunks, sql`AND category4 >= 1)`),
+			category5: sql.join(categorySqlChunks, sql`AND category5 >= 1)`),
+			category6: sql.join(categorySqlChunks, sql`AND category6 >= 1)`),
+			category7: sql.join(categorySqlChunks, sql`AND category7 >= 1)`),
+			category8: sql.join(categorySqlChunks, sql`AND category8 >= 1)`),
+			category9: sql.join(categorySqlChunks, sql`AND category9 >= 1)`),
+			category10: sql.join(categorySqlChunks, sql`AND category10 >= 1)`),
+			category11: sql.join(categorySqlChunks, sql`AND category11 >= 1)`),
+			category12: sql.join(categorySqlChunks, sql`AND category12 >= 1)`),
+			category13: sql.join(categorySqlChunks, sql`AND category13 >= 1)`),
 			attachmentCount: attachmentCountExpr,
 		})
 		.from(submissions)

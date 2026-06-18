@@ -1,6 +1,24 @@
 import { SUBMISSION_STATUSES, type SubmissionStatus } from './db/schema';
 
-export const SORT_COLUMNS = ['date', 'surname', 'status', 'attachments'] as const;
+export const SORT_COLUMNS = [
+	'date',
+	'surname',
+	'status',
+	'attachments',
+	'category1',
+	'category2',
+	'category3',
+	'category4',
+	'category5',
+	'category6',
+	'category7',
+	'category8',
+	'category9',
+	'category10',
+	'category11',
+	'category12',
+	'category13'
+] as const;
 export type SortColumn = (typeof SORT_COLUMNS)[number];
 export type SortOrder = 'asc' | 'desc';
 export type StatusFilter = 'all' | 'exclude_invalid' | SubmissionStatus;

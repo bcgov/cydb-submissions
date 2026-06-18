@@ -79,7 +79,9 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 				? submissions.submitterSurname
 				: q.sort === 'status'
 					? submissions.status
-					: attachmentCountExpr;
+					: q.sort.startsWith('category')
+						? createCategorySQLStatement(q.sort.replace('category', ''))
+						: attachmentCountExpr;
 
 	const orderExpr = q.order === 'asc' ? asc(orderColumn) : desc(orderColumn);
 

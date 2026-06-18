@@ -66,9 +66,9 @@
 </script>
 
 <div class="p-6">
-	<h1 class="mb-4 text-2xl font-semibold">Submissions</h1>
+	<h1 class="mb-4 mx-auto max-w-3xl text-2xl font-semibold">Submissions</h1>
 
-	<form method="GET" class="mb-4 flex items-center gap-2">
+	<form method="GET" class="mb-4 mx-auto max-w-3xl flex items-center gap-2">
 		<input
 			type="search"
 			name="q"
@@ -102,17 +102,17 @@
 	</form>
 
 	{#if data.searchError}
-		<p class="mb-4 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">
+		<p class="mb-4 mx-auto max-w-3xl rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">
 			Invalid search query: {data.searchError}
 		</p>
 	{/if}
 	{#if hasQuery && !data.searchError}
-		<p class="mb-2 text-sm text-gray-600">
+		<p class="mb-2 mx-auto max-w-3xl text-sm text-gray-600">
 			{data.total} result{data.total === 1 ? '' : 's'} for "{data.query.q}", ranked by relevance.
 		</p>
 	{/if}
 
-	<div class="mb-4 flex flex-wrap gap-2">
+	<div class="mb-4 mx-auto max-w-3xl flex flex-wrap gap-2">
 		{#each filterOptions as opt}
 			<a
 				href={statusFilterHref(opt.value)}

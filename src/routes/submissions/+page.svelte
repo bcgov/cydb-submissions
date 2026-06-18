@@ -141,6 +141,7 @@
 				<Table.Head
 					>{#if hasQuery}Status{:else}<a href={sortHref('status')}>Status</a>{/if}</Table.Head
 				>
+				<Table.Head></Table.Head>
 				<Table.Head
 					>{#if hasQuery}{data.categoryMap?.get('category1') ?? 'Undefined'}{:else}<a href={sortHref('category1')}>{data.categoryMap?.get('category1') ?? 'Undefined'}</a>{/if}</Table.Head
 				>
@@ -194,6 +195,19 @@
 					<Table.Cell
 						><a class="text-blue-700 underline" href="/submissions/{row.uuid}">View</a></Table.Cell
 					>
+					<Table.Cell>{row.category1}</Table.Cell>
+					<Table.Cell>{row.category2}</Table.Cell>
+					<Table.Cell>{row.category3}</Table.Cell>
+					<Table.Cell>{row.category4}</Table.Cell>
+					<Table.Cell>{row.category5}</Table.Cell>
+					<Table.Cell>{row.category6}</Table.Cell>
+					<Table.Cell>{row.category7}</Table.Cell>
+					<Table.Cell>{row.category8}</Table.Cell>
+					<Table.Cell>{row.category9}</Table.Cell>
+					<Table.Cell>{row.category10}</Table.Cell>
+					<Table.Cell>{row.category11}</Table.Cell>
+					<Table.Cell>{row.category12}</Table.Cell>
+					<Table.Cell>{row.category13}</Table.Cell>
 				</Table.Row>
 				{#if hasQuery && 'snippet' in row && row.snippet}
 					<Table.Row>

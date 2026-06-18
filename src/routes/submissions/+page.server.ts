@@ -65,8 +65,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 
 	const categoryCountExpr = sql<number>`(
 		SELECT COALESCE( SUM("keyword_hits"."count"), 0 ) 
-		FROM keyword_hits WHERE keyword_hits.submission_id = "submissions"."id"`;
-
+		FROM keyword_hits WHERE keyword_hits.submission_id = "submissions"."id" `;
 
 	const orderColumn =
 		q.sort === 'date'

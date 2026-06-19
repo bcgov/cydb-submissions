@@ -128,59 +128,26 @@
 	<Table.Root>
 		<Table.Header>
 			<Table.Row>
-				<Table.Head
-					>{#if hasQuery}Submitted{:else}<a href={sortHref('date')}>Submitted</a>{/if}</Table.Head
-				>
+				<Table.Head><a href={sortHref('date')}>Submitted</a></Table.Head>
 				<Table.Head>Child</Table.Head>
-				<Table.Head
-					>{#if hasQuery}Signatory surname{:else}<a href={sortHref('surname')}>Signatory surname</a
-						>{/if}</Table.Head
-				>
-				<Table.Head>Screening</Table.Head>
-				<Table.Head># Assessments</Table.Head>
-				<Table.Head
-					>{#if hasQuery}Status{:else}<a href={sortHref('status')}>Status</a>{/if}</Table.Head
-				>
-				<Table.Head>{#if hasQuery}{'Total from all categories'}{:else}<a href={sortHref('total')}>{'Total from all categories'}</a>{/if}</Table.Head>
-				<Table.Head
-					>{#if hasQuery}{data.categoryMap?.get('category1') ?? 'Undefined'}{:else}<a href={sortHref('category1')}>{data.categoryMap?.get('category1') ?? 'Undefined'}</a>{/if}</Table.Head
-				>
-				<Table.Head
-					>{#if hasQuery}{data.categoryMap?.get('category2') ?? 'Undefined'}{:else}<a href={sortHref('category2')}>{data.categoryMap?.get('category2') ?? 'Undefined'}</a>{/if}</Table.Head
-				>
-				<Table.Head
-					>{#if hasQuery}{data.categoryMap?.get('category3') ?? 'Undefined'}{:else}<a href={sortHref('category3')}>{data.categoryMap?.get('category3') ?? 'Undefined'}</a>{/if}</Table.Head
-				>
-				<Table.Head
-					>{#if hasQuery}{data.categoryMap?.get('category4') ?? 'Undefined'}{:else}<a href={sortHref('category4')}>{data.categoryMap?.get('category4') ?? 'Undefined'}</a>{/if}</Table.Head
-				>
-				<Table.Head
-					>{#if hasQuery}{data.categoryMap?.get('category5') ?? 'Undefined'}{:else}<a href={sortHref('category5')}>{data.categoryMap?.get('category5') ?? 'Undefined'}</a>{/if}</Table.Head
-				>
-				<Table.Head
-					>{#if hasQuery}{data.categoryMap?.get('category6') ?? 'Undefined'}{:else}<a href={sortHref('category6')}>{data.categoryMap?.get('category6') ?? 'Undefined'}</a>{/if}</Table.Head
-				>
-				<Table.Head
-					>{#if hasQuery}{data.categoryMap?.get('category7') ?? 'Undefined'}{:else}<a href={sortHref('category7')}>{data.categoryMap?.get('category7') ?? 'Undefined'}</a>{/if}</Table.Head
-				>
-				<Table.Head
-					>{#if hasQuery}{data.categoryMap?.get('category8') ?? 'Undefined'}{:else}<a href={sortHref('category8')}>{data.categoryMap?.get('category8') ?? 'Undefined'}</a>{/if}</Table.Head
-				>
-				<Table.Head
-					>{#if hasQuery}{data.categoryMap?.get('category9') ?? 'Undefined'}{:else}<a href={sortHref('category9')}>{data.categoryMap?.get('category9') ?? 'Undefined'}</a>{/if}</Table.Head
-				>
-				<Table.Head
-					>{#if hasQuery}{data.categoryMap?.get('category10') ?? 'Undefined'}{:else}<a href={sortHref('category10')}>{data.categoryMap?.get('category10') ?? 'Undefined'}</a>{/if}</Table.Head
-				>
-				<Table.Head
-					>{#if hasQuery}{data.categoryMap?.get('category11') ?? 'Undefined'}{:else}<a href={sortHref('category11')}>{data.categoryMap?.get('category11') ?? 'Undefined'}</a>{/if}</Table.Head
-				>
-				<Table.Head
-					>{#if hasQuery}{data.categoryMap?.get('category12') ?? 'Undefined'}{:else}<a href={sortHref('category12')}>{data.categoryMap?.get('category12') ?? 'Undefined'}</a>{/if}</Table.Head
-				>
-				<Table.Head
-					>{#if hasQuery}{data.categoryMap?.get('category13') ?? 'Undefined'}{:else}<a href={sortHref('category13')}>{data.categoryMap?.get('category13') ?? 'Undefined'}</a>{/if}</Table.Head
-				>
+				<Table.Head><a href={sortHref('surname')}>Signatory surname</a></Table.Head>
+				<Table.Head><a href={sortHref('screening')}>Screening</a></Table.Head>
+				<Table.Head><a href={sortHref('assessments')}># Assessments</a></Table.Head>
+				<Table.Head><a href={sortHref('status')}>Status</a></Table.Head>
+				<Table.Head><a href={sortHref('total')}>Total from all categories</a></Table.Head>
+				<Table.Head><a href={sortHref('category1')}>{data.categoryMap?.get('category1') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a href={sortHref('category2')}>{data.categoryMap?.get('category2') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a href={sortHref('category3')}>{data.categoryMap?.get('category3') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a href={sortHref('category4')}>{data.categoryMap?.get('category4') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a href={sortHref('category5')}>{data.categoryMap?.get('category5') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a href={sortHref('category6')}>{data.categoryMap?.get('category6') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a href={sortHref('category7')}>{data.categoryMap?.get('category7') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a href={sortHref('category8')}>{data.categoryMap?.get('category8') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a href={sortHref('category9')}>{data.categoryMap?.get('category9') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a href={sortHref('category10')}>{data.categoryMap?.get('category10') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a href={sortHref('category11')}>{data.categoryMap?.get('category11') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a href={sortHref('category12')}>{data.categoryMap?.get('category12') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a href={sortHref('category13')}>{data.categoryMap?.get('category13') ?? 'Undefined'}</a></Table.Head>
 				<Table.Head></Table.Head>
 			</Table.Row>
 		</Table.Header>

@@ -33,7 +33,9 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 				limit: q.size,
 				offset: (q.page - 1) * q.size,
 				fuzzy: true,
-				fuzzyDistance: 2
+				fuzzyDistance: 2,
+				sort: q.sort,
+				order: q.order
 			});
 			return {
 				rows: result.rows,
@@ -109,18 +111,24 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		FROM keyword_hits WHERE keyword_hits.submission_id = "submissions"."id"
 	)`;
 
+	const assessmentCountExpr = sql<number>`COALESCE(json_array_length(${submissions.assessments}), 0)`;
+
 	const orderColumn =
 		q.sort === 'date'
 			? submissions.createdAt
 			: q.sort === 'surname'
 				? submissions.submitterSurname
-				: q.sort === 'status'
-					? submissions.status
-					: q.sort === 'total'
-						? totalExpr
-						: q.sort.startsWith('category')
-							? createCategorySQLStatement(q.sort.replace('category', ''))
-							: attachmentCountExpr;
+				: q.sort === 'screening'
+					? submissions.screening
+					: q.sort === 'assessments'
+						? assessmentCountExpr
+						: q.sort === 'status'
+							? submissions.status
+							: q.sort === 'total'
+								? totalExpr
+								: q.sort.startsWith('category')
+									? createCategorySQLStatement(q.sort.replace('category', ''))
+									: attachmentCountExpr;
 
 	const orderExpr = q.order === 'asc' ? asc(orderColumn) : desc(orderColumn);
 

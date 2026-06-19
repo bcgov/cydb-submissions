@@ -1,7 +1,7 @@
 import { inArray, sql } from 'drizzle-orm';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import * as schema from '../db/schema';
-import type { StatusFilter } from '../sort';
+import type { SortColumn, SortOrder, StatusFilter } from '../sort';
 import type { SearchClient } from './types';
 
 type Db = BetterSQLite3Database<typeof schema>;
@@ -27,6 +27,8 @@ export interface RunSearchOptions extends StatusEngineFilter {
 	offset: number;
 	fuzzy: boolean;
 	fuzzyDistance: number;
+	sort?: SortColumn;
+	order?: SortOrder;
 }
 
 export interface SearchRow {
@@ -83,17 +85,18 @@ export async function runSearch(
 	client: SearchClient,
 	opts: RunSearchOptions
 ): Promise<RunSearchResult> {
-	// Status is filtered at the engine (statusEquals/NotEquals) AND every row is
-	// re-hydrated from SQLite below, where its TRUE current status is read for display.
-	// A briefly-stale index status entry self-heals via the reconciler. Phase-2
-	// hardening (once reviewer status actions exist): re-apply the status predicate to
-	// the hydrated rows as defence-in-depth.
+	// When sorting by a non-relevance column, fetch all matching candidates so that
+	// pagination is applied after sorting rather than within a relevance window.
+	// Otherwise fetch just enough to fill the requested page.
+	const isSorted = opts.sort && opts.sort !== 'date';
+	const candidateCount = isSorted ? 5000 : opts.offset + opts.limit;
+
 	const searchOpts = {
 		match: opts.query,
 		statusEquals: opts.statusEquals,
 		statusNotEquals: opts.statusNotEquals,
-		limit: opts.limit,
-		offset: opts.offset,
+		limit: candidateCount,
+		offset: 0,
 		fuzzy: opts.fuzzy,
 		fuzzyDistance: opts.fuzzyDistance
 	};
@@ -110,13 +113,16 @@ export async function runSearch(
 		...invalidResult.hits.map((h) => ({ ...h, source: 'invalid' as const }))
 	].sort((a, b) => b.weight - a.weight);
 
-	const pageHits = combined.slice(opts.offset, opts.offset + opts.limit);
 	const total = regularResult.total + invalidResult.total;
 
-	if (pageHits.length === 0) return { rows: [], total };
+	// Hydrate all candidates; for relevance order paginate before hydration,
+	// for column sort paginate after sorting.
+	const hitsToHydrate = isSorted ? combined : combined.slice(opts.offset, opts.offset + opts.limit);
 
-	const regularHits = pageHits.filter((h) => h.source === 'regular');
-	const invalidHits = pageHits.filter((h) => h.source === 'invalid');
+	if (hitsToHydrate.length === 0) return { rows: [], total };
+
+	const regularHits = hitsToHydrate.filter((h) => h.source === 'regular');
+	const invalidHits = hitsToHydrate.filter((h) => h.source === 'invalid');
 
 	// "submissions"."id" MUST be a quoted literal here, not ${schema.submissions.id}.
 	// Drizzle renders the column-ref form as an unqualified "id" inside this subquery,
@@ -205,10 +211,10 @@ export async function runSearch(
 
 	const regularById = new Map(fetchedRegular.map((r) => [r.id, r]));
 	const invalidById = new Map(fetchedInvalid.map((r) => [r.id, r]));
-	const snippetById = new Map(pageHits.map((h) => [`${h.source}:${h.id}`, h.snippet]));
+	const snippetById = new Map(hitsToHydrate.map((h) => [`${h.source}:${h.id}`, h.snippet]));
 
 	const rows: SearchRow[] = [];
-	for (const hit of pageHits) {
+	for (const hit of hitsToHydrate) {
 		const snippet = snippetById.get(`${hit.source}:${hit.id}`) ?? '';
 		if (hit.source === 'regular') {
 			const r = regularById.get(hit.id);
@@ -268,5 +274,47 @@ export async function runSearch(
 			});
 		}
 	}
+	if (isSorted && opts.sort) {
+		sortRows(rows, opts.sort, opts.order ?? 'desc');
+		return { rows: rows.slice(opts.offset, opts.offset + opts.limit), total };
+	}
 	return { rows, total };
+}
+
+function sortRows(rows: SearchRow[], sort: SortColumn, order: SortOrder): void {
+	const dir = order === 'asc' ? 1 : -1;
+	rows.sort((a, b) => {
+		let av: string | number | null | undefined;
+		let bv: string | number | null | undefined;
+		switch (sort) {
+			case 'date':      av = a.submittedAt;    bv = b.submittedAt;    break;
+			case 'surname':   av = (a.surname ?? '').toLowerCase(); bv = (b.surname ?? '').toLowerCase(); break;
+			case 'screening': av = (a.screening ?? '').toLowerCase(); bv = (b.screening ?? '').toLowerCase(); break;
+			case 'assessments':
+				av = a.isInvalidSubmission
+					? (typeof a.attachmentCount === 'number' ? a.attachmentCount : -1)
+					: (a.assessments?.length ?? 0);
+				bv = b.isInvalidSubmission
+					? (typeof b.attachmentCount === 'number' ? b.attachmentCount : -1)
+					: (b.assessments?.length ?? 0);
+				break;
+			case 'status':    av = a.status;         bv = b.status;         break;
+			case 'attachments': av = typeof a.attachmentCount === 'number' ? a.attachmentCount : -1;
+			                    bv = typeof b.attachmentCount === 'number' ? b.attachmentCount : -1; break;
+			case 'total':     av = typeof a.total === 'number' ? a.total : -1;
+			                  bv = typeof b.total === 'number' ? b.total : -1; break;
+			default:
+				if (sort.startsWith('category')) {
+					const key = sort as keyof SearchRow;
+					av = typeof a[key] === 'number' ? (a[key] as number) : -1;
+					bv = typeof b[key] === 'number' ? (b[key] as number) : -1;
+				} else {
+					av = a.submittedAt; bv = b.submittedAt;
+				}
+		}
+		if (av === bv) return 0;
+		if (av == null) return dir;
+		if (bv == null) return -dir;
+		return av < bv ? -dir : dir;
+	});
 }

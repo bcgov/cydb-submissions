@@ -11,9 +11,9 @@
 
 	// Whole-row navigation (mouse enhancement; the "View" link remains the
 	// keyboard-accessible path). Don't navigate when the user is selecting text.
-	function openRow(uuid: string) {
+	function openRow(uuid: string, isInvalid = false) {
 		if (window.getSelection()?.toString()) return;
-		goto(`/submissions/${uuid}`);
+		goto(isInvalid ? `/submissions/invalid/${uuid}` : `/submissions/${uuid}`);
 	}
 
 	function sortHref(col: string) {
@@ -186,12 +186,13 @@
 		</Table.Header>
 		<Table.Body>
 			{#each data.rows as row (row.uuid)}
-				<Table.Row class="cursor-pointer hover:bg-muted/50" onclick={() => openRow(row.uuid)}>
+				{@const isInvalid = 'isInvalidSubmission' in row && row.isInvalidSubmission}
+				<Table.Row class="cursor-pointer hover:bg-muted/50" onclick={() => openRow(row.uuid, isInvalid)}>
 					<Table.Cell class="whitespace-nowrap">{formatDate(row.submittedAt)}</Table.Cell>
 					<Table.Cell>{row.childYouthFirstName} {row.childYouthLastName}</Table.Cell>
 					<Table.Cell>{row.surname ?? '—'}</Table.Cell>
 					<Table.Cell>{row.screening}</Table.Cell>
-					<Table.Cell>{row.assessments?.length ?? 0}</Table.Cell>
+					<Table.Cell>{isInvalid ? row.attachmentCount : row.assessments?.length ?? 0}</Table.Cell>
 					<Table.Cell><StatusBadge status={row.status as never} /></Table.Cell>
 					<Table.Cell>{row.total}</Table.Cell>
 					<Table.Cell>{row.category1}</Table.Cell>
@@ -207,9 +208,9 @@
 					<Table.Cell>{row.category11}</Table.Cell>
 					<Table.Cell>{row.category12}</Table.Cell>
 					<Table.Cell>{row.category13}</Table.Cell>
-					<Table.Cell
-						><a class="text-blue-700 underline" href="/submissions/{row.uuid}">View</a></Table.Cell
-					>
+					<Table.Cell>
+						<a class="text-blue-700 underline" href={isInvalid ? `/submissions/invalid/${row.uuid}` : `/submissions/${row.uuid}`}>View</a>
+					</Table.Cell>
 				</Table.Row>
 				{#if hasQuery && 'snippet' in row && row.snippet}
 					<Table.Row>

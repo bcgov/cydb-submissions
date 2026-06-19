@@ -39,7 +39,8 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 				rows: result.rows,
 				invalidRows: [] as { 
 					uuid: string; receivedAt: string; validationErrors: unknown; ipAddress: string | null;
-					childYouthFirstName: string; childYouthLastName: string; surname: string; screening: string; assessments: number;
+					childYouthFirstName: string; childYouthLastName: string; surname: string; screening: string; 
+					assessments: number; attachmentCount: number | string;
 				}[],
 				total: result.total,
 				query: q,

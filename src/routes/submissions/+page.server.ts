@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { sql, eq, desc, asc, ne, count, SQL } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { keywordHits, submissions, invalidSubmissions } from '$lib/server/db/schema';
+import { submissions, invalidSubmissions } from '$lib/server/db/schema';
 import { parseSubmissionsQuery } from '$lib/server/sort';
 import { requireRole } from '$lib/server/roles';
 import { auditLog } from '$lib/server/audit';
@@ -12,6 +12,7 @@ import { getCategoryMapping } from '$lib/server/ocr/keywords';
 
 export const load: PageServerLoad = async ({ url, locals }) => {
 	requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker');
+	const categoryMap = await getCategoryMapping();
 	const q = parseSubmissionsQuery(url);
 
 	if (q.q) {
@@ -36,21 +37,29 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			});
 			return {
 				rows: result.rows,
-				invalidRows: [] as { uuid: string; receivedAt: string; validationErrors: unknown; ipAddress: string | null }[],
+				invalidRows: [] as { 
+					uuid: string; receivedAt: string; validationErrors: unknown; ipAddress: string | null;
+					childYouthFirstName: string; childYouthLastName: string; surname: string; screening: string; assessments: number;
+				}[],
 				total: result.total,
 				query: q,
 				totalPages: Math.max(1, Math.ceil(result.total / q.size)),
-				searchError: null as string | null
+				searchError: null as string | null,
+				categoryMap
 			};
 		} catch (e) {
 			if (e instanceof SearchQueryError) {
 				return {
 					rows: [],
-					invalidRows: [] as { uuid: string; receivedAt: string; validationErrors: unknown; ipAddress: string | null }[],
+					invalidRows: [] as { 
+						uuid: string; receivedAt: string; validationErrors: unknown; ipAddress: string | null;
+						childYouthFirstName: string; childYouthLastName: string; surname: string; screening: string; assessments: number;
+					}[],
 					total: 0,
 					query: q,
 					totalPages: 1,
-					searchError: e.message
+					searchError: e.message,
+					categoryMap
 				};
 			}
 			throw e;
@@ -160,6 +169,24 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	const shouldIncludeInvalidTable =
 		q.statusFilter === 'all' || q.statusFilter === 'invalid';
 
+	function createSubFieldFromRawJsonSQLStatement(fieldPath: string): SQL<string> {
+		const rawFieldPath = sql.raw(`'$.${fieldPath}'`);
+		const sqlout = sql<string>`(CASE WHEN json_valid(raw_payload) = 1
+			THEN COALESCE(json_extract(raw_payload, ${rawFieldPath}), '—')
+			ELSE '—' END)`
+		return sqlout;
+	}
+
+	function assessmentCountRawJsonSQLStatement(): SQL<number> {
+		const rawFieldPath = sql.raw(`'$.editGrid'`);
+		const sqlout = sql<number>`(CASE WHEN json_valid(raw_payload) = 1
+		THEN COALESCE( NULLIF( json_array_length( 
+			COALESCE( json_extract(raw_payload, ${rawFieldPath}) , '[]') 
+			), 0), '—')
+		ELSE '—' END)`
+		return sqlout;
+	}
+
 	const [rows, totalRow, invalidRows] = await Promise.all([
 		rowsQuery,
 		totalQuery,
@@ -169,7 +196,12 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 						uuid: invalidSubmissions.submissionUuid,
 						receivedAt: invalidSubmissions.receivedAt,
 						validationErrors: invalidSubmissions.validationErrors,
-						ipAddress: invalidSubmissions.ipAddress
+						ipAddress: invalidSubmissions.ipAddress,
+						childYouthFirstName: createSubFieldFromRawJsonSQLStatement('childYouthsFirstName'),
+						childYouthLastName: createSubFieldFromRawJsonSQLStatement('childYouthsLastName'),
+						surname: createSubFieldFromRawJsonSQLStatement('agreementSignatorysLegalLastName'),
+						screening: createSubFieldFromRawJsonSQLStatement('screening'),
+						assessments: assessmentCountRawJsonSQLStatement()
 					})
 					.from(invalidSubmissions)
 			: Promise.resolve([])
@@ -186,8 +218,6 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		},
 		locals.logger
 	);
-
-	const categoryMap = await getCategoryMapping();
 
 	return {
 		rows,

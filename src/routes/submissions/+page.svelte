@@ -222,12 +222,12 @@
 				{/if}
 			{/each}
 			{#each data.invalidRows as row (row.uuid)}
-				<Table.Row class="hover:bg-muted/50">
+				<Table.Row class="cursor-pointer hover:bg-muted/50" onclick={() => goto(`/submissions/invalid/${row.uuid}`)}>
 					<Table.Cell class="whitespace-nowrap">{formatDate(row.receivedAt)}</Table.Cell>
-					<Table.Cell>—</Table.Cell>
-					<Table.Cell>—</Table.Cell>
-					<Table.Cell>—</Table.Cell>
-					<Table.Cell>—</Table.Cell>
+					<Table.Cell>{row.childYouthFirstName}{row.childYouthLastName === '—' && row.childYouthFirstName === '—' ? '' : ' ' + row.childYouthLastName}</Table.Cell>
+					<Table.Cell>{row.surname}</Table.Cell>
+					<Table.Cell>{row.screening}</Table.Cell>
+					<Table.Cell>{row.assessments}</Table.Cell>
 					<Table.Cell><StatusBadge status={'invalid' as never} /></Table.Cell>
 					<Table.Cell>—</Table.Cell>
 					<Table.Cell>—</Table.Cell>
@@ -243,7 +243,9 @@
 					<Table.Cell>—</Table.Cell>
 					<Table.Cell>—</Table.Cell>
 					<Table.Cell>—</Table.Cell>
-					<Table.Cell></Table.Cell>
+					<Table.Cell
+						><a class="text-blue-700 underline" href="/submissions/invalid/{row.uuid}">View</a></Table.Cell
+					>
 				</Table.Row>
 			{/each}
 			{#if data.rows.length === 0 && data.invalidRows.length === 0}

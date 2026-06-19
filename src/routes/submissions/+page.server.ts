@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { sql, eq, desc, asc, ne, count, SQL } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { keywordHits, submissions } from '$lib/server/db/schema';
+import { keywordHits, submissions, invalidSubmissions } from '$lib/server/db/schema';
 import { parseSubmissionsQuery } from '$lib/server/sort';
 import { requireRole } from '$lib/server/roles';
 import { auditLog } from '$lib/server/audit';
@@ -36,6 +36,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			});
 			return {
 				rows: result.rows,
+				invalidRows: [] as { uuid: string; receivedAt: string; validationErrors: unknown; ipAddress: string | null }[],
 				total: result.total,
 				query: q,
 				totalPages: Math.max(1, Math.ceil(result.total / q.size)),
@@ -43,7 +44,14 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			};
 		} catch (e) {
 			if (e instanceof SearchQueryError) {
-				return { rows: [], total: 0, query: q, totalPages: 1, searchError: e.message };
+				return {
+					rows: [],
+					invalidRows: [] as { uuid: string; receivedAt: string; validationErrors: unknown; ipAddress: string | null }[],
+					total: 0,
+					query: q,
+					totalPages: 1,
+					searchError: e.message
+				};
 			}
 			throw e;
 		}
@@ -149,7 +157,23 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		? db.select({ n: count() }).from(submissions).where(filterClause)
 		: db.select({ n: count() }).from(submissions);
 
-	const [rows, totalRow] = await Promise.all([rowsQuery, totalQuery]);
+	const shouldIncludeInvalidTable =
+		q.statusFilter === 'all' || q.statusFilter === 'invalid';
+
+	const [rows, totalRow, invalidRows] = await Promise.all([
+		rowsQuery,
+		totalQuery,
+		shouldIncludeInvalidTable
+			? db
+					.select({
+						uuid: invalidSubmissions.submissionUuid,
+						receivedAt: invalidSubmissions.receivedAt,
+						validationErrors: invalidSubmissions.validationErrors,
+						ipAddress: invalidSubmissions.ipAddress
+					})
+					.from(invalidSubmissions)
+			: Promise.resolve([])
+	]);
 	const total = totalRow[0]?.n ?? 0;
 
 	auditLog(
@@ -167,6 +191,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 
 	return {
 		rows,
+		invalidRows,
 		total,
 		query: q,
 		totalPages: Math.max(1, Math.ceil(total / q.size)),

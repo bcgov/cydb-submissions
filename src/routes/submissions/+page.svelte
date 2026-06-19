@@ -220,11 +220,37 @@
 						</Table.Cell>
 					</Table.Row>
 				{/if}
-			{:else}
+			{/each}
+			{#each data.invalidRows as row (row.uuid)}
+				<Table.Row class="hover:bg-muted/50">
+					<Table.Cell class="whitespace-nowrap">{formatDate(row.receivedAt)}</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell><StatusBadge status={'invalid' as never} /></Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell></Table.Cell>
+				</Table.Row>
+			{/each}
+			{#if data.rows.length === 0 && data.invalidRows.length === 0}
 				<Table.Row>
 					<Table.Cell colspan={7}>No submissions match this filter.</Table.Cell>
 				</Table.Row>
-			{/each}
+			{/if}
 		</Table.Body>
 	</Table.Root>
 

@@ -18,6 +18,7 @@ export function buildStatusFilter(statusFilter: StatusFilter): StatusEngineFilte
 	if (statusFilter === 'all') return { includeInvalidIndex: true };
 	if (statusFilter === 'exclude_invalid') return { statusNotEquals: 'invalid' };
 	if (statusFilter === 'invalid') return { statusEquals: 'invalid', includeInvalidIndex: true };
+	if (statusFilter === 'ocr_processed') return { statusEquals: 'OCR processed'};
 	return { statusEquals: statusFilter };
 }
 

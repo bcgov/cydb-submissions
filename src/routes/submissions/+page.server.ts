@@ -74,7 +74,9 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			? undefined
 			: q.statusFilter === 'exclude_invalid'
 				? ne(submissions.status, 'invalid')
-				: eq(submissions.status, q.statusFilter);
+				  : q.statusFilter === 'ocr_processed' 
+				   ? eq(submissions.status, 'OCR processed')
+					: eq(submissions.status, q.statusFilter);
 
 	// "submissions"."id" MUST be a quoted literal here, not ${submissions.id}.
 	// Drizzle renders the column-ref form as an unqualified "id" inside this subquery,
@@ -196,6 +198,16 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		return sqlout;
 	}
 
+	const invalidSortColumn =
+		q.sort === 'surname'
+			? createSubFieldFromRawJsonSQLStatement('agreementSignatorysLegalLastName')
+			: q.sort === 'screening'
+				? createSubFieldFromRawJsonSQLStatement('screening')
+				: q.sort === 'assessments'
+					? assessmentCountRawJsonSQLStatement()
+					: invalidSubmissions.receivedAt;
+	const invalidOrderExpr = q.order === 'asc' ? asc(invalidSortColumn) : desc(invalidSortColumn);
+
 	const [rows, totalRow, invalidRows] = await Promise.all([
 		rowsQuery,
 		totalQuery,
@@ -213,6 +225,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 						assessments: assessmentCountRawJsonSQLStatement()
 					})
 					.from(invalidSubmissions)
+					.orderBy(invalidOrderExpr)
 			: Promise.resolve([])
 	]);
 	const total = totalRow[0]?.n ?? 0;

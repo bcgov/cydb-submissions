@@ -304,7 +304,8 @@ export const invalidSubmissions = sqliteTable('invalid_submissions', {
 	userAgent: text('user_agent'),
 	receivedAt: text('received_at')
 		.notNull()
-		.default(sql`CURRENT_TIMESTAMP`)
+		.default(sql`CURRENT_TIMESTAMP`),
+	searchIndexedAt: text('search_indexed_at')
 });
 
 export * from './auth.schema';

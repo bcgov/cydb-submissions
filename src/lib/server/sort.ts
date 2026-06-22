@@ -3,6 +3,8 @@ import { SUBMISSION_STATUSES, type SubmissionStatus } from './db/schema';
 export const SORT_COLUMNS = [
 	'date',
 	'surname',
+	'screening',
+	'assessments',
 	'status',
 	'attachments',
 	'category1',
@@ -22,11 +24,12 @@ export const SORT_COLUMNS = [
 ] as const;
 export type SortColumn = (typeof SORT_COLUMNS)[number];
 export type SortOrder = 'asc' | 'desc';
-export type StatusFilter = 'all' | 'exclude_invalid' | SubmissionStatus;
+export type StatusFilter = 'all' | 'exclude_invalid' | 'ocr_processed' | SubmissionStatus;
 
 const STATUS_FILTER_VALUES = new Set<string>([
 	'all',
 	'exclude_invalid',
+	'ocr_processed',
 	...SUBMISSION_STATUSES
 ]);
 

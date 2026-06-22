@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { sql, eq, desc, asc, ne, count, SQL } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { keywordHits, submissions } from '$lib/server/db/schema';
+import { submissions, invalidSubmissions } from '$lib/server/db/schema';
 import { parseSubmissionsQuery } from '$lib/server/sort';
 import { requireRole } from '$lib/server/roles';
 import { auditLog } from '$lib/server/audit';
@@ -12,6 +12,7 @@ import { getCategoryMapping } from '$lib/server/ocr/keywords';
 
 export const load: PageServerLoad = async ({ url, locals }) => {
 	requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker');
+	const categoryMap = await getCategoryMapping();
 	const q = parseSubmissionsQuery(url);
 
 	if (q.q) {
@@ -32,18 +33,37 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 				limit: q.size,
 				offset: (q.page - 1) * q.size,
 				fuzzy: true,
-				fuzzyDistance: 2
+				fuzzyDistance: 2,
+				sort: q.sort,
+				order: q.order
 			});
 			return {
 				rows: result.rows,
+				invalidRows: [] as { 
+					uuid: string; receivedAt: string; validationErrors: unknown; ipAddress: string | null;
+					childYouthFirstName: string; childYouthLastName: string; surname: string; screening: string; 
+					assessments: number; attachmentCount: number | string;
+				}[],
 				total: result.total,
 				query: q,
 				totalPages: Math.max(1, Math.ceil(result.total / q.size)),
-				searchError: null as string | null
+				searchError: null as string | null,
+				categoryMap
 			};
 		} catch (e) {
 			if (e instanceof SearchQueryError) {
-				return { rows: [], total: 0, query: q, totalPages: 1, searchError: e.message };
+				return {
+					rows: [],
+					invalidRows: [] as { 
+						uuid: string; receivedAt: string; validationErrors: unknown; ipAddress: string | null;
+						childYouthFirstName: string; childYouthLastName: string; surname: string; screening: string; assessments: number;
+					}[],
+					total: 0,
+					query: q,
+					totalPages: 1,
+					searchError: e.message,
+					categoryMap
+				};
 			}
 			throw e;
 		}
@@ -54,7 +74,9 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			? undefined
 			: q.statusFilter === 'exclude_invalid'
 				? ne(submissions.status, 'invalid')
-				: eq(submissions.status, q.statusFilter);
+				  : q.statusFilter === 'ocr_processed' 
+				   ? eq(submissions.status, 'OCR processed')
+					: eq(submissions.status, q.statusFilter);
 
 	// "submissions"."id" MUST be a quoted literal here, not ${submissions.id}.
 	// Drizzle renders the column-ref form as an unqualified "id" inside this subquery,
@@ -91,18 +113,33 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		FROM keyword_hits WHERE keyword_hits.submission_id = "submissions"."id"
 	)`;
 
-	const orderColumn =
-		q.sort === 'date'
-			? submissions.createdAt
-			: q.sort === 'surname'
-				? submissions.submitterSurname
-				: q.sort === 'status'
-					? submissions.status
-					: q.sort === 'total'
-						? totalExpr
-						: q.sort.startsWith('category')
-							? createCategorySQLStatement(q.sort.replace('category', ''))
-							: attachmentCountExpr;
+	const assessmentCountExpr = sql<number>`COALESCE(json_array_length(${submissions.assessments}), 0)`;
+
+	let orderColumn;
+	switch (q.sort) {
+		case 'date':
+			orderColumn = submissions.createdAt;
+			break;
+		case 'surname':
+			orderColumn = submissions.submitterSurname;
+			break;
+		case 'screening':
+			orderColumn = submissions.screening;
+			break;
+		case 'assessments':
+			orderColumn = assessmentCountExpr;
+			break;
+		case 'status':
+			orderColumn = submissions.status;
+			break;
+		case 'total':
+			orderColumn = totalExpr;
+			break;
+		default:
+			orderColumn = q.sort.startsWith('category')
+				? createCategorySQLStatement(q.sort.replace('category', ''))
+				: attachmentCountExpr;
+	}
 
 	const orderExpr = q.order === 'asc' ? asc(orderColumn) : desc(orderColumn);
 
@@ -149,7 +186,57 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		? db.select({ n: count() }).from(submissions).where(filterClause)
 		: db.select({ n: count() }).from(submissions);
 
-	const [rows, totalRow] = await Promise.all([rowsQuery, totalQuery]);
+	const shouldIncludeInvalidTable =
+		q.statusFilter === 'all' || q.statusFilter === 'invalid';
+
+	function createSubFieldFromRawJsonSQLStatement(fieldPath: string): SQL<string> {
+		const rawFieldPath = sql.raw(`'$.${fieldPath}'`);
+		const sqlout = sql<string>`(CASE WHEN json_valid(raw_payload) = 1
+			THEN COALESCE(json_extract(raw_payload, ${rawFieldPath}), '—')
+			ELSE '—' END)`
+		return sqlout;
+	}
+
+	function assessmentCountRawJsonSQLStatement(): SQL<number> {
+		const rawFieldPath = sql.raw(`'$.editGrid'`);
+		const sqlout = sql<number>`(CASE WHEN json_valid(raw_payload) = 1
+		THEN COALESCE( NULLIF( json_array_length( 
+			COALESCE( json_extract(raw_payload, ${rawFieldPath}) , '[]') 
+			), 0), '—')
+		ELSE '—' END)`
+		return sqlout;
+	}
+
+	const invalidSortColumn =
+		q.sort === 'surname'
+			? createSubFieldFromRawJsonSQLStatement('agreementSignatorysLegalLastName')
+			: q.sort === 'screening'
+				? createSubFieldFromRawJsonSQLStatement('screening')
+				: q.sort === 'assessments'
+					? assessmentCountRawJsonSQLStatement()
+					: invalidSubmissions.receivedAt;
+	const invalidOrderExpr = q.order === 'asc' ? asc(invalidSortColumn) : desc(invalidSortColumn);
+
+	const [rows, totalRow, invalidRows] = await Promise.all([
+		rowsQuery,
+		totalQuery,
+		shouldIncludeInvalidTable
+			? db
+					.select({
+						uuid: invalidSubmissions.submissionUuid,
+						receivedAt: invalidSubmissions.receivedAt,
+						validationErrors: invalidSubmissions.validationErrors,
+						ipAddress: invalidSubmissions.ipAddress,
+						childYouthFirstName: createSubFieldFromRawJsonSQLStatement('childYouthsFirstName'),
+						childYouthLastName: createSubFieldFromRawJsonSQLStatement('childYouthsLastName'),
+						surname: createSubFieldFromRawJsonSQLStatement('agreementSignatorysLegalLastName'),
+						screening: createSubFieldFromRawJsonSQLStatement('screening'),
+						assessments: assessmentCountRawJsonSQLStatement()
+					})
+					.from(invalidSubmissions)
+					.orderBy(invalidOrderExpr)
+			: Promise.resolve([])
+	]);
 	const total = totalRow[0]?.n ?? 0;
 
 	auditLog(
@@ -163,10 +250,9 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		locals.logger
 	);
 
-	const categoryMap = await getCategoryMapping();
-
 	return {
 		rows,
+		invalidRows,
 		total,
 		query: q,
 		totalPages: Math.max(1, Math.ceil(total / q.size)),

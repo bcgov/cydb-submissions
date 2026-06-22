@@ -154,6 +154,7 @@ async function maybeStartSearch() {
 	const client = getSearchClient();
 	try {
 		await client.ensureIndex();
+		await client.ensureInvalidIndex();
 	} catch (e) {
 		logger.error({ event: 'search_index_bootstrap_failed', message: (e as Error).message }, 'could not create search index');
 	}

@@ -4,6 +4,7 @@ import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type { Logger } from 'pino';
 import * as schema from '../db/schema';
 import { indexSubmission } from './indexer';
+import { indexInvalidSubmission } from './invalid-indexer';
 import type { SearchClient } from './types';
 
 type Db = BetterSQLite3Database<typeof schema>;
@@ -30,12 +31,27 @@ export function selectDirty(db: Db, batchSize: number): number[] {
 		.map((r) => r.id);
 }
 
+/** IDs of invalid submissions not yet indexed (they are immutable once created). */
+export function selectDirtyInvalid(db: Db, batchSize: number): number[] {
+	return db
+		.select({ id: schema.invalidSubmissions.id })
+		.from(schema.invalidSubmissions)
+		.where(isNull(schema.invalidSubmissions.searchIndexedAt))
+		.limit(batchSize)
+		.all()
+		.map((r) => r.id);
+}
+
 /** Index one batch of dirty rows. Returns how many were indexed. */
 export async function reconcileOnce(db: Db, client: SearchClient, batchSize: number): Promise<number> {
 	const ids = selectDirty(db, batchSize);
+	const invalidIds = selectDirtyInvalid(db, batchSize);
 	let n = 0;
 	for (const id of ids) {
 		if (await indexSubmission(db, client, id)) n++;
+	}
+	for (const id of invalidIds) {
+		if (await indexInvalidSubmission(db, client, id)) n++;
 	}
 	return n;
 }

@@ -11,9 +11,9 @@
 
 	// Whole-row navigation (mouse enhancement; the "View" link remains the
 	// keyboard-accessible path). Don't navigate when the user is selecting text.
-	function openRow(uuid: string) {
+	function openRow(uuid: string, isInvalid = false) {
 		if (window.getSelection()?.toString()) return;
-		goto(`/submissions/${uuid}`);
+		goto(isInvalid ? `/submissions/invalid/${uuid}` : `/submissions/${uuid}`);
 	}
 
 	function sortHref(col: string) {
@@ -57,18 +57,18 @@
 
 	const filterOptions = [
 		{ value: 'exclude_invalid', label: 'All except invalid' },
-		{ value: 'all', label: 'All' },
 		{ value: 'submitted', label: 'Submitted' },
 		{ value: 'accepted', label: 'Accepted' },
 		{ value: 'rejected', label: 'Rejected' },
-		{ value: 'invalid', label: 'Invalid' }
+		{ value: 'invalid', label: 'Invalid' },
+		{ value: 'ocr_processed', label: 'OCR processed' }
 	];
 </script>
 
 <div class="p-6">
-	<h1 class="mb-4 text-2xl font-semibold">Submissions</h1>
+	<h1 class="mb-4 mx-auto max-w-3xl text-2xl font-semibold">Submissions</h1>
 
-	<form method="GET" class="mb-4 flex items-center gap-2">
+	<form method="GET" class="mb-4 mx-auto max-w-3xl flex items-center gap-2">
 		<input
 			type="search"
 			name="q"
@@ -102,17 +102,17 @@
 	</form>
 
 	{#if data.searchError}
-		<p class="mb-4 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">
+		<p class="mb-4 mx-auto max-w-3xl rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">
 			Invalid search query: {data.searchError}
 		</p>
 	{/if}
 	{#if hasQuery && !data.searchError}
-		<p class="mb-2 text-sm text-gray-600">
+		<p class="mb-2 mx-auto max-w-3xl text-sm text-gray-600">
 			{data.total} result{data.total === 1 ? '' : 's'} for "{data.query.q}", ranked by relevance.
 		</p>
 	{/if}
 
-	<div class="mb-4 flex flex-wrap gap-2">
+	<div class="mb-4 mx-auto max-w-3xl flex flex-wrap gap-2">
 		{#each filterOptions as opt}
 			<a
 				href={statusFilterHref(opt.value)}
@@ -128,34 +128,56 @@
 	<Table.Root>
 		<Table.Header>
 			<Table.Row>
-				<Table.Head
-					>{#if hasQuery}Submitted{:else}<a href={sortHref('date')}>Submitted</a>{/if}</Table.Head
-				>
+				<Table.Head><a href={sortHref('date')}>Submitted</a></Table.Head>
 				<Table.Head>Child</Table.Head>
-				<Table.Head
-					>{#if hasQuery}Signatory surname{:else}<a href={sortHref('surname')}>Signatory surname</a
-						>{/if}</Table.Head
-				>
-				<Table.Head>Screening</Table.Head>
-				<Table.Head># Assessments</Table.Head>
-				<Table.Head
-					>{#if hasQuery}Status{:else}<a href={sortHref('status')}>Status</a>{/if}</Table.Head
-				>
+				<Table.Head><a href={sortHref('surname')}>Signatory surname</a></Table.Head>
+				<Table.Head><a href={sortHref('screening')}>Screening</a></Table.Head>
+				<Table.Head><a href={sortHref('assessments')}># Assessments</a></Table.Head>
+				<Table.Head><a href={sortHref('status')}>Status</a></Table.Head>
+				<Table.Head><a href={sortHref('total')}>Total from all categories</a></Table.Head>
+				<Table.Head><a href={sortHref('category1')}>{data.categoryMap?.get('category1') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a href={sortHref('category2')}>{data.categoryMap?.get('category2') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a href={sortHref('category3')}>{data.categoryMap?.get('category3') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a href={sortHref('category4')}>{data.categoryMap?.get('category4') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a href={sortHref('category5')}>{data.categoryMap?.get('category5') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a href={sortHref('category6')}>{data.categoryMap?.get('category6') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a href={sortHref('category7')}>{data.categoryMap?.get('category7') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a href={sortHref('category8')}>{data.categoryMap?.get('category8') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a href={sortHref('category9')}>{data.categoryMap?.get('category9') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a href={sortHref('category10')}>{data.categoryMap?.get('category10') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a href={sortHref('category11')}>{data.categoryMap?.get('category11') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a href={sortHref('category12')}>{data.categoryMap?.get('category12') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a href={sortHref('category13')}>{data.categoryMap?.get('category13') ?? 'Undefined'}</a></Table.Head>
 				<Table.Head></Table.Head>
 			</Table.Row>
 		</Table.Header>
 		<Table.Body>
 			{#each data.rows as row (row.uuid)}
-				<Table.Row class="cursor-pointer hover:bg-muted/50" onclick={() => openRow(row.uuid)}>
+				{@const isInvalid = 'isInvalidSubmission' in row && row.isInvalidSubmission}
+				<Table.Row class="cursor-pointer hover:bg-muted/50" onclick={() => openRow(row.uuid, isInvalid)}>
 					<Table.Cell class="whitespace-nowrap">{formatDate(row.submittedAt)}</Table.Cell>
 					<Table.Cell>{row.childYouthFirstName} {row.childYouthLastName}</Table.Cell>
 					<Table.Cell>{row.surname ?? '—'}</Table.Cell>
 					<Table.Cell>{row.screening}</Table.Cell>
-					<Table.Cell>{row.assessments?.length ?? 0}</Table.Cell>
+					<Table.Cell>{isInvalid ? row.attachmentCount : row.assessments?.length ?? 0}</Table.Cell>
 					<Table.Cell><StatusBadge status={row.status as never} /></Table.Cell>
-					<Table.Cell
-						><a class="text-blue-700 underline" href="/submissions/{row.uuid}">View</a></Table.Cell
-					>
+					<Table.Cell>{row.total}</Table.Cell>
+					<Table.Cell>{row.category1}</Table.Cell>
+					<Table.Cell>{row.category2}</Table.Cell>
+					<Table.Cell>{row.category3}</Table.Cell>
+					<Table.Cell>{row.category4}</Table.Cell>
+					<Table.Cell>{row.category5}</Table.Cell>
+					<Table.Cell>{row.category6}</Table.Cell>
+					<Table.Cell>{row.category7}</Table.Cell>
+					<Table.Cell>{row.category8}</Table.Cell>
+					<Table.Cell>{row.category9}</Table.Cell>
+					<Table.Cell>{row.category10}</Table.Cell>
+					<Table.Cell>{row.category11}</Table.Cell>
+					<Table.Cell>{row.category12}</Table.Cell>
+					<Table.Cell>{row.category13}</Table.Cell>
+					<Table.Cell>
+						<a class="text-blue-700 underline" href={isInvalid ? `/submissions/invalid/${row.uuid}` : `/submissions/${row.uuid}`}>View</a>
+					</Table.Cell>
 				</Table.Row>
 				{#if hasQuery && 'snippet' in row && row.snippet}
 					<Table.Row>
@@ -166,11 +188,39 @@
 						</Table.Cell>
 					</Table.Row>
 				{/if}
-			{:else}
+			{/each}
+			{#each data.invalidRows as row (row.uuid)}
+				<Table.Row class="cursor-pointer hover:bg-muted/50" onclick={() => goto(`/submissions/invalid/${row.uuid}`)}>
+					<Table.Cell class="whitespace-nowrap">{formatDate(row.receivedAt)}</Table.Cell>
+					<Table.Cell>{row.childYouthFirstName}{row.childYouthLastName === '—' && row.childYouthFirstName === '—' ? '' : ' ' + row.childYouthLastName}</Table.Cell>
+					<Table.Cell>{row.surname}</Table.Cell>
+					<Table.Cell>{row.screening}</Table.Cell>
+					<Table.Cell>{row.assessments}</Table.Cell>
+					<Table.Cell><StatusBadge status={'invalid' as never} /></Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell>—</Table.Cell>
+					<Table.Cell
+						><a class="text-blue-700 underline" href="/submissions/invalid/{row.uuid}">View</a></Table.Cell
+					>
+				</Table.Row>
+			{/each}
+			{#if data.rows.length === 0 && data.invalidRows.length === 0}
 				<Table.Row>
 					<Table.Cell colspan={7}>No submissions match this filter.</Table.Cell>
 				</Table.Row>
-			{/each}
+			{/if}
 		</Table.Body>
 	</Table.Root>
 

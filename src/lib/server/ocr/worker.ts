@@ -14,7 +14,7 @@ export interface WorkerOpts {
 	db: Db;
 	provider: OcrProvider;
 	mailer: Mailer;
-	keywords: readonly string[];
+	keywords: Map<string, Map<string, string | string []>>;
 	logger: Logger;
 	breakerThreshold: number;
 	alertRecipients: string[];

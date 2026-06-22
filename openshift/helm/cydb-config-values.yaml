@@ -240,3 +240,8 @@ env:
       secretKeyRef:
         name: cydb-submissions-secrets
         key: SSO_CLIENT_SECRET
+  - name: KEYWORD_JSON
+    valueFrom:
+      secretKeyRef:
+        name: cydb-submissions-secrets
+        key: KEYWORD_JSON

@@ -1,4 +1,4 @@
-import type { SearchClient, SearchDocument, SearchInput, SearchResult } from './types';
+import type { SearchClient, SearchDocument, InvalidSearchDocument, SearchInput, SearchResult } from './types';
 
 /**
  * Test double. Naive AND-of-substrings matching over the concatenated fields.
@@ -7,8 +7,10 @@ import type { SearchClient, SearchDocument, SearchInput, SearchResult } from './
  */
 export class InMemorySearchClient implements SearchClient {
 	private docs = new Map<number, SearchDocument>();
+	private invalidDocs = new Map<number, InvalidSearchDocument>();
 
 	async ensureIndex(): Promise<void> {}
+	async ensureInvalidIndex(): Promise<void> {}
 	async ping(): Promise<boolean> { return true; }
 
 	async replaceDoc(doc: SearchDocument): Promise<void> {
@@ -17,6 +19,14 @@ export class InMemorySearchClient implements SearchClient {
 
 	async deleteDoc(id: number): Promise<void> {
 		this.docs.delete(id);
+	}
+
+	async replaceInvalidDoc(doc: InvalidSearchDocument): Promise<void> {
+		this.invalidDocs.set(doc.id, doc);
+	}
+
+	async deleteInvalidDoc(id: number): Promise<void> {
+		this.invalidDocs.delete(id);
 	}
 
 	async search(input: SearchInput): Promise<SearchResult> {
@@ -31,13 +41,26 @@ export class InMemorySearchClient implements SearchClient {
 		const page = matched.slice(input.offset, input.offset + input.limit);
 		return {
 			total: matched.length,
-			hits: page.map((d) => ({ id: d.id, weight: 1, snippet: snippetFor(d, terms) }))
+			hits: page.map((d) => ({ id: d.id, weight: 1, snippet: snippetFor(`${d.ocrText} ${d.structuredText} ${d.surname}`, terms) }))
+		};
+	}
+
+	async searchInvalid(input: SearchInput): Promise<SearchResult> {
+		const terms = input.match.toLowerCase().split(/\s+/).map((t) => t.replace(/[*"@/+-]/g, '')).filter(Boolean);
+		const matched = [...this.invalidDocs.values()].filter((d) => {
+			const hay = `${d.payloadText} ${d.errorsText} ${d.metadataText}`.toLowerCase();
+			return terms.every((t) => hay.includes(t));
+		});
+		matched.sort((a, b) => a.id - b.id);
+		const page = matched.slice(input.offset, input.offset + input.limit);
+		return {
+			total: matched.length,
+			hits: page.map((d) => ({ id: d.id, weight: 1, snippet: snippetFor(`${d.payloadText} ${d.errorsText}`, terms) }))
 		};
 	}
 }
 
-function snippetFor(d: SearchDocument, terms: string[]): string {
-	const text = `${d.ocrText} ${d.structuredText} ${d.surname}`.trim();
+function snippetFor(text: string, terms: string[]): string {
 	const lower = text.toLowerCase();
 	const at = terms.length ? lower.indexOf(terms[0]) : -1;
 	if (at < 0) return text.slice(0, 120);

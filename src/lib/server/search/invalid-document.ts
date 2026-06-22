@@ -1,5 +1,6 @@
 import type { InvalidSearchDocument } from './types';
 import { toUnixSeconds } from './document';
+import { logger } from '$lib/server/log';
 
 function flattenJson(v: unknown): string {
 	if (typeof v === 'string') return v;
@@ -23,8 +24,14 @@ export function buildInvalidSearchDocument(row: InvalidSubmissionRowForIndex): I
 	let parsedPayload: unknown = row.rawPayload;
 	try {
 		parsedPayload = JSON.parse(row.rawPayload);
-	} catch {
-		// keep as raw string
+	} catch (e) {
+		logger.error(
+			{ 
+				event: 	'invalid_submission_json_parse_failed', 
+			  	message: (e as Error).message 
+			}, 
+				'raw payload for invalid submission could not be parsed'
+		);
 	}
 
 	return {

@@ -115,22 +115,31 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 
 	const assessmentCountExpr = sql<number>`COALESCE(json_array_length(${submissions.assessments}), 0)`;
 
-	const orderColumn =
-		q.sort === 'date'
-			? submissions.createdAt
-			: q.sort === 'surname'
-				? submissions.submitterSurname
-				: q.sort === 'screening'
-					? submissions.screening
-					: q.sort === 'assessments'
-						? assessmentCountExpr
-						: q.sort === 'status'
-							? submissions.status
-							: q.sort === 'total'
-								? totalExpr
-								: q.sort.startsWith('category')
-									? createCategorySQLStatement(q.sort.replace('category', ''))
-									: attachmentCountExpr;
+	let orderColumn;
+	switch (q.sort) {
+		case 'date':
+			orderColumn = submissions.createdAt;
+			break;
+		case 'surname':
+			orderColumn = submissions.submitterSurname;
+			break;
+		case 'screening':
+			orderColumn = submissions.screening;
+			break;
+		case 'assessments':
+			orderColumn = assessmentCountExpr;
+			break;
+		case 'status':
+			orderColumn = submissions.status;
+			break;
+		case 'total':
+			orderColumn = totalExpr;
+			break;
+		default:
+			orderColumn = q.sort.startsWith('category')
+				? createCategorySQLStatement(q.sort.replace('category', ''))
+				: attachmentCountExpr;
+	}
 
 	const orderExpr = q.order === 'asc' ? asc(orderColumn) : desc(orderColumn);
 

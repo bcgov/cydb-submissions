@@ -89,8 +89,9 @@ export async function runSearch(
 	// When sorting by a non-relevance column, fetch all matching candidates so that
 	// pagination is applied after sorting rather than within a relevance window.
 	// Otherwise fetch just enough to fill the requested page.
+	const MAX_SORTED_SEARCH_COUNT = 5000;
 	const isSorted = opts.sort && opts.sort !== 'date';
-	const candidateCount = isSorted ? 5000 : opts.offset + opts.limit;
+	const candidateCount = isSorted ? MAX_SORTED_SEARCH_COUNT : opts.offset + opts.limit;
 
 	const searchOpts = {
 		match: opts.query,

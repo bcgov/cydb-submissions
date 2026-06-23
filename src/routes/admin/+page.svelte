@@ -4,8 +4,9 @@
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import { Button } from '$lib/components/ui/button';
 	import type { ActionData } from './$types';
+	import type { PageData } from './$types';
 
-	let { form }: { form: ActionData } = $props();
+	let { form, data }: { form: ActionData, data: PageData } = $props();
 
 	let seedOpen = $state(false);
 	let clearOpen = $state(false);
@@ -39,8 +40,10 @@
 
 		<div class="flex flex-wrap gap-3">
 			<Button variant="outline" onclick={() => (seedOpen = true)}>Seed mock submissions</Button>
+			{#if data?.canDelete}
 			<Button variant="destructive" onclick={() => (clearOpen = true)}>Clear all submissions</Button
 			>
+			{/if}
 		</div>
 
 		<p class="text-xs text-gray-600">

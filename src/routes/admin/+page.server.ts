@@ -8,7 +8,7 @@ import { seedMockSubmissions, clearAllSubmissions } from '$lib/server/admin-seed
 
 export const load: PageServerLoad = async ({ locals }) => {
 	requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin');
-	return {};
+	return { canDelete: env.ALLOW_ADMIN_SUBMISSION_DELETION !== '1' ? false : true};
 };
 
 function csrfOk(formCsrf: FormDataEntryValue | null, cookieCsrf: string | undefined): boolean {
@@ -45,6 +45,9 @@ export const actions: Actions = {
 
 	clear: async ({ request, locals, url, cookies }) => {
 		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin');
+		if (env.ALLOW_ADMIN_SUBMISSION_DELETION !== '1') {
+			return fail(403, { action: 'clear', error: 'cannot delete submissions in prod' });
+		}
 		const form = await request.formData();
 		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf'))) {
 			return fail(403, { action: 'clear', error: 'CSRF token mismatch' });

@@ -95,6 +95,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	chefsSyncNow: async ({ request, locals, url, cookies }) => {
 		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin');
 		const form = await request.formData();

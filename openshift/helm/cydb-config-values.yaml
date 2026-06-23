@@ -192,6 +192,11 @@ env:
       configMapKeyRef:
         name: cydb-submissions-config
         key: SSO_ISSUER_URL
+  - name: ALLOW_ADMIN_SUBMISSION_DELETION
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: ALLOW_ADMIN_SUBMISSION_DELETION
 
   # Secrets
 

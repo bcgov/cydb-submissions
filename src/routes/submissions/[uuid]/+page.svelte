@@ -349,6 +349,16 @@
 				</div>
 			</form>
 		</section>
+	{:else}
+		<section class="space-y-3 rounded border border-gray-200 bg-gray-50 px-5 py-4">
+			<h2 class="text-base font-semibold">Notes about submission</h2>
+			<textarea
+				readonly
+				rows="6"
+				value={data.submission.levelOfNeedSummary ?? ''}
+				class="w-full rounded border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-600"
+			></textarea>
+		</section>
 	{/if}
 
 	<SubmissionView data={data.submission} attachments={data.attachments} />

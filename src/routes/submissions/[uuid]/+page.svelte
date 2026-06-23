@@ -126,7 +126,7 @@
 			</p>
 		{/if}
 
-		{#if data.decision.decision === null && data.canDecide && !lockedByOther}
+		{#if data.decision.decision === null && data.canDecide && data.claimedByMe}
 			<!-- A) Decision form -->
 			<fieldset class="space-y-3">
 				<legend class="text-sm font-medium text-gray-700">Record a decision</legend>
@@ -243,7 +243,7 @@
 					</ul>
 				{/if}
 
-				{#if data.isAdmin && !lockedByOther}
+				{#if data.isAdmin && data.claimedByMe}
 					<Button variant="outline" size="sm" onclick={() => (resetDialogOpen = true)}>
 						Reset decision
 					</Button>
@@ -287,6 +287,8 @@
 			<p class="text-sm text-amber-700">
 				Editing is locked — this submission is claimed by another user.
 			</p>
+		{:else if data.canDecide}
+			<p class="text-sm text-gray-500">Claim this submission to record a decision.</p>
 		{:else}
 			<p class="text-sm text-gray-500">No decision has been recorded yet.</p>
 		{/if}

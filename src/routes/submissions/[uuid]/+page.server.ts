@@ -270,8 +270,8 @@ export const actions: Actions = {
 				.where(eq(submissionClaims.submissionId, sub.id))
 				.limit(1)
 		)[0];
-		if (claim && claim.userId !== locals.user!.id)
-			return fail(403, { action: 'decide', error: 'This submission is claimed by another user.' });
+		if (!claim || claim.userId !== locals.user!.id)
+			return fail(403, { action: 'decide', error: 'You must claim this submission before recording a decision.' });
 
 		const active = await listActiveReasons(db);
 		const v = validateDecision({ decision, reasonIds }, active);
@@ -329,8 +329,8 @@ export const actions: Actions = {
 				.where(eq(submissionClaims.submissionId, sub.id))
 				.limit(1)
 		)[0];
-		if (claim && claim.userId !== locals.user!.id)
-			return fail(403, { action: 'reset', error: 'This submission is claimed by another user.' });
+		if (!claim || claim.userId !== locals.user!.id)
+			return fail(403, { action: 'reset', error: 'You must claim this submission before resetting a decision.' });
 
 		await resetDecision(db, sub.id);
 		auditLog(

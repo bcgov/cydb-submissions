@@ -74,7 +74,8 @@ jobs:
           valueFile: 'openshift/helm/values.yaml'
           changes: |
             {
-              "image.tag": "${{ inputs.environment }}"
+              "image.tag": "${{ inputs.environment }}",
+              "aps.namespace": "${{ secrets.APS_NAMESPACE }}"
             }
           commitChange: false
 

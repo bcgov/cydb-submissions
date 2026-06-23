@@ -10,6 +10,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { formatDate } from '$lib/format-date';
+	import { beforeNavigate } from '$app/navigation';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -28,6 +29,10 @@
 	// True when a different user holds the claim — editing is locked for us
 	const lockedByOther = $derived(data.claim !== null && !data.claimedByMe);
 
+	// Notes textarea state
+	let notesValue = $derived(data.submission.levelOfNeedSummary ?? '');
+	const notesDirty = $derived(notesValue !== (data.submission.levelOfNeedSummary ?? ''));
+
 	// The decide button is disabled when:
 	// - no radio chosen
 	// - rejected is chosen but no reason is ticked
@@ -42,6 +47,12 @@
 			.filter(([, checked]) => checked)
 			.map(([id]) => Number(id))
 	);
+
+	beforeNavigate(({cancel}) => {
+		if (notesDirty && !confirm('You have unsaved changes to your notes! Discard them?')) {
+			cancel(); // Stop navigation if the user cancels
+		}
+  });
 </script>
 
 <div class="mx-auto max-w-3xl space-y-8 p-6">
@@ -109,7 +120,7 @@
 	<section class="space-y-4 rounded border border-gray-200 bg-gray-50 px-5 py-4">
 		<h2 class="text-base font-semibold">Decision</h2>
 
-		{#if form?.success && form?.action !== 'claim' && form?.action !== 'unclaim'}
+		{#if form?.success && form?.action !== 'claim' && form?.action !== 'unclaim' && form?.action !== 'saveNotes'}
 			<p
 				role="status"
 				class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800"
@@ -117,7 +128,7 @@
 				{form.success}
 			</p>
 		{/if}
-		{#if form?.error && form?.action !== 'claim' && form?.action !== 'unclaim'}
+		{#if form?.error && form?.action !== 'claim' && form?.action !== 'unclaim' && form?.action !== 'saveNotes'}
 			<p
 				role="alert"
 				class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
@@ -294,7 +305,61 @@
 		{/if}
 	</section>
 
+	{#if data.claimedByMe}
+		<section class="space-y-3 rounded border border-gray-200 bg-gray-50 px-5 py-4">
+			<h2 class="text-base font-semibold">Notes about submission</h2>
+
+			{#if form?.action === 'saveNotes' && form?.success}
+				<p
+					role="status"
+					class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800"
+				>
+					{form.success}
+				</p>
+			{/if}
+			{#if form?.action === 'saveNotes' && form?.error}
+				<p
+					role="alert"
+					class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+				>
+					{form.error}
+				</p>
+			{/if}
+
+			<form
+				method="POST"
+				action="?/saveNotes"
+				use:enhance={() =>
+					async ({ update }) => {
+						await update({ reset: false });
+					}}
+			>
+				<input type="hidden" name="csrf" value={page.data.csrfToken} />
+				<textarea
+					name="notes"
+					rows="6"
+					bind:value={notesValue}
+					class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+				></textarea>
+				<div class="mt-2 flex items-center gap-3">
+					<Button type="submit" variant="default" size="sm">Save</Button>
+					{#if notesDirty}
+						<span class="text-xs text-amber-600">Unsaved changes</span>
+					{/if}
+				</div>
+			</form>
+		</section>
+	{/if}
+
 	<SubmissionView data={data.submission} attachments={data.attachments} />
 	<AttachmentsView attachments={data.attachments} />
 	<MetadataView metadata={data.metadata} />
 </div>
+
+<svelte:window
+	onbeforeunload={(e) => {
+		if (notesDirty) {
+			e.preventDefault();
+		}
+	}}
+/>

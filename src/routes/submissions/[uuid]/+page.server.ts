@@ -347,5 +347,42 @@ export const actions: Actions = {
 			locals.logger
 		);
 		return { action: 'reset', success: 'Decision reset — submission returned to review.' };
+	},
+
+	saveNotes: async ({ request, params, locals, cookies }) => {
+		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker');
+		const form = await request.formData();
+		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
+			return fail(403, { action: 'saveNotes', error: 'CSRF token mismatch' });
+
+		const sub = (
+			await db
+				.select({ id: submissions.id })
+				.from(submissions)
+				.where(eq(submissions.submissionUuid, params.uuid))
+				.limit(1)
+		)[0];
+		if (!sub) return fail(404, { action: 'saveNotes', error: 'Submission not found.' });
+
+		const claim = (
+			await db
+				.select()
+				.from(submissionClaims)
+				.where(eq(submissionClaims.submissionId, sub.id))
+				.limit(1)
+		)[0];
+		if (!claim || claim.userId !== locals.user!.id)
+			return fail(403, {
+				action: 'saveNotes',
+				error: 'You must claim this submission before saving notes.'
+			});
+
+		const notes = form.get('notes');
+		await db
+			.update(submissions)
+			.set({ levelOfNeedSummary: notes ? String(notes) : null })
+			.where(eq(submissions.id, sub.id));
+
+		return { action: 'saveNotes', success: 'Notes saved.' };
 	}
 };

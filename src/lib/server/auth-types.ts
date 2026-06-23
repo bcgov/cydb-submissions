@@ -46,6 +46,8 @@ export const AUDIT_EVENTS = [
 	'reason_edited',
 	'reason_deactivated',
 	'reason_reactivated',
-	'invalid_submission_viewed'
+	'invalid_submission_viewed',
+	'submission_claimed',
+	'submission_unclaimed'
 ] as const;
 export type AuditEvent = (typeof AUDIT_EVENTS)[number];

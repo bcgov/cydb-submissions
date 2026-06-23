@@ -1,0 +1,1 @@
+ALTER TABLE `submissions` ADD `level_of_need_summary` text;

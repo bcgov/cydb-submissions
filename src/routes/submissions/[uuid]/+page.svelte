@@ -25,6 +25,9 @@
 	// Whether the reset dialog is open
 	let resetDialogOpen = $state(false);
 
+	// True when a different user holds the claim — editing is locked for us
+	const lockedByOther = $derived(data.claim !== null && !data.claimedByMe);
+
 	// The decide button is disabled when:
 	// - no radio chosen
 	// - rejected is chosen but no reason is ticked
@@ -42,18 +45,40 @@
 </script>
 
 <div class="mx-auto max-w-3xl space-y-8 p-6">
-	<header class="flex items-center justify-between">
-		<div>
-			<a href="/submissions" class="text-sm text-blue-700 underline">← Back to submissions</a>
-			<h1 class="mt-2 text-2xl font-semibold">Submission {data.submission.submissionUuid}</h1>
-		</div>
-		<StatusBadge status={data.submission.status as never} />
-	</header>
+	<!-- Claim banner -->
+	<div
+		class="flex items-center justify-between rounded border px-4 py-3 {lockedByOther
+			? 'border-amber-200 bg-amber-50'
+			: data.claimedByMe
+				? 'border-blue-200 bg-blue-50'
+				: 'border-gray-200 bg-gray-50'}"
+	>
+		{#if !data.claim}
+			<span class="text-sm text-gray-600">This submission is unclaimed.</span>
+			<form method="POST" action="?/claim" use:enhance>
+				<input type="hidden" name="csrf" value={page.data.csrfToken} />
+				<Button variant="default" size="sm" type="submit">Claim</Button>
+			</form>
+		{:else if data.claimedByMe}
+			<span class="text-sm text-blue-800">You have claimed this submission.</span>
+			<form method="POST" action="?/unclaim" use:enhance>
+				<input type="hidden" name="csrf" value={page.data.csrfToken} />
+				<Button variant="outline" size="sm" type="submit">Unclaim</Button>
+			</form>
+		{:else}
+			<span class="text-sm text-amber-800"
+				>Claimed by {data.claim.email ?? 'another user'} — editing is locked.</span
+			>
+			{#if data.isAdmin}
+				<form method="POST" action="?/unclaim" use:enhance>
+					<input type="hidden" name="csrf" value={page.data.csrfToken} />
+					<Button variant="outline" size="sm" type="submit">Force Unclaim</Button>
+				</form>
+			{/if}
+		{/if}
+	</div>
 
-	<!-- Decision block -->
-	<section class="space-y-4 rounded border border-gray-200 bg-gray-50 px-5 py-4">
-		<h2 class="text-base font-semibold">Decision</h2>
-
+	{#if form?.action === 'claim' || form?.action === 'unclaim'}
 		{#if form?.success}
 			<p
 				role="status"
@@ -70,8 +95,38 @@
 				{form.error}
 			</p>
 		{/if}
+	{/if}
 
-		{#if data.decision.decision === null && data.canDecide}
+	<header class="flex items-center justify-between">
+		<div>
+			<a href="/submissions" class="text-sm text-blue-700 underline">← Back to submissions</a>
+			<h1 class="mt-2 text-2xl font-semibold">Submission {data.submission.submissionUuid}</h1>
+		</div>
+		<StatusBadge status={data.submission.status as never} />
+	</header>
+
+	<!-- Decision block -->
+	<section class="space-y-4 rounded border border-gray-200 bg-gray-50 px-5 py-4">
+		<h2 class="text-base font-semibold">Decision</h2>
+
+		{#if form?.success && form?.action !== 'claim' && form?.action !== 'unclaim'}
+			<p
+				role="status"
+				class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800"
+			>
+				{form.success}
+			</p>
+		{/if}
+		{#if form?.error && form?.action !== 'claim' && form?.action !== 'unclaim'}
+			<p
+				role="alert"
+				class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+			>
+				{form.error}
+			</p>
+		{/if}
+
+		{#if data.decision.decision === null && data.canDecide && !lockedByOther}
 			<!-- A) Decision form -->
 			<fieldset class="space-y-3">
 				<legend class="text-sm font-medium text-gray-700">Record a decision</legend>
@@ -188,7 +243,7 @@
 					</ul>
 				{/if}
 
-				{#if data.isAdmin}
+				{#if data.isAdmin && !lockedByOther}
 					<Button variant="outline" size="sm" onclick={() => (resetDialogOpen = true)}>
 						Reset decision
 					</Button>
@@ -228,6 +283,10 @@
 					</AlertDialog.Root>
 				{/if}
 			</div>
+		{:else if lockedByOther}
+			<p class="text-sm text-amber-700">
+				Editing is locked — this submission is claimed by another user.
+			</p>
 		{:else}
 			<p class="text-sm text-gray-500">No decision has been recorded yet.</p>
 		{/if}

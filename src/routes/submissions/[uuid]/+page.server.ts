@@ -8,7 +8,8 @@ import {
 	submissionMetadata,
 	ocrJobs,
 	ocrResults,
-	user
+	user,
+	submissionClaims
 } from '$lib/server/db/schema';
 import { requireRole } from '$lib/server/roles';
 import { auditLog } from '$lib/server/audit';
@@ -27,9 +28,13 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 		.select()
 		.from(submissions)
 		.where(eq(submissions.submissionUuid, params.uuid))
+		.leftJoin(submissionClaims, eq(submissions.id, submissionClaims.submissionId))
 		.limit(1);
-	const submission = rows[0];
-	if (!submission) throw error(404, 'submission not found');
+	const row = rows[0];
+	if (!row) throw error(404, 'submission not found');
+
+	const submission = row.submissions;
+	const claimRow = row.submission_claims;
 
 	const decidedByEmail = submission.decidedBy
 		? ((
@@ -40,6 +45,17 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 					.limit(1)
 			)[0]?.email ?? submission.decidedBy)
 		: null;
+
+	let claimEmail: string | null = null;
+	if (claimRow) {
+		const [claimUser] = await db
+			.select({ email: user.email })
+			.from(user)
+			.where(eq(user.id, claimRow.userId))
+			.limit(1);
+		claimEmail = claimUser?.email ?? null;
+	}
+
 	const activeReasons = await listActiveReasons(db);
 
 	const [atts, metaRows] = await Promise.all([
@@ -120,11 +136,108 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 		},
 		activeReasons,
 		canDecide: locals.roles.has('admin') || locals.roles.has('cfd_worker'),
-		isAdmin: locals.roles.has('admin')
+		isAdmin: locals.roles.has('admin'),
+		claim: claimRow ? { email: claimEmail } : null,
+		claimedByMe: claimRow?.userId === locals.user?.id
 	};
 };
 
 export const actions: Actions = {
+	claim: async ({ request, params, locals, url, cookies }) => {
+		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker');
+		const form = await request.formData();
+		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
+			return fail(403, { action: 'claim', error: 'CSRF token mismatch' });
+
+		const sub = (
+			await db
+				.select({ id: submissions.id })
+				.from(submissions)
+				.where(eq(submissions.submissionUuid, params.uuid))
+				.limit(1)
+		)[0];
+		if (!sub) return fail(404, { action: 'claim', error: 'Submission not found.' });
+
+		const existing = (
+			await db
+				.select()
+				.from(submissionClaims)
+				.where(eq(submissionClaims.submissionId, sub.id))
+				.limit(1)
+		)[0];
+
+		if (existing) {
+			if (existing.userId !== locals.user!.id)
+				return fail(409, {
+					action: 'claim',
+					error: 'This submission is already claimed by another user.'
+				});
+			return { action: 'claim', success: 'Submission already claimed.' };
+		}
+
+		await db.insert(submissionClaims).values({ submissionId: sub.id, userId: locals.user!.id });
+
+		auditLog(
+			'submission_claimed',
+			{
+				actorUserId: locals.user!.id,
+				actorRole: [...locals.roles][0],
+				submissionUuid: params.uuid,
+				submissionId: sub.id,
+				route: url.pathname,
+				requestId: locals.requestId
+			},
+			locals.logger
+		);
+		return { action: 'claim', success: 'Submission claimed.' };
+	},
+
+	unclaim: async ({ request, params, locals, url, cookies }) => {
+		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker');
+		const form = await request.formData();
+		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
+			return fail(403, { action: 'unclaim', error: 'CSRF token mismatch' });
+
+		const sub = (
+			await db
+				.select({ id: submissions.id })
+				.from(submissions)
+				.where(eq(submissions.submissionUuid, params.uuid))
+				.limit(1)
+		)[0];
+		if (!sub) return fail(404, { action: 'unclaim', error: 'Submission not found.' });
+
+		const claim = (
+			await db
+				.select()
+				.from(submissionClaims)
+				.where(eq(submissionClaims.submissionId, sub.id))
+				.limit(1)
+		)[0];
+		if (!claim) return fail(400, { action: 'unclaim', error: 'Submission is not claimed.' });
+		if (claim.userId !== locals.user!.id && !locals.roles.has('admin'))
+			return fail(403, {
+				action: 'unclaim',
+				error: 'Only the claiming user or an admin can unclaim.'
+			});
+
+		await db.delete(submissionClaims).where(eq(submissionClaims.submissionId, sub.id));
+
+		auditLog(
+			'submission_unclaimed',
+			{
+				actorUserId: locals.user!.id,
+				actorRole: [...locals.roles][0],
+				submissionUuid: params.uuid,
+				submissionId: sub.id,
+				route: url.pathname,
+				requestId: locals.requestId
+			},
+			locals.logger
+		);
+		return { action: 'unclaim', success: 'Claim released.' };
+	},
+
 	decide: async ({ request, params, locals, url, cookies }) => {
 		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker');
 		const form = await request.formData();
@@ -149,6 +262,16 @@ export const actions: Actions = {
 		if (!sub) return fail(404, { action: 'decide', error: 'Submission not found.' });
 		if (sub.decision)
 			return fail(409, { action: 'decide', error: 'This submission has already been decided.' });
+
+		const claim = (
+			await db
+				.select()
+				.from(submissionClaims)
+				.where(eq(submissionClaims.submissionId, sub.id))
+				.limit(1)
+		)[0];
+		if (claim && claim.userId !== locals.user!.id)
+			return fail(403, { action: 'decide', error: 'This submission is claimed by another user.' });
 
 		const active = await listActiveReasons(db);
 		const v = validateDecision({ decision, reasonIds }, active);
@@ -188,6 +311,7 @@ export const actions: Actions = {
 		const form = await request.formData();
 		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
 			return fail(403, { action: 'reset', error: 'CSRF token mismatch' });
+
 		const sub = (
 			await db
 				.select({ id: submissions.id, decision: submissions.decision })
@@ -197,6 +321,17 @@ export const actions: Actions = {
 		)[0];
 		if (!sub) return fail(404, { action: 'reset', error: 'Submission not found.' });
 		if (!sub.decision) return fail(400, { action: 'reset', error: 'No decision to reset.' });
+
+		const claim = (
+			await db
+				.select()
+				.from(submissionClaims)
+				.where(eq(submissionClaims.submissionId, sub.id))
+				.limit(1)
+		)[0];
+		if (claim && claim.userId !== locals.user!.id)
+			return fail(403, { action: 'reset', error: 'This submission is claimed by another user.' });
+
 		await resetDecision(db, sub.id);
 		auditLog(
 			'submission_decision_reset',

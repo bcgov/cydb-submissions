@@ -11,6 +11,7 @@ import { redactForClient, getEffectiveConfig } from '$lib/server/chefs/config';
 import { listSubmissions, downloadFile } from '$lib/server/chefs/client';
 import { runOneSync } from '$lib/server/chefs/sync';
 import type { SyncResult } from '$lib/server/chefs/types';
+import { logger } from '$lib/server/log';
 
 interface OcrHaltState {
 	trippedAt: string;
@@ -104,7 +105,7 @@ export const actions: Actions = {
 		try {
 			const res = await runOneSync(db, cfg, {
 				list: (c) => listSubmissions(c, { fetch }),
-				download: (fileId) => downloadFile(cfg, fileId, { fetch }),
+				download: (fileId) => downloadFile(cfg, fileId, { fetch }, logger),
 				attachmentsDir: env.ATTACHMENTS_DIR ?? './attachments',
 				logger: locals.logger,
 				actorUserId: locals.user!.id

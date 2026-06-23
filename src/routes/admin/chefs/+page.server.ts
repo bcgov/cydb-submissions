@@ -7,6 +7,7 @@ import { auditLog } from '$lib/server/audit';
 import { getEffectiveConfig, redactForClient, saveConfig, rotateApiToken } from '$lib/server/chefs/config';
 import { listSubmissions, downloadFile } from '$lib/server/chefs/client';
 import { runOneSync } from '$lib/server/chefs/sync';
+import { logger } from '$lib/server/log';
 import { getSystemState, clearSystemState } from '$lib/server/ocr/system-state';
 import { isAllowedChefsBaseUrl } from '$lib/server/security/url-safety';
 import type { SyncResult } from '$lib/server/chefs/types';
@@ -138,6 +139,7 @@ export const actions: Actions = {
     }
   },
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   syncNow: async ({ locals, url, cookies, request }) => {
     requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin');
     const form = await request.formData();
@@ -148,7 +150,7 @@ export const actions: Actions = {
     try {
       const res = await runOneSync(db, cfg, {
         list: (c) => listSubmissions(c, { fetch }),
-        download: (fileId) => downloadFile(cfg, fileId, { fetch }),
+        download: (fileId) => downloadFile(cfg, fileId, { fetch }, logger),
         attachmentsDir: env.ATTACHMENTS_DIR ?? './attachments',
         logger: locals.logger,
         actorUserId: locals.user!.id

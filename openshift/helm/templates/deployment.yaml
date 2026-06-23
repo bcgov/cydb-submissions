@@ -46,6 +46,7 @@ spec:
       containers:
         - name: app
           image: "{{ .Values.image.tag }}"
+          imagePullPolicy: Always
           ports:
             - containerPort: 3000
           env: {{- toYaml .Values.env | nindent 12 }}

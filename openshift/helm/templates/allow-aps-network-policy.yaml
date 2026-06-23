@@ -5,7 +5,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: vpi-app
+        app: cydb-submissions
   ingress:
     - from:
         - namespaceSelector:

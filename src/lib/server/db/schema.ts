@@ -75,7 +75,8 @@ export const submissions = sqliteTable(
 		decision: text('decision'),
 		decisionReasons: text('decision_reasons', { mode: 'json' }).$type<string[]>(),
 		decidedBy: text('decided_by'),
-		decidedAt: text('decided_at')
+		decidedAt: text('decided_at'),
+		levelOfNeedSummary: text('level_of_need_summary')
 	},
 	(t) => ({
 		byStatus: index('submissions_status_idx').on(t.status),
@@ -307,5 +308,18 @@ export const invalidSubmissions = sqliteTable('invalid_submissions', {
 		.default(sql`CURRENT_TIMESTAMP`),
 	searchIndexedAt: text('search_indexed_at')
 });
+
+export const submissionClaims = sqliteTable('submission_claims', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	submissionId: integer('submission_id')
+	.notNull()
+	.references(() => submissions.id, { onDelete: 'cascade' }),
+	userId: text('user_id')
+	.notNull()
+	.references(() => user.id, { onDelete: 'cascade' }),
+	},
+	(t) => ({
+		uniqByUserRole: uniqueIndex('submission_claims_unique').on(t.userId, t.submissionId),
+}));
 
 export * from './auth.schema';

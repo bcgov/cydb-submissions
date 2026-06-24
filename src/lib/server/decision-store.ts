@@ -1,8 +1,7 @@
 import { and, eq, isNull, sql } from 'drizzle-orm';
-import { submissions } from './db/schema';
+import { ocrJobs, submissionAttachments, submissions, type SubmissionStatus } from './db/schema';
 import type { DrizzleDb } from './roles';
 import type { DecisionOutcome } from './decision';
-import { recomputeSubmissionStatus } from './ocr/status-transition';
 
 /** Write-once: only sets the decision when none exists yet (atomic via the WHERE). */
 export async function recordDecision(
@@ -24,14 +23,30 @@ export async function recordDecision(
 }
 
 export async function resetDecision(db: DrizzleDb, submissionId: number): Promise<void> {
+	const rows = db
+		.select({ status: ocrJobs.status })
+		.from(ocrJobs)
+		.innerJoin(
+			submissionAttachments,
+			eq(submissionAttachments.id, ocrJobs.attachmentId)
+		)
+		.where(eq(submissionAttachments.submissionId, submissionId))
+		.all();
+	
+	let next: SubmissionStatus;
+	if (rows.length === 0) next = 'submitted';
+	else if (rows.some((r) => r.status === 'failed' || r.status === 'abandoned')) next = 'OCR Error';
+	else if (rows.every((r) => r.status === 'succeeded')) next = 'OCR processed';
+	else next = 'OCR queued';
+
 	await db
 		.update(submissions)
 		.set({
 			decision: null,
 			decisionReasons: null,
 			decidedBy: null,
-			decidedAt: null
+			decidedAt: null,
+			status: next
 		})
 		.where(eq(submissions.id, submissionId));
-	recomputeSubmissionStatus(db, submissionId);
 }

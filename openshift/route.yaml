@@ -7,7 +7,7 @@ spec:
     kind: Service
     name: cydb-submissions
   port:
-    targetPort: http
+    targetPort: https
   tls:
     termination: edge
     insecureEdgeTerminationPolicy: Redirect

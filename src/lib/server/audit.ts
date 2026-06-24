@@ -19,6 +19,7 @@ export interface AuditPayload {
 	requestId: string;
 	reason?: string;
 	errorClass?: string;
+	newStatus?: string;
 }
 
 export function auditLog(event: AuditEvent, payload: AuditPayload, logger: Logger) {

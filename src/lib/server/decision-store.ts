@@ -2,6 +2,7 @@ import { and, eq, isNull, sql } from 'drizzle-orm';
 import { submissions } from './db/schema';
 import type { DrizzleDb } from './roles';
 import type { DecisionOutcome } from './decision';
+import { recomputeSubmissionStatus } from './ocr/status-transition';
 
 /** Write-once: only sets the decision when none exists yet (atomic via the WHERE). */
 export async function recordDecision(
@@ -29,8 +30,8 @@ export async function resetDecision(db: DrizzleDb, submissionId: number): Promis
 			decision: null,
 			decisionReasons: null,
 			decidedBy: null,
-			decidedAt: null,
-			status: 'ready for review'
+			decidedAt: null
 		})
 		.where(eq(submissions.id, submissionId));
+	recomputeSubmissionStatus(db, submissionId);
 }

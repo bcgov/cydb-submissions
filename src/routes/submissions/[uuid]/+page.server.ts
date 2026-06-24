@@ -1,5 +1,5 @@
 import type { Actions, PageServerLoad } from './$types';
-import { error, fail } from '@sveltejs/kit';
+import { error, fail, redirect } from '@sveltejs/kit';
 import { eq, inArray } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import {
@@ -452,6 +452,7 @@ export const actions: Actions = {
 			},
 			locals.logger
 		);
+		if (!locals.roles.has('admin')) redirect(303, '/submissions');
 		return { action: 'readyForClinician', success: 'Submission marked as ready for clinician.' };
 	},
 

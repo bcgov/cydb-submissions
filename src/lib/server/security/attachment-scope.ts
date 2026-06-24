@@ -1,7 +1,7 @@
 import type { Role } from '../auth-types';
 import type { SubmissionStatus } from '../db/schema';
 
-const CFD_WORKER_STATUSES = new Set<SubmissionStatus>([
+export const CFD_WORKER_STATUSES = new Set<SubmissionStatus>([
 	'submitted',
 	'OCR queued',
 	'OCR Error',
@@ -14,6 +14,8 @@ const CFD_WORKER_STATUSES = new Set<SubmissionStatus>([
 ]);
 
 const CLINICIAN_STATUSES = new Set<SubmissionStatus>(['ready for clinician']);
+
+export const WORKER_BLOCKED_STATUSES: SubmissionStatus[] = ['ready for clinician', 'reviewed'];
 
 export function canAccessAttachmentByStatus(roles: Set<Role>, status: SubmissionStatus): boolean {
 	if (roles.has('admin')) return true;

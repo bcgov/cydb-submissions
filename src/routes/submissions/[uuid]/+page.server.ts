@@ -13,6 +13,7 @@ import {
 } from '$lib/server/db/schema';
 import { requireRole } from '$lib/server/roles';
 import { auditLog } from '$lib/server/audit';
+import { CFD_WORKER_STATUSES } from '$lib/server/security/attachment-scope';
 import type { AttachmentOcr } from '$lib/types';
 import { listActiveReasons } from '$lib/server/reasons';
 import { validateDecision, type DecisionOutcome } from '$lib/server/decision';
@@ -34,6 +35,10 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 	if (!row) throw error(404, 'submission not found');
 
 	const submission = row.submissions;
+
+	if (!locals.roles.has('admin') && !CFD_WORKER_STATUSES.has(submission.status as never)) {
+		throw error(403, 'Access denied');
+	}
 	const claimRow = row.submission_claims;
 
 	const decidedByEmail = submission.decidedBy

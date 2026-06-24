@@ -25,17 +25,8 @@ const itemName = (v: unknown): string => {
 };
 
 const notFuture = (s: string) => Date.parse(s) <= Date.now();
-const yearsBetween = (dob: string, asOf: string) => {
-	const a = new Date(asOf),
-		b = new Date(dob);
-	let age = a.getUTCFullYear() - b.getUTCFullYear();
-	const m = a.getUTCMonth() - b.getUTCMonth();
-	if (m < 0 || (m === 0 && a.getUTCDate() < b.getUTCDate())) age--;
-	return age;
-};
 
 const CHILD_DOB_FLOOR = '2008-03-31';
-const SIGNATORY_MIN_AGE_YEARS = 19;
 
 const assessmentRow = z
 	.object({
@@ -48,6 +39,7 @@ const assessmentRow = z
 		assessmentType: itemName(row.AssessmentType),
 		completedBy: itemName(row.completedBy),
 		dateOfAssessment: row.dateOfAssessment,
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		attachmentName: String((row.AttachAssessment?.[0] as any)?.originalName ?? ''),
 		_hasFile: (row.AttachAssessment?.length ?? 0) > 0
 	}));
@@ -98,15 +90,6 @@ export const submissionSchema = z
 				code: 'custom',
 				path: ['childYouthsDateOfBirth1'],
 				message: 'signatory date of birth cannot be in the future'
-			});
-		else if (
-			notFuture(v.dateSigned) &&
-			yearsBetween(v.childYouthsDateOfBirth1, v.dateSigned) < SIGNATORY_MIN_AGE_YEARS
-		)
-			ctx.addIssue({
-				code: 'custom',
-				path: ['childYouthsDateOfBirth1'],
-				message: `signatory must be at least ${SIGNATORY_MIN_AGE_YEARS} years old`
 			});
 		if (!notFuture(v.dateSigned))
 			ctx.addIssue({
@@ -190,6 +173,7 @@ export const submissionSchema = z
 		}
 	})
 	// Drop the internal _hasFile flag from the output.
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	.transform((v) => ({ ...v, editGrid: v.editGrid?.map(({ _hasFile, ...row }) => row) }));
 
 export type SubmissionInput = z.infer<typeof submissionSchema>;

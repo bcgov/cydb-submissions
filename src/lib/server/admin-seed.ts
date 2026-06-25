@@ -674,9 +674,9 @@ export async function clearAllSubmissions(opts: {
 	db: DrizzleDb;
 	attachmentsDir: string;
 }): Promise<{ cleared: true }> {
+	await opts.db.run(sql`DELETE FROM submissions`);
 	await opts.db.run(sql`DELETE FROM submission_attachments`);
 	await opts.db.run(sql`DELETE FROM submission_metadata`);
-	await opts.db.run(sql`DELETE FROM submissions`);
 	await opts.db.run(sql`DELETE FROM invalid_submissions`);
 
 	if (existsSync(opts.attachmentsDir)) {

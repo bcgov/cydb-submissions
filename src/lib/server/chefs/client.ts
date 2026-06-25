@@ -91,6 +91,7 @@ export async function downloadFile(
   logger: Logger
 ): Promise<DownloadedFile> {
   assertConfigured(cfg);
+  await waitIfRateLimited();
   const url = `${cfg.baseUrl}/app/api/v1/files/${encodeURIComponent(fileId)}`;
   let res: Response;
   try {
@@ -105,6 +106,7 @@ export async function downloadFile(
     );
     throw new ChefsClientError('NetworkError', `fetch failed: ${(e as Error).message}`);
   }
+  updateRatelimitState(res.headers);
   if (!res.ok) {
     const body = await safeText(res);
     logger.error(
@@ -125,5 +127,57 @@ async function safeText(res: Response): Promise<string> {
     return await res.text();
   } catch {
     return '';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rate-limit state (shared across all downloadFile calls in this process)
+// Tracks the values from the CHEFS `ratelimit` response header.
+// Header format: "limit=120, remaining=119, reset=60"
+// ---------------------------------------------------------------------------
+
+interface RatelimitState {
+  remaining: number;
+  resetAt: number; // absolute ms timestamp after which the window resets
+  // Shared promise awaited by ALL callers blocked on the current window.
+  // Arming a single gate (rather than per-caller timers) ensures that
+  // concurrent calls cannot each independently reset `remaining`, which
+  // would be a check-then-act race across `await` boundaries.
+  gate: Promise<void>;
+}
+
+const _ratelimit: RatelimitState = {
+  remaining: Infinity,
+  resetAt: 0,
+  gate: Promise.resolve()
+};
+
+function updateRatelimitState(headers: Headers): void {
+  const header = headers.get('ratelimit');
+  if (!header) return;
+  const rem = /\bremaining=(\d+)/.exec(header);
+  const rst = /\breset=(\d+)/.exec(header);
+  if (rem) _ratelimit.remaining = parseInt(rem[1], 10);
+  if (rst) _ratelimit.resetAt = Date.now() + parseInt(rst[1], 10) * 1000;
+  // When quota is exhausted, arm exactly one shared gate for this window.
+  // All concurrent callers block on the same promise; the timeout callback
+  // resets `remaining` before resolving so that every caller sees the
+  // updated value atomically when the microtask queue drains.
+  if (_ratelimit.remaining <= 0) {
+    const delay = Math.max(0, _ratelimit.resetAt - Date.now());
+    _ratelimit.gate = new Promise<void>(resolve =>
+      setTimeout(() => {
+        _ratelimit.remaining = Infinity; // replenished until next server response
+        resolve();
+      }, delay)
+    );
+  }
+}
+
+async function waitIfRateLimited(): Promise<void> {
+  // Loop in case a fresh response re-exhausts the quota before this caller
+  // proceeds (e.g. another concurrent call lands a response first).
+  while (_ratelimit.remaining <= 0) {
+    await _ratelimit.gate;
   }
 }

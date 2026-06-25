@@ -203,7 +203,7 @@
 			<Button variant="default" disabled={decideDisabled} onclick={() => (decideDialogOpen = true)}>
 				Record decision
 			</Button>
-			{#if notesDirty}
+			{#if notesDirty && decisionChoice}
 				<p class="text-xs text-amber-600">Save your notes before recording a decision.</p>
 			{/if}
 
@@ -331,7 +331,7 @@
 				Mark for clinician review
 			</Button>
 			{#if notesDirty}
-				<p class="text-xs text-amber-600">Save your notes before sending for clincian review.</p>
+				<p class="text-xs text-amber-600">Save your notes before sending for clinician review.</p>
 			{/if}
 
 			<AlertDialog.Root

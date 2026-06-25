@@ -50,7 +50,7 @@ export async function listSubmissions(
   const url = new URL(`${cfg.baseUrl}/app/api/v1/forms/${cfg.formId}/export`);
   url.searchParams.set('format', 'json');
   url.searchParams.set('type', 'submissions');
-  if (cfg.version) url.searchParams.set('version', cfg.version);
+  if (cfg.version && cfg.version !== '0') url.searchParams.set('version', cfg.version);
   for (const [k, v] of flattenParams(cfg.apiParams)) url.searchParams.append(k, v);
 
   let res: Response;

@@ -23,6 +23,7 @@ export async function recordDecision(
 }
 
 export async function resetDecision(db: DrizzleDb, submissionId: number): Promise<void> {
+	// This is the same log used to update OCR status. It is copied in to prevent the db update from occurring twice.
 	const rows = db
 		.select({ status: ocrJobs.status })
 		.from(ocrJobs)

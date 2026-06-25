@@ -10,7 +10,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { formatDate } from '$lib/format-date';
-	import { beforeNavigate } from '$app/navigation';
+	import { beforeNavigate, goto } from '$app/navigation';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -36,8 +36,10 @@
 	// The decide button is disabled when:
 	// - no radio chosen
 	// - rejected is chosen but no reason is ticked
+	// - there are unsaved notes changes
 	const decideDisabled = $derived(
-		decisionChoice === null ||
+		notesDirty ||
+			decisionChoice === null ||
 			(decisionChoice === 'rejected' && !Object.values(selectedReasonIds).some((v) => v === true))
 	);
 
@@ -47,6 +49,15 @@
 			.filter(([, checked]) => checked)
 			.map(([id]) => Number(id))
 	);
+
+	// Whether the ready-for-clinician dialog is open
+	let readyForClinicianDialogOpen = $state(false);
+
+	// True after the ready-for-clinician action succeeds
+	let readyForClinicianSuccess = $state(false);
+
+	// Whether the reset-ready-for-clinician dialog is open
+	let resetReadyForClinicianDialogOpen = $state(false);
 
 	beforeNavigate(({cancel}) => {
 		if (notesDirty && !confirm('You have unsaved changes to your notes! Discard them?')) {
@@ -192,6 +203,9 @@
 			<Button variant="default" disabled={decideDisabled} onclick={() => (decideDialogOpen = true)}>
 				Record decision
 			</Button>
+			{#if notesDirty && decisionChoice}
+				<p class="text-xs text-amber-600">Save your notes before recording a decision.</p>
+			{/if}
 
 			<!-- Decide confirm dialog -->
 			<AlertDialog.Root
@@ -304,6 +318,141 @@
 			<p class="text-sm text-gray-500">No decision has been recorded yet.</p>
 		{/if}
 	</section>
+
+	{#if data.claimedByMe && data.submission.status !== 'ready for clinician' && !data.decision.decision}
+		<section class="space-y-4 rounded border border-gray-200 bg-gray-50 px-5 py-4">
+			<h2 class="text-base font-semibold">Send for clinician review</h2>
+
+			<p class="text-sm text-gray-600">
+				If this submission requires clinician review, press the following button.
+				Any notes you have saved will be visible to the clinician.
+			</p>
+			<Button variant="default" disabled={notesDirty} onclick={() => (readyForClinicianDialogOpen = true)}>
+				Mark for clinician review
+			</Button>
+			{#if notesDirty}
+				<p class="text-xs text-amber-600">Save your notes before sending for clinician review.</p>
+			{/if}
+
+			<AlertDialog.Root
+				open={readyForClinicianDialogOpen}
+				onOpenChange={(open) => {
+					if (!open) readyForClinicianDialogOpen = false;
+				}}
+			>
+				<AlertDialog.Content>
+					<AlertDialog.Header>
+						<AlertDialog.Title>Mark for clinician review?</AlertDialog.Title>
+						<AlertDialog.Description>
+							Once marked for clinician review, this submission will no longer be visible to
+							you. This action cannot be undone.
+						</AlertDialog.Description>
+					</AlertDialog.Header>
+					<AlertDialog.Footer>
+						<AlertDialog.Cancel onclick={() => (readyForClinicianDialogOpen = false)}>
+							Cancel
+						</AlertDialog.Cancel>
+						<form
+							method="POST"
+							action="?/readyForClinician"
+							use:enhance={() =>
+								async ({ result, update }) => {
+									await update({ reset: false });
+									if (result.type === 'success') {
+										readyForClinicianDialogOpen = false;
+										readyForClinicianSuccess = true;
+									}
+								}}
+						>
+							<input type="hidden" name="csrf" value={page.data.csrfToken} />
+							<AlertDialog.Action type="submit">Confirm</AlertDialog.Action>
+						</form>
+					</AlertDialog.Footer>
+				</AlertDialog.Content>
+			</AlertDialog.Root>
+		</section>
+	{:else if data.isAdmin && data.claimedByMe && data.submission.status === 'ready for clinician'}
+		<section class="space-y-4 rounded border border-gray-200 bg-gray-50 px-5 py-4">
+			<h2 class="text-base font-semibold">Ready for Clinician</h2>
+
+			{#if form?.action === 'resetReadyForClinician' && form?.success}
+				<p
+					role="status"
+					class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800"
+				>
+					{form.success}
+				</p>
+			{/if}
+			{#if form?.action === 'resetReadyForClinician' && form?.error}
+				<p
+					role="alert"
+					class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+				>
+					{form.error}
+				</p>
+			{/if}
+
+			<p class="text-sm text-gray-600">This submission is currently awaiting clinician review.</p>
+			<Button variant="outline" size="sm" onclick={() => (resetReadyForClinicianDialogOpen = true)}>
+				Reset status
+			</Button>
+
+			<AlertDialog.Root
+				open={resetReadyForClinicianDialogOpen}
+				onOpenChange={(open) => {
+					if (!open) resetReadyForClinicianDialogOpen = false;
+				}}
+			>
+				<AlertDialog.Content>
+					<AlertDialog.Header>
+						<AlertDialog.Title>Reset clinician status?</AlertDialog.Title>
+						<AlertDialog.Description>
+							This will return the submission to the appropriate review status based on its OCR
+							processing state.
+						</AlertDialog.Description>
+					</AlertDialog.Header>
+					<AlertDialog.Footer>
+						<AlertDialog.Cancel onclick={() => (resetReadyForClinicianDialogOpen = false)}>
+							Cancel
+						</AlertDialog.Cancel>
+						<form
+							method="POST"
+							action="?/resetReadyForClinician"
+							use:enhance={() =>
+								async ({ update }) => {
+									await update();
+									resetReadyForClinicianDialogOpen = false;
+								}}
+						>
+							<input type="hidden" name="csrf" value={page.data.csrfToken} />
+							<AlertDialog.Action type="submit">Reset</AlertDialog.Action>
+						</form>
+					</AlertDialog.Footer>
+				</AlertDialog.Content>
+			</AlertDialog.Root>
+		</section>
+	{/if}
+
+	<AlertDialog.Root
+		open={readyForClinicianSuccess}
+		onOpenChange={(open) => {
+			if (!open) goto('/submissions');
+		}}
+	>
+		<AlertDialog.Content>
+			<AlertDialog.Header>
+				<AlertDialog.Title>Marked for clinician review</AlertDialog.Title>
+				<AlertDialog.Description>
+					This submission has been successfully marked for clinician review.
+				</AlertDialog.Description>
+			</AlertDialog.Header>
+			<AlertDialog.Footer>
+				<AlertDialog.Action onclick={() => goto('/submissions')}>
+					Return to submissions
+				</AlertDialog.Action>
+			</AlertDialog.Footer>
+		</AlertDialog.Content>
+	</AlertDialog.Root>
 
 	{#if data.claimedByMe}
 		<section class="space-y-3 rounded border border-gray-200 bg-gray-50 px-5 py-4">

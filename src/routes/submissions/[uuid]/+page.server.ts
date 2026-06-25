@@ -1,5 +1,5 @@
 import type { Actions, PageServerLoad } from './$types';
-import { error, fail } from '@sveltejs/kit';
+import { error, fail, redirect } from '@sveltejs/kit';
 import { eq, inArray } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import {
@@ -18,6 +18,7 @@ import type { AttachmentOcr } from '$lib/types';
 import { listActiveReasons } from '$lib/server/reasons';
 import { validateDecision, type DecisionOutcome } from '$lib/server/decision';
 import { recordDecision, resetDecision } from '$lib/server/decision-store';
+import { recomputeSubmissionStatus } from '$lib/server/ocr/status-transition';
 
 function csrfOk(formCsrf: FormDataEntryValue | null, cookieCsrf: string | undefined): boolean {
 	return Boolean(cookieCsrf && formCsrf && formCsrf === cookieCsrf);
@@ -352,6 +353,107 @@ export const actions: Actions = {
 			locals.logger
 		);
 		return { action: 'reset', success: 'Decision reset — submission returned to review.' };
+	},
+
+	resetReadyForClinician: async ({ request, params, locals, url, cookies }) => {
+		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin');
+		const form = await request.formData();
+		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
+			return fail(403, { action: 'resetReadyForClinician', error: 'CSRF token mismatch' });
+
+		const sub = (
+			await db
+				.select({ id: submissions.id, status: submissions.status })
+				.from(submissions)
+				.where(eq(submissions.submissionUuid, params.uuid))
+				.limit(1)
+		)[0];
+		if (!sub) return fail(404, { action: 'resetReadyForClinician', error: 'Submission not found.' });
+		if (sub.status !== 'ready for clinician')
+			return fail(400, {
+				action: 'resetReadyForClinician',
+				error: 'Submission is not in ready for clinician status.'
+			});
+
+		const claim = (
+			await db
+				.select()
+				.from(submissionClaims)
+				.where(eq(submissionClaims.submissionId, sub.id))
+				.limit(1)
+		)[0];
+		if (!claim || claim.userId !== locals.user!.id)
+			return fail(403, {
+				action: 'resetReadyForClinician',
+				error: 'You must claim this submission before resetting its status.'
+			});
+
+		const newStatus = recomputeSubmissionStatus(db, sub.id);
+
+		auditLog(
+			'submission_ready_for_clinician_reset',
+			{
+				actorUserId: locals.user!.id,
+				actorRole: [...locals.roles][0],
+				submissionUuid: params.uuid,
+				submissionId: sub.id,
+				newStatus,
+				route: url.pathname,
+				requestId: locals.requestId
+			},
+			locals.logger
+		);
+		return { action: 'resetReadyForClinician', success: `Status reset to: ${newStatus}.` };
+	},
+
+	readyForClinician: async ({ request, params, locals, url, cookies }) => {
+		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker');
+		const form = await request.formData();
+		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
+			return fail(403, { action: 'readyForClinician', error: 'CSRF token mismatch' });
+
+		const sub = (
+			await db
+				.select({ id: submissions.id, status: submissions.status })
+				.from(submissions)
+				.where(eq(submissions.submissionUuid, params.uuid))
+				.limit(1)
+		)[0];
+		if (!sub) return fail(404, { action: 'readyForClinician', error: 'Submission not found.' });
+
+		const claim = (
+			await db
+				.select()
+				.from(submissionClaims)
+				.where(eq(submissionClaims.submissionId, sub.id))
+				.limit(1)
+		)[0];
+		if (!claim || claim.userId !== locals.user!.id)
+			return fail(403, {
+				action: 'readyForClinician',
+				error: 'You must claim this submission to perform this action.'
+			});
+
+		await db
+			.update(submissions)
+			.set({ status: 'ready for clinician' })
+			.where(eq(submissions.id, sub.id));
+		await db.delete(submissionClaims).where(eq(submissionClaims.submissionId, sub.id));
+
+		auditLog(
+			'submission_ready_for_clinician',
+			{
+				actorUserId: locals.user!.id,
+				actorRole: [...locals.roles][0],
+				submissionUuid: params.uuid,
+				submissionId: sub.id,
+				route: url.pathname,
+				requestId: locals.requestId
+			},
+			locals.logger
+		);
+		if (!locals.roles.has('admin')) redirect(303, '/submissions');
+		return { action: 'readyForClinician', success: 'Submission marked as ready for clinician.' };
 	},
 
 	saveNotes: async ({ request, params, locals, cookies }) => {

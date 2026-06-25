@@ -1,40 +1,61 @@
 import { describe, it, expect } from 'vitest';
-import { loadKeywords, scanKeywords } from '$lib/server/ocr/keywords';
+import { scanKeywords } from '$lib/server/ocr/keywords';
+import type { KeywordScanClient } from '$lib/server/search/types';
 
-describe('keywords', () => {
-	it('loads the configured keyword list from the default path', async () => {
-		const list = await loadKeywords();
-		expect(list).toContain('autism');
-		expect(list).toContain('Vineland');
+function makeKeywordMap(categories: Record<string, string[]>): Map<string, Map<string, string | string[]>> {
+	const outer = new Map<string, Map<string, string | string[]>>();
+	for (const [cat, kws] of Object.entries(categories)) {
+		const inner = new Map<string, string | string[]>();
+		inner.set('keywords', kws);
+		outer.set(cat, inner);
+	}
+	return outer;
+}
+
+function stubClient(hits: Map<string, number>): KeywordScanClient {
+	return {
+		async scanForKeywords(_text, keywords) {
+			const result = new Map<string, number>();
+			for (const kw of keywords) {
+				const count = hits.get(kw);
+				if (count !== undefined) result.set(kw, count);
+			}
+			return result;
+		}
+	};
+}
+
+describe('scanKeywords', () => {
+	it('returns hit counts reported by the scan client', async () => {
+		const map = makeKeywordMap({ neurodevelopmental: ['autism', 'IEP'] });
+		const client = stubClient(new Map([['autism', 2]]));
+		const hits = await scanKeywords('irrelevant text', map, client);
+		expect(hits.get('neurodevelopmental')?.get('autism')).toBe(2);
+		expect(hits.get('neurodevelopmental')?.has('IEP')).toBe(false);
 	});
 
-	it('counts case-insensitive whole-word matches', () => {
-		const text = 'Autism diagnosis confirmed. AUTISM noted twice. autismatic should not match.';
-		const hits = scanKeywords(text, ['autism', 'IEP']);
-		expect(hits.get('autism')).toBe(2);
-		expect(hits.has('IEP')).toBe(false);
-	});
-
-	it('supports multi-word phrases', () => {
-		const text = 'Reports include developmental delay and SOCIAL ANXIETY in clinical notes.';
-		const hits = scanKeywords(text, ['developmental delay', 'social anxiety', 'autism']);
-		expect(hits.get('developmental delay')).toBe(1);
-		expect(hits.get('social anxiety')).toBe(1);
-		expect(hits.has('autism')).toBe(false);
-	});
-
-	it('returns a sparse Map (zero counts excluded)', () => {
-		const hits = scanKeywords('nothing relevant here', ['autism', 'BCAAN']);
+	it('returns empty map when text is empty', async () => {
+		const map = makeKeywordMap({ cat: ['autism'] });
+		const client = stubClient(new Map());
+		const hits = await scanKeywords('', map, client);
 		expect(hits.size).toBe(0);
 	});
 
-	it('escapes regex metacharacters in keywords', () => {
-		const hits = scanKeywords('a + b is fine', ['a + b']);
-		expect(hits.get('a + b')).toBe(1);
+	it('returns empty outer map when keyword map is empty', async () => {
+		const client = stubClient(new Map());
+		const hits = await scanKeywords('some text', new Map(), client);
+		expect(hits.size).toBe(0);
 	});
 
-	it('handles empty text and empty keyword list', () => {
-		expect(scanKeywords('', ['autism']).size).toBe(0);
-		expect(scanKeywords('autism', []).size).toBe(0);
+	it('handles multiple categories independently', async () => {
+		const map = makeKeywordMap({
+			catA: ['diabetes', 'hypertension'],
+			catB: ['autism']
+		});
+		const client = stubClient(new Map([['diabetes', 3], ['autism', 1]]));
+		const hits = await scanKeywords('text', map, client);
+		expect(hits.get('catA')?.get('diabetes')).toBe(3);
+		expect(hits.get('catA')?.has('hypertension')).toBe(false);
+		expect(hits.get('catB')?.get('autism')).toBe(1);
 	});
 });

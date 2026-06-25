@@ -7,6 +7,7 @@ import { processOneJob } from './process-job';
 import { Breaker } from './breaker';
 import type { OcrProvider } from './types';
 import type { Mailer } from '../mail/types';
+import type { KeywordScanClient } from '../search/types';
 
 type Db = BetterSQLite3Database<typeof schema>;
 
@@ -15,6 +16,7 @@ export interface WorkerOpts {
 	provider: OcrProvider;
 	mailer: Mailer;
 	keywords: Map<string, Map<string, string | string []>>;
+	keywordScanClient: KeywordScanClient;
 	logger: Logger;
 	breakerThreshold: number;
 	alertRecipients: string[];
@@ -56,6 +58,7 @@ export function startWorker(opts: WorkerOpts): WorkerHandle {
 				jobId: lease.id,
 				provider: opts.provider,
 				keywords: opts.keywords,
+				keywordScanClient: opts.keywordScanClient,
 				logger: opts.logger,
 				onIndexed: opts.onIndexed
 			})

@@ -19,7 +19,7 @@ import { selectMailer } from '$lib/server/mail/select-mailer';
 import { loadKeywords } from '$lib/server/ocr/keywords';
 import { startWorker, type WorkerHandle } from '$lib/server/ocr/worker';
 import { startPoller, type PollerHandle } from '$lib/server/chefs/poller';
-import { getSearchClient } from '$lib/server/search/instance';
+import { getSearchClient, getKeywordScanClient } from '$lib/server/search/instance';
 import { indexSubmission } from '$lib/server/search/indexer';
 import { startReconciler, type ReconcilerHandle } from '$lib/server/search/reconciler';
 import { getEffectiveConfig } from '$lib/server/chefs/config';
@@ -105,6 +105,7 @@ async function maybeStartOcrWorker() {
 			provider,
 			mailer,
 			keywords,
+			keywordScanClient: getKeywordScanClient(),
 			logger,
 			breakerThreshold: Number(env.OCR_FAILURE_BREAKER ?? 4),
 			alertRecipients: (env.OCR_ALERT_RECIPIENTS ?? '')

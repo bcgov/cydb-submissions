@@ -11,9 +11,33 @@ import { createLogger } from '$lib/server/log';
 import path from 'node:path';
 import os from 'node:os';
 import fs from 'node:fs/promises';
+import type { KeywordScanClient } from '$lib/server/search/types';
 
 let db: ReturnType<typeof drizzle<typeof schema>>;
 let tmpDir: string;
+
+function makeKeywordMap(categories: Record<string, string[]>): Map<string, Map<string, string | string[]>> {
+	const outer = new Map<string, Map<string, string | string[]>>();
+	for (const [cat, kws] of Object.entries(categories)) {
+		const inner = new Map<string, string | string[]>();
+		inner.set('keywords', kws);
+		outer.set(cat, inner);
+	}
+	return outer;
+}
+
+// Stub that counts whole-word case-insensitive occurrences for unit tests.
+const simpleCountClient: KeywordScanClient = {
+	async scanForKeywords(text, keywords) {
+		const result = new Map<string, number>();
+		for (const kw of keywords) {
+			const re = new RegExp(`\\b${kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+			const matches = text.match(re);
+			if (matches && matches.length > 0) result.set(kw, matches.length);
+		}
+		return result;
+	}
+};
 
 async function seed(rawText = 'Patient autism diagnosis confirmed.') {
 	const subId = insertValidSubmission(db, { submissionUuid: 't' });
@@ -61,7 +85,8 @@ describe('processOneJob', () => {
 			db,
 			jobId,
 			provider,
-			keywords: ['autism', 'IEP'],
+			keywords: makeKeywordMap({ neurodevelopmental: ['autism', 'IEP'] }),
+			keywordScanClient: simpleCountClient,
 			logger: createLogger({ level: 'silent' })
 		});
 		const result = db
@@ -94,7 +119,8 @@ describe('processOneJob', () => {
 			db,
 			jobId,
 			provider,
-			keywords: [],
+			keywords: makeKeywordMap({}),
+			keywordScanClient: simpleCountClient,
 			logger: createLogger({ level: 'silent' })
 		});
 		expect(r.outcome).toBe('retried');
@@ -105,14 +131,14 @@ describe('processOneJob', () => {
 
 	it('on terminal error: marks failed and submission OCR Error', async () => {
 		const { jobId, submissionId } = await seed();
-		// Bump attempts so this call is the 3rd attempt (MAX_ATTEMPTS=3).
 		db.update(schema.ocrJobs).set({ attempts: 2 }).where(eq(schema.ocrJobs.id, jobId)).run();
 		const provider = new StubProvider({ mode: 'stub-fail', fixtureDir: tmpDir, delayMs: 0 });
 		const r = await processOneJob({
 			db,
 			jobId,
 			provider,
-			keywords: [],
+			keywords: makeKeywordMap({}),
+			keywordScanClient: simpleCountClient,
 			logger: createLogger({ level: 'silent' })
 		});
 		expect(r.outcome).toBe('failed');
@@ -135,21 +161,15 @@ describe('processOneJob', () => {
 			flakyFailures: 2
 		});
 		const logger = createLogger({ level: 'silent' });
-		// Fail twice, succeed on the third. The job is auto-released back to 'queued' after each failure;
+		const opts = { db, provider, keywords: makeKeywordMap({ cat: ['autism'] }), keywordScanClient: simpleCountClient, logger };
 		// re-lease is implicit because we call processOneJob with the same jobId — flip 'queued' → 'processing'.
-		const r1 = await processOneJob({ db, jobId, provider, keywords: ['autism'], logger });
+		const r1 = await processOneJob({ ...opts, jobId });
 		expect(r1.outcome).toBe('retried');
-		db.update(schema.ocrJobs)
-			.set({ status: 'processing' })
-			.where(eq(schema.ocrJobs.id, jobId))
-			.run();
-		const r2 = await processOneJob({ db, jobId, provider, keywords: ['autism'], logger });
+		db.update(schema.ocrJobs).set({ status: 'processing' }).where(eq(schema.ocrJobs.id, jobId)).run();
+		const r2 = await processOneJob({ ...opts, jobId });
 		expect(r2.outcome).toBe('retried');
-		db.update(schema.ocrJobs)
-			.set({ status: 'processing' })
-			.where(eq(schema.ocrJobs.id, jobId))
-			.run();
-		const r3 = await processOneJob({ db, jobId, provider, keywords: ['autism'], logger });
+		db.update(schema.ocrJobs).set({ status: 'processing' }).where(eq(schema.ocrJobs.id, jobId)).run();
+		const r3 = await processOneJob({ ...opts, jobId });
 		expect(r3.outcome).toBe('succeeded');
 		const sub = db
 			.select()
@@ -161,7 +181,6 @@ describe('processOneJob', () => {
 
 	it('reports AttachmentReadError and treats it as a normal failure', async () => {
 		const { jobId } = await seed();
-		// Wipe the file off disk
 		const att = db.select().from(schema.submissionAttachments).get()!;
 		await fs.rm(att.storedPath);
 		const provider = new StubProvider({ mode: 'stub', fixtureDir: tmpDir, delayMs: 0 });
@@ -169,7 +188,8 @@ describe('processOneJob', () => {
 			db,
 			jobId,
 			provider,
-			keywords: [],
+			keywords: makeKeywordMap({}),
+			keywordScanClient: simpleCountClient,
 			logger: createLogger({ level: 'silent' })
 		});
 		expect(r.outcome).toBe('retried');

@@ -1,4 +1,5 @@
 import { env } from '$env/dynamic/private';
+import type { KeywordScanClient } from '../search/types';
 
 let keywordMap: Map<string, Map<string, string | string []>> | undefined = undefined;
 let categoryMap: Map<string, string> | undefined = undefined;
@@ -48,29 +49,32 @@ export async function getCategoryMapping(): Promise<Map<string, string>> {
 	return categoryMap;
 }
 
-const META = /[.*+?^${}()|[\]\\]/g;
-function escapeRegex(s: string): string {
-	return s.replace(META, '\\$&');
-}
-
-export function scanKeywords(text: string, keywordMap: Map<string, Map<string, string | string []>>): Map<string, Map<string, number>> { // inner map with category boolean and count
+export async function scanKeywords(
+	text: string,
+	keywordMap: Map<string, Map<string, string | string[]>>,
+	client: KeywordScanClient
+): Promise<Map<string, Map<string, number>>> {
 	const hits = new Map<string, Map<string, number>>();
 	if (!text || keywordMap.size === 0) return hits;
-	const categories = keywordMap.entries();
-	for (const [category, info] of categories) {
-		hits.set(category,new Map<string, number>());
+
+	const allKeywords: Array<{ category: string; keyword: string }> = [];
+	for (const [category, info] of keywordMap) {
+		hits.set(category, new Map<string, number>());
 		const keywords = info.get('keywords');
-		if (keywords) {
-			for (const kw of keywords) {
-				// Whole-word, case-insensitive. \b only treats ASCII word chars; for our English-only corpus that's fine.
-				const re = new RegExp(`\\b${escapeRegex(kw)}\\b`, 'gi');
-				const matches = text.match(re);
-				const hitsCategory = hits.get(category);
-				const keywordHitCount = hitsCategory ? hitsCategory.get(kw) ?? 0 : 0
-				if (matches && matches.length > 0 && hitsCategory) {
-					hitsCategory.set(kw, keywordHitCount + matches.length);
-				}
+		if (Array.isArray(keywords)) {
+			for (const kw of keywords as string[]) {
+				allKeywords.push({ category, keyword: kw });
 			}
+		}
+	}
+
+	if (allKeywords.length === 0) return hits;
+
+	const kwHits = await client.scanForKeywords(text, allKeywords.map((k) => k.keyword));
+	for (const { category, keyword } of allKeywords) {
+		const count = kwHits.get(keyword);
+		if (count !== undefined && count > 0) {
+			hits.get(category)!.set(keyword, count);
 		}
 	}
 	return hits;

@@ -9,6 +9,7 @@ import { releaseJob, markTerminal } from './lease';
 import { recomputeSubmissionStatus } from './status-transition';
 import { scanKeywords } from './keywords';
 import { MAX_ATTEMPTS, nextAttemptAt } from './retry';
+import type { KeywordScanClient } from '../search/types';
 
 type Db = BetterSQLite3Database<typeof schema>;
 
@@ -17,6 +18,7 @@ export interface ProcessOpts {
 	jobId: number;
 	provider: OcrProvider;
 	keywords: Map<string, Map<string, string | string []>>;
+	keywordScanClient: KeywordScanClient;
 	logger: Logger;
 	/** Optional: push the submission to the search index after a successful OCR commit. */
 	onIndexed?: (submissionId: number) => Promise<void>;
@@ -59,6 +61,7 @@ export async function processOneJob(opts: ProcessOpts): Promise<ProcessResult> {
 
 	try {
 		const analysis = await provider.analyze(buf, attachment.mimeType, attachment.originalFilename, attachment.submissionId, attachment.assessmentIndex);
+		const hits = await scanKeywords(analysis.rawText, keywords, opts.keywordScanClient);
 		db.transaction((tx) => {
 			tx.insert(schema.ocrResults)
 				.values({
@@ -71,19 +74,18 @@ export async function processOneJob(opts: ProcessOpts): Promise<ProcessResult> {
 				.onConflictDoNothing()
 				.run();
 
-			const hits = scanKeywords(analysis.rawText, keywords);
 			for (const [category, info] of hits) {
 				for (const [keyword, count] of info) {
 					tx.insert(schema.keywordHits)
-						.values({ 
-							submissionId: attachment.submissionId, 
-							attachmentId: attachment.id, 
-							keyword, 
-							count: count, 
+						.values({
+							submissionId: attachment.submissionId,
+							attachmentId: attachment.id,
+							keyword,
+							count: count,
 							[category]: 1
-						}) 
+						})
 						.onConflictDoUpdate({
-							target: [schema.keywordHits.submissionId, schema.keywordHits.keyword, schema.keywordHits.attachmentId], 
+							target: [schema.keywordHits.submissionId, schema.keywordHits.keyword, schema.keywordHits.attachmentId],
 							set: { count: count, computedAt: sql`CURRENT_TIMESTAMP` }
 						})
 						.run();

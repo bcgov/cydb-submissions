@@ -1,5 +1,6 @@
 import {
 	SearchQueryError,
+	type KeywordScanClient,
 	type SearchClient,
 	type SearchDocument,
 	type InvalidSearchDocument,
@@ -9,6 +10,10 @@ import {
 
 const INDEX = 'submissions_idx';
 const INVALID_INDEX = 'invalid_submissions_idx';
+const SCAN_INDEX = 'keyword_scan_idx';
+// U+0001 / U+0002 — control chars that won't appear in OCR text
+const MATCH_MARKER = '\u0001';
+const END_MARKER = '\u0002';
 const HIGHLIGHT_FIELDS = ['ocr_text', 'structured_text', 'surname', 'metadata_text'];
 const INVALID_HIGHLIGHT_FIELDS = ['payload_text', 'errors_text', 'metadata_text'];
 
@@ -21,7 +26,7 @@ function esc(v: string): string {
 	return v.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
-export class ManticoreClient implements SearchClient {
+export class ManticoreClient implements SearchClient, KeywordScanClient {
 	constructor(private baseUrl: string) {}
 
 	private async sql(query: string): Promise<unknown> {
@@ -142,6 +147,79 @@ export class ManticoreClient implements SearchClient {
 				snippet: firstHighlight(h.highlight, highlightFields)
 			}))
 		};
+	}
+
+	async ensureKeywordScanIndex(): Promise<void> {
+		await this.sql(
+			`CREATE TABLE IF NOT EXISTS ${SCAN_INDEX} (content text, scan_id string) ` +
+				`morphology='lemmatize_en_all' min_infix_len='2' index_exact_words='1'`
+		);
+	}
+
+	async scanForKeywords(text: string, keywords: string[]): Promise<Map<string, number>> {
+		await this.ensureKeywordScanIndex();
+		const scanId = `scan_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+		const id = Date.now();
+		await this.sql(
+			`REPLACE INTO ${SCAN_INDEX} (id, content, scan_id) VALUES (${id}, '${esc(text)}', '${esc(scanId)}')`
+		);
+		try {
+			const counts = await Promise.all(keywords.map((kw) => this._fuzzyMatchCount(scanId, kw)));
+			const hits = new Map<string, number>();
+			for (let i = 0; i < keywords.length; i++) {
+				if (counts[i] > 0) hits.set(keywords[i], counts[i]);
+			}
+			return hits;
+		} finally {
+			await this.sql(`DELETE FROM ${SCAN_INDEX} WHERE scan_id='${esc(scanId)}'`);
+		}
+	}
+
+	private async _fuzzyMatchCount(scanId: string, keyword: string): Promise<number> {
+		const body = {
+			index: SCAN_INDEX,
+			query: {
+				bool: {
+					must: [
+						{ query_string: keyword },
+						{ equals: { scan_id: scanId } }
+					]
+				}
+			},
+			options: { fuzzy: 1, distance: 2 },
+			highlight: {
+				fields: ['content'],
+				before_match: MATCH_MARKER,
+				after_match: END_MARKER,
+				limit: 1_000_000,
+				limits_per_field: false
+			},
+			limit: 1
+		};
+
+		const res = await fetch(`${this.baseUrl}/search`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(body)
+		});
+		const json = (await res.json().catch(() => null)) as {
+			error?: string;
+			hits?: { hits?: Array<{ highlight?: Record<string, string[]> }> };
+		} | null;
+
+		if (!res.ok || !json || json.error) return 0;
+		const docHits = json.hits?.hits ?? [];
+		if (docHits.length === 0) return 0;
+
+		const passages = docHits[0].highlight?.['content'] ?? [];
+		const combined = passages.join('');
+		let count = 0;
+		let pos = 0;
+		while ((pos = combined.indexOf(MATCH_MARKER, pos)) !== -1) {
+			count++;
+			pos += MATCH_MARKER.length;
+		}
+		return count > 0 ? count : 1;
 	}
 
 	async ping(): Promise<boolean> {

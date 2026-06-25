@@ -53,6 +53,10 @@ export class SearchQueryError extends Error {
 	}
 }
 
+export interface KeywordScanClient {
+	scanForKeywords(text: string, keywords: string[]): Promise<Map<string, number>>;
+}
+
 export interface SearchClient {
 	/** Idempotently create the submissions index if absent. */
 	ensureIndex(): Promise<void>;

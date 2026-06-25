@@ -4,6 +4,8 @@ permissions:
   deployments: write
   packages: write
 
+run-name: Build and Deploy (${{ inputs.environment }})
+
 on:
   workflow_dispatch:
     inputs:

@@ -135,7 +135,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	let orderColumn;
 	switch (q.sort) {
 		case 'date':
-			orderColumn = submissions.createdAt;
+			orderColumn = submissions.dateSigned;
 			break;
 		case 'surname':
 			orderColumn = submissions.submitterSurname;
@@ -168,7 +168,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			childYouthLastName: submissions.childYouthLastName,
 			screening: submissions.screening,
 			assessments: submissions.assessments,
-			submittedAt: submissions.createdAt,
+			submittedAt: submissions.dateSigned,
 			status: submissions.status,
 			category1: createCategorySQLStatement('1'),
 			category2: createCategorySQLStatement('2'),

@@ -13,6 +13,7 @@ function ensure(): DrizzleDb {
 	if (!env.DATABASE_URL) throw new Error('DATABASE_URL is not set');
 	_sqlite = new Database(env.DATABASE_URL);
 	_sqlite.pragma('journal_mode = WAL');
+	_sqlite.pragma('synchronous = FULL');
 	_sqlite.pragma('foreign_keys = ON');
 	_db = drizzle(_sqlite, { schema });
 	return _db;

@@ -112,7 +112,7 @@
 							{/if}
 						{:else if showKeyword}
 							<p><i>OCR can make mistakes. Make sure to check the file itself to validate the words listed and their context.</i></p>
-							<Table.Root>
+							<Table.Root class="mt-2">
 								<Table.Header>
 									<Table.Row>
 										<Table.Cell>Category</Table.Cell>
@@ -122,8 +122,8 @@
 								<Table.Body>
 									{#each a.ocr.keyword.entries() as category (category[0])}
 									<Table.Row>
-										<Table.Cell class="text-wrap">{a.ocr.categoryMap.get(category[0]) ?? 'Undefined'}</Table.Cell>
-										<Table.Cell class="text-wrap">{category[1].length > 0 ? category[1].join('; '): '—' }</Table.Cell>
+										<Table.Cell class="w-1/2 text-wrap">{a.ocr.categoryMap.get(category[0]) ?? 'Undefined'}</Table.Cell>
+										<Table.Cell class="w-1/2 text-wrap">{category[1].length > 0 ? category[1].join('; '): '—' }</Table.Cell>
 									</Table.Row>
 									{/each}
 								</Table.Body>

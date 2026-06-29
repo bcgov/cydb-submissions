@@ -120,10 +120,10 @@
 									</Table.Row>
 								</Table.Header>
 								<Table.Body>
-									{#each a.ocr.keyword.entries() as category}
+									{#each a.ocr.keyword.entries() as category (category[0])}
 									<Table.Row>
-										<Table.Cell>{a.ocr.categoryMap.get(category[0]) ?? 'Undefined'}</Table.Cell>
-										<Table.Cell>{category[1].length > 0 ? category[1].join('; '): '—' }</Table.Cell>
+										<Table.Cell class="text-wrap">{a.ocr.categoryMap.get(category[0]) ?? 'Undefined'}</Table.Cell>
+										<Table.Cell class="text-wrap">{category[1].length > 0 ? category[1].join('; '): '—' }</Table.Cell>
 									</Table.Row>
 									{/each}
 								</Table.Body>

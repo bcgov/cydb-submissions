@@ -5,11 +5,12 @@
 	import DownloadIcon from '@lucide/svelte/icons/download';
 	import FileTextIcon from '@lucide/svelte/icons/file-text';
 	import FileIcon from '@lucide/svelte/icons/file';
+	import * as Table from '$lib/components/ui/table';
 
 	let { attachments }: { attachments: AttachmentWithOcr[] } = $props();
 
-	// Which pane each attachment shows: the document, or its extracted OCR text.
-	let pane = $state<Record<number, 'doc' | 'text'>>({});
+	// Which pane each attachment shows: the document, extracted OCR text, or keyword matches.
+	let pane = $state<Record<number, 'doc' | 'text' | 'keyword'>>({});
 
 	type OcrStatus = AttachmentWithOcr['ocr']['status'];
 	const OCR_META: Record<NonNullable<OcrStatus>, { label: string; class: string }> = {
@@ -37,6 +38,7 @@
 		<ul class="space-y-4">
 			{#each attachments as a (a.id)}
 				{@const showText = pane[a.id] === 'text' && Boolean(a.ocr.text)}
+				{@const showKeyword = pane[a.id] === 'keyword' && a.ocr.keyword.size > 0}
 				<li class="overflow-hidden rounded-lg border border-gray-200">
 					<!-- Header: name, meta, OCR status, actions -->
 					<div
@@ -50,17 +52,18 @@
 						</Badge>
 
 						<div class="ml-auto flex items-center gap-1 text-sm">
-							{#if a.ocr.text}
-								<!-- Toggle the preview pane between the document and its extracted text -->
+							{#if a.ocr.text || a.ocr.keyword.size > 0}
 								<button
 									type="button"
-									class="rounded px-2 py-1 {showText
-										? 'text-gray-500 hover:bg-gray-50'
-										: 'bg-gray-100 font-medium text-gray-900'}"
+									class="rounded px-2 py-1 {!showText && !showKeyword
+										? 'bg-gray-100 font-medium text-gray-900'
+										: 'text-gray-500 hover:bg-gray-50'}"
 									onclick={() => (pane[a.id] = 'doc')}
 								>
 									Document
 								</button>
+							{/if}
+							{#if a.ocr.text}
 								<button
 									type="button"
 									class="inline-flex items-center gap-1 rounded px-2 py-1 {showText
@@ -70,6 +73,18 @@
 								>
 									<FileTextIcon class="size-3.5" />
 									Extracted text
+								</button>
+							{/if}
+							{#if a.ocr.keyword.size > 0}
+								<button
+									type="button"
+									class="inline-flex items-center gap-1 rounded px-2 py-1 {showKeyword
+										? 'bg-gray-100 font-medium text-gray-900'
+										: 'text-gray-500 hover:bg-gray-50'}"
+									onclick={() => (pane[a.id] = 'keyword')}
+								>
+									<FileTextIcon class="size-3.5" />
+									Matched terms
 								</button>
 							{/if}
 							<a
@@ -95,6 +110,24 @@
 									)}
 								</p>
 							{/if}
+						{:else if showKeyword}
+							<p><i>OCR can make mistakes. Make sure to check the file itself to validate the words listed and their context.</i></p>
+							<Table.Root class="mt-2">
+								<Table.Header>
+									<Table.Row>
+										<Table.Cell>Category</Table.Cell>
+										<Table.Cell>Matched Terms</Table.Cell>
+									</Table.Row>
+								</Table.Header>
+								<Table.Body>
+									{#each a.ocr.keyword.entries() as category (category[0])}
+									<Table.Row>
+										<Table.Cell class="w-1/2 text-wrap">{a.ocr.categoryMap.get(category[0]) ?? 'Undefined'}</Table.Cell>
+										<Table.Cell class="w-1/2 text-wrap">{category[1].length > 0 ? category[1].join('; '): '—' }</Table.Cell>
+									</Table.Row>
+									{/each}
+								</Table.Body>
+							</Table.Root>
 						{:else if a.mimeType === 'application/pdf'}
 							<iframe
 								src="/attachments/{a.id}"

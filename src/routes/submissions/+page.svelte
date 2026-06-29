@@ -156,25 +156,25 @@
 				{@const isInvalid = 'isInvalidSubmission' in row && row.isInvalidSubmission}
 				<Table.Row class="cursor-pointer hover:bg-muted/50" onclick={() => openRow(row.uuid, isInvalid)}>
 					<Table.Cell class="whitespace-nowrap">{formatDate(row.submittedAt)}</Table.Cell>
-					<Table.Cell>{row.childYouthFirstName} {row.childYouthLastName}</Table.Cell>
-					<Table.Cell>{row.surname ?? '—'}</Table.Cell>
-					<Table.Cell>{row.screening}</Table.Cell>
-					<Table.Cell>{isInvalid ? row.attachmentCount : row.assessments?.length ?? 0}</Table.Cell>
-					<Table.Cell><StatusBadge status={row.status as never} /></Table.Cell>
-					<Table.Cell>{row.total}</Table.Cell>
-					<Table.Cell>{row.category1}</Table.Cell>
-					<Table.Cell>{row.category2}</Table.Cell>
-					<Table.Cell>{row.category3}</Table.Cell>
-					<Table.Cell>{row.category4}</Table.Cell>
-					<Table.Cell>{row.category5}</Table.Cell>
-					<Table.Cell>{row.category6}</Table.Cell>
-					<Table.Cell>{row.category7}</Table.Cell>
-					<Table.Cell>{row.category8}</Table.Cell>
-					<Table.Cell>{row.category9}</Table.Cell>
-					<Table.Cell>{row.category10}</Table.Cell>
-					<Table.Cell>{row.category11}</Table.Cell>
-					<Table.Cell>{row.category12}</Table.Cell>
-					<Table.Cell>{row.category13}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap">{row.childYouthFirstName} {row.childYouthLastName}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap">{row.surname ?? '—'}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap">{row.screening}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap">{isInvalid ? row.attachmentCount : row.assessments?.length ?? 0}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap"><StatusBadge status={row.status as never} /></Table.Cell>
+					<Table.Cell class="whitespace-nowrap">{row.total}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap">{row.category1}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap">{row.category2}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap">{row.category3}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap">{row.category4}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap">{row.category5}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap">{row.category6}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap">{row.category7}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap">{row.category8}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap">{row.category9}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap">{row.category10}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap">{row.category11}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap">{row.category12}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap">{row.category13}</Table.Cell>
 					<Table.Cell>
 						<a class="text-blue-700 underline" href={isInvalid ? `/submissions/invalid/${row.uuid}` : `/submissions/${row.uuid}`}>View</a>
 					</Table.Cell>
@@ -192,11 +192,11 @@
 			{#each data.invalidRows as row (row.uuid)}
 				<Table.Row class="cursor-pointer hover:bg-muted/50" onclick={() => goto(`/submissions/invalid/${row.uuid}`)}>
 					<Table.Cell class="whitespace-nowrap">{formatDate(row.receivedAt)}</Table.Cell>
-					<Table.Cell>{row.childYouthFirstName}{row.childYouthLastName === '—' && row.childYouthFirstName === '—' ? '' : ' ' + row.childYouthLastName}</Table.Cell>
-					<Table.Cell>{row.surname}</Table.Cell>
-					<Table.Cell>{row.screening}</Table.Cell>
-					<Table.Cell>{row.assessments}</Table.Cell>
-					<Table.Cell><StatusBadge status={'invalid' as never} /></Table.Cell>
+					<Table.Cell class="whitespace-nowrap">{row.childYouthFirstName}{row.childYouthLastName === '—' && row.childYouthFirstName === '—' ? '' : ' ' + row.childYouthLastName}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap">{row.surname}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap">{row.screening}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap">{row.assessments}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap"><StatusBadge status={'invalid' as never} /></Table.Cell>
 					<Table.Cell>—</Table.Cell>
 					<Table.Cell>—</Table.Cell>
 					<Table.Cell>—</Table.Cell>

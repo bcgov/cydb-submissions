@@ -5,11 +5,13 @@
 	import DownloadIcon from '@lucide/svelte/icons/download';
 	import FileTextIcon from '@lucide/svelte/icons/file-text';
 	import FileIcon from '@lucide/svelte/icons/file';
+	import * as Table from '$lib/components/ui/table';
+	import TableRow from '../ui/table/table-row.svelte';
 
 	let { attachments }: { attachments: AttachmentWithOcr[] } = $props();
 
-	// Which pane each attachment shows: the document, or its extracted OCR text.
-	let pane = $state<Record<number, 'doc' | 'text'>>({});
+	// Which pane each attachment shows: the document, extracted OCR text, or keyword matches.
+	let pane = $state<Record<number, 'doc' | 'text' | 'keyword'>>({});
 
 	type OcrStatus = AttachmentWithOcr['ocr']['status'];
 	const OCR_META: Record<NonNullable<OcrStatus>, { label: string; class: string }> = {
@@ -37,6 +39,7 @@
 		<ul class="space-y-4">
 			{#each attachments as a (a.id)}
 				{@const showText = pane[a.id] === 'text' && Boolean(a.ocr.text)}
+				{@const showKeyword = pane[a.id] === 'keyword' && Boolean(a.ocr.text)}
 				<li class="overflow-hidden rounded-lg border border-gray-200">
 					<!-- Header: name, meta, OCR status, actions -->
 					<div
@@ -71,6 +74,16 @@
 									<FileTextIcon class="size-3.5" />
 									Extracted text
 								</button>
+								<button
+									type="button"
+									class="inline-flex items-center gap-1 rounded px-2 py-1 {showText
+										? 'bg-gray-100 font-medium text-gray-900'
+										: 'text-gray-500 hover:bg-gray-50'}"
+									onclick={() => (pane[a.id] = 'keyword')}
+								>
+									<FileTextIcon class="size-3.5" />
+									Matched terms
+								</button>
 							{/if}
 							<a
 								class="inline-flex items-center gap-1 rounded px-2 py-1 text-blue-700 hover:bg-blue-50"
@@ -95,6 +108,23 @@
 									)}
 								</p>
 							{/if}
+						{:else if showKeyword}
+							<Table.Root>
+								<Table.Header>
+									<Table.Row>
+										<Table.Cell>Category</Table.Cell>
+										<Table.Cell>Matched Terms</Table.Cell>
+									</Table.Row>
+								</Table.Header>
+								<Table.Body>
+									{#each a.ocr.keyword.entries() as category}
+									<Table.Row>
+										<Table.Cell>{category[0]}</Table.Cell>
+										<Table.Cell>{category[1].join('; ')}</Table.Cell>
+									</Table.Row>
+									{/each}
+								</Table.Body>
+							</Table.Root>
 						{:else if a.mimeType === 'application/pdf'}
 							<iframe
 								src="/attachments/{a.id}"

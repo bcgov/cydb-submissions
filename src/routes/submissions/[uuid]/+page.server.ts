@@ -9,7 +9,8 @@ import {
 	ocrJobs,
 	ocrResults,
 	user,
-	submissionClaims
+	submissionClaims,
+	keywordHits
 } from '$lib/server/db/schema';
 import { requireRole } from '$lib/server/roles';
 import { auditLog } from '$lib/server/audit';
@@ -78,8 +79,9 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 
 	// OCR state per attachment: extracted text (ocr_results) is the source of
 	// truth for "processed"; otherwise fall back to the queue job's status.
+	// Also grabs keyword hits
 	const attIds = atts.map((a) => a.id);
-	const [jobs, results] = await Promise.all([
+	const [jobs, results, keywords] = await Promise.all([
 		attIds.length
 			? db
 					.select({
@@ -100,22 +102,63 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 					})
 					.from(ocrResults)
 					.where(inArray(ocrResults.attachmentId, attIds))
+			: Promise.resolve([]),
+		attIds.length
+			? db
+					.select({
+						attachmentId: keywordHits.attachmentId,
+						keyword: keywordHits.keyword,
+						category1: keywordHits.category1,
+						category2: keywordHits.category2,
+						category3: keywordHits.category3,
+						category4: keywordHits.category4,
+						category5: keywordHits.category5,
+						category6: keywordHits.category6,
+						category7: keywordHits.category7,
+						category8: keywordHits.category8,
+						category9: keywordHits.category9,
+						category10: keywordHits.category10,
+						category11: keywordHits.category11,
+						category12: keywordHits.category12,
+						category13: keywordHits.category13,
+					})
+					.from(keywordHits)
+					.where(inArray(keywordHits.attachmentId, attIds))
 			: Promise.resolve([])
 	]);
 	const jobByAtt = new Map(jobs.map((j) => [j.attachmentId, j]));
 	const resByAtt = new Map(results.map((r) => [r.attachmentId, r]));
 
+	const keywordsByAtt = new Map();
+	
+	for(const entry of keywords) {
+		if (keywordsByAtt.get(entry.attachmentId) === undefined) {
+			keywordsByAtt.set(entry.attachmentId, new Map<string, Array<string>>())
+		}
+		for (const [key, value] of Object.entries(entry)) {
+			if (!key.startsWith('category')) continue;
+			const attachmentIdEntry = keywordsByAtt.get(entry.attachmentId);
+			if (attachmentIdEntry.get(key) === undefined) {
+				attachmentIdEntry.set(key, new Array<string>())
+			}
+			if (value as number  > 0) {
+				attachmentIdEntry.get(key).push(entry.keyword)
+			}
+		}
+	}
+
 	const attachments = atts.map((a) => {
 		const res = resByAtt.get(a.id);
 		const job = jobByAtt.get(a.id);
+		const keyword = keywordsByAtt.get(a.id);
 		const ocr: AttachmentOcr = {
 			status: res ? 'processed' : ((job?.status as AttachmentOcr['status']) ?? null),
 			text: res?.rawText ?? null,
 			pages: res?.pages ?? null,
 			processedAt: res?.processedAt ?? null,
-			error: job?.lastError ?? null
+			error: job?.lastError ?? null,
 		};
-		return { ...a, ocr };
+		return { ...a, ocr, keyword };
 	});
 
 	auditLog(

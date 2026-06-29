@@ -75,7 +75,7 @@ export async function ingestOne(
 	const mapped = mapChefsSubmission(raw, cfg);
 
 	if (uuidExists(db, mapped.submissionUuid)) {
-		deps.logger.info({ submissionUuid: mapped.submissionUuid }, 'chefs ingest: skipping duplicate');
+		deps.logger.trace({ submissionUuid: mapped.submissionUuid }, 'chefs ingest: skipping duplicate');
 		return { submissionUuid: mapped.submissionUuid, outcome: 'skipped' };
 	}
 

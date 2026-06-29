@@ -20,6 +20,7 @@ import { listActiveReasons } from '$lib/server/reasons';
 import { validateDecision, type DecisionOutcome } from '$lib/server/decision';
 import { recordDecision, resetDecision } from '$lib/server/decision-store';
 import { recomputeSubmissionStatus } from '$lib/server/ocr/status-transition';
+import { getCategoryMapping } from '$lib/server/ocr/keywords';
 
 function csrfOk(formCsrf: FormDataEntryValue | null, cookieCsrf: string | undefined): boolean {
 	return Boolean(cookieCsrf && formCsrf && formCsrf === cookieCsrf);
@@ -27,6 +28,7 @@ function csrfOk(formCsrf: FormDataEntryValue | null, cookieCsrf: string | undefi
 
 export const load: PageServerLoad = async ({ params, locals, url }) => {
 	requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker');
+	const categoryMap = await getCategoryMapping();
 	const rows = await db
 		.select()
 		.from(submissions)
@@ -157,6 +159,7 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 			processedAt: res?.processedAt ?? null,
 			error: job?.lastError ?? null,
 			keyword: keywordsByAtt.get(a.id) ?? new Map<string, Array<string>>(),
+			categoryMap
 		};
 		return { ...a, ocr };
 	});
@@ -187,7 +190,7 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 		canDecide: locals.roles.has('admin') || locals.roles.has('cfd_worker'),
 		isAdmin: locals.roles.has('admin'),
 		claim: claimRow ? { email: claimEmail } : null,
-		claimedByMe: claimRow?.userId === locals.user?.id
+		claimedByMe: claimRow?.userId === locals.user?.id,
 	};
 };
 

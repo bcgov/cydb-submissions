@@ -14,7 +14,8 @@ export interface AttachmentOcr {
 	pages: number | null;
 	processedAt: string | null;
 	error: string | null;
-	keyword: Map<string, Array<string>>
+	keyword: Map<string, Array<string>>;
+	categoryMap: Map<string, string>;
 }
 
 export type AttachmentWithOcr = SubmissionAttachmentRow & { ocr: AttachmentOcr };

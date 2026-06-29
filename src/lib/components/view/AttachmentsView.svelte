@@ -6,7 +6,6 @@
 	import FileTextIcon from '@lucide/svelte/icons/file-text';
 	import FileIcon from '@lucide/svelte/icons/file';
 	import * as Table from '$lib/components/ui/table';
-	import TableRow from '../ui/table/table-row.svelte';
 
 	let { attachments }: { attachments: AttachmentWithOcr[] } = $props();
 
@@ -112,6 +111,7 @@
 								</p>
 							{/if}
 						{:else if showKeyword}
+							<p><i>OCR can make mistakes. Make sure to check the file itself to validate the words listed and their context.</i></p>
 							<Table.Root>
 								<Table.Header>
 									<Table.Row>
@@ -122,8 +122,8 @@
 								<Table.Body>
 									{#each a.ocr.keyword.entries() as category}
 									<Table.Row>
-										<Table.Cell>{category[0]}</Table.Cell>
-										<Table.Cell>{category[1].join('; ')}</Table.Cell>
+										<Table.Cell>{a.ocr.categoryMap.get(category[0]) ?? 'Undefined'}</Table.Cell>
+										<Table.Cell>{category[1].length > 0 ? category[1].join('; '): '—' }</Table.Cell>
 									</Table.Row>
 									{/each}
 								</Table.Body>

@@ -57,9 +57,9 @@
 								<!-- Toggle the preview pane between the document and its extracted text -->
 								<button
 									type="button"
-									class="rounded px-2 py-1 {showText
-										? 'text-gray-500 hover:bg-gray-50'
-										: 'bg-gray-100 font-medium text-gray-900'}"
+									class="rounded px-2 py-1 {!showText && !showKeyword
+										? 'bg-gray-100 font-medium text-gray-900'
+										: 'text-gray-500 hover:bg-gray-50'}"
 									onclick={() => (pane[a.id] = 'doc')}
 								>
 									Document
@@ -76,7 +76,7 @@
 								</button>
 								<button
 									type="button"
-									class="inline-flex items-center gap-1 rounded px-2 py-1 {showText
+									class="inline-flex items-center gap-1 rounded px-2 py-1 {showKeyword
 										? 'bg-gray-100 font-medium text-gray-900'
 										: 'text-gray-500 hover:bg-gray-50'}"
 									onclick={() => (pane[a.id] = 'keyword')}

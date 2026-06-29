@@ -150,15 +150,15 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 	const attachments = atts.map((a) => {
 		const res = resByAtt.get(a.id);
 		const job = jobByAtt.get(a.id);
-		const keyword = keywordsByAtt.get(a.id);
 		const ocr: AttachmentOcr = {
 			status: res ? 'processed' : ((job?.status as AttachmentOcr['status']) ?? null),
 			text: res?.rawText ?? null,
 			pages: res?.pages ?? null,
 			processedAt: res?.processedAt ?? null,
 			error: job?.lastError ?? null,
+			keyword: keywordsByAtt.get(a.id) ?? new Map<string, Array<string>>(),
 		};
-		return { ...a, ocr, keyword };
+		return { ...a, ocr };
 	});
 
 	auditLog(

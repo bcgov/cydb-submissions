@@ -39,7 +39,7 @@
 		<ul class="space-y-4">
 			{#each attachments as a (a.id)}
 				{@const showText = pane[a.id] === 'text' && Boolean(a.ocr.text)}
-				{@const showKeyword = pane[a.id] === 'keyword' && Boolean(a.ocr.text)}
+				{@const showKeyword = pane[a.id] === 'keyword' && a.ocr.keyword.size > 0}
 				<li class="overflow-hidden rounded-lg border border-gray-200">
 					<!-- Header: name, meta, OCR status, actions -->
 					<div
@@ -53,8 +53,7 @@
 						</Badge>
 
 						<div class="ml-auto flex items-center gap-1 text-sm">
-							{#if a.ocr.text}
-								<!-- Toggle the preview pane between the document and its extracted text -->
+							{#if a.ocr.text || a.ocr.keyword.size > 0}
 								<button
 									type="button"
 									class="rounded px-2 py-1 {!showText && !showKeyword
@@ -64,6 +63,8 @@
 								>
 									Document
 								</button>
+							{/if}
+							{#if a.ocr.text}
 								<button
 									type="button"
 									class="inline-flex items-center gap-1 rounded px-2 py-1 {showText
@@ -74,6 +75,8 @@
 									<FileTextIcon class="size-3.5" />
 									Extracted text
 								</button>
+							{/if}
+							{#if a.ocr.keyword.size > 0}
 								<button
 									type="button"
 									class="inline-flex items-center gap-1 rounded px-2 py-1 {showKeyword

@@ -1,5 +1,5 @@
 import type { PageServerLoad } from './$types';
-import { sql, eq, desc, asc, ne, count, and, notInArray, SQL } from 'drizzle-orm';
+import { sql, eq, desc, asc, ne, count, and, notInArray, isNull, SQL } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { submissions, invalidSubmissions } from '$lib/server/db/schema';
 import { parseSubmissionsQuery } from '$lib/server/sort';
@@ -256,6 +256,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 						assessments: assessmentCountRawJsonSQLStatement()
 					})
 					.from(invalidSubmissions)
+					.where(isNull(invalidSubmissions.resolvedAt))
 					.orderBy(invalidOrderExpr)
 			: Promise.resolve([])
 	]);

@@ -1,4 +1,3 @@
--- Custom SQL migration file, put your code below! --
 PRAGMA foreign_keys=OFF;--> statement-breakpoint
 CREATE TABLE `__new_submissions` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -37,8 +36,9 @@ CREATE TABLE `__new_submissions` (
 	`level_of_need_summary` text,
 	CONSTRAINT "submissions_status_check" CHECK("__new_submissions"."status" IN ('submitted','OCR queued','OCR Error','OCR processed','ready for review','ready for clinician','reviewed','accepted','rejected','invalid','opt-out')),
 	CONSTRAINT "submissions_decision_check" CHECK("__new_submissions"."decision" IS NULL OR "__new_submissions"."decision" IN ('accepted','rejected'))
-);--> statement-breakpoint
-INSERT INTO `__new_submissions`(`id`, `submission_uuid`, `status`, `submitter_surname`, `child_youth_first_name`, `child_youth_middle_names`, `child_youth_last_name`, `child_youth_dob`, `child_youth_gender`, `signatory_first_name`, `signatory_last_name`, `signatory_dob`, `signatory_gender`, `signatory_relationship`, `primary_phone`, `email`, `screening`, `not_submitting_reasons`, `assessments`, `primary_care_and_control`, `consent_collection`, `consent_disclosure`, `confirm_not_submitting`, `signature`, `date_signed`, `raw_payload`, `created_at`, `updated_at`, `search_indexed_at`, `decision`, `decision_reasons`, `decided_by`, `decided_at`, `level_of_need_summary`) SELECT `id`, `submission_uuid`, `status`, `submitter_surname`, `child_youth_first_name`, `child_youth_middle_names`, `child_youth_last_name`, `child_youth_dob`, `child_youth_gender`, `signatory_first_name`, `signatory_last_name`, `signatory_dob`, `signatory_gender`, `signatory_relationship`, `primary_phone`, `email`, `screening`, `not_submitting_reasons`, `assessments`, `primary_care_and_control`, `consent_collection`, `consent_disclosure`, `confirm_not_submitting`, `signature`, `date_signed`, `raw_payload`, `created_at`, `updated_at`, `search_indexed_at`, `decision`, `decision_reasons`, `decided_by`, `decided_at`, `level_of_need_summary` FROM `submissions`;--> statement-breakpoint
+);
+--> statement-breakpoint
+INSERT INTO `__new_submissions`("id", "submission_uuid", "status", "submitter_surname", "child_youth_first_name", "child_youth_middle_names", "child_youth_last_name", "child_youth_dob", "child_youth_gender", "signatory_first_name", "signatory_last_name", "signatory_dob", "signatory_gender", "signatory_relationship", "primary_phone", "email", "screening", "not_submitting_reasons", "assessments", "primary_care_and_control", "consent_collection", "consent_disclosure", "confirm_not_submitting", "signature", "date_signed", "raw_payload", "created_at", "updated_at", "search_indexed_at", "decision", "decision_reasons", "decided_by", "decided_at", "level_of_need_summary") SELECT "id", "submission_uuid", "status", "submitter_surname", "child_youth_first_name", "child_youth_middle_names", "child_youth_last_name", "child_youth_dob", "child_youth_gender", "signatory_first_name", "signatory_last_name", "signatory_dob", "signatory_gender", "signatory_relationship", "primary_phone", "email", "screening", "not_submitting_reasons", "assessments", "primary_care_and_control", "consent_collection", "consent_disclosure", "confirm_not_submitting", "signature", "date_signed", "raw_payload", "created_at", "updated_at", "search_indexed_at", "decision", "decision_reasons", "decided_by", "decided_at", "level_of_need_summary" FROM `submissions`;--> statement-breakpoint
 DROP TABLE `submissions`;--> statement-breakpoint
 ALTER TABLE `__new_submissions` RENAME TO `submissions`;--> statement-breakpoint
 PRAGMA foreign_keys=ON;--> statement-breakpoint
@@ -47,4 +47,6 @@ CREATE INDEX `submissions_status_idx` ON `submissions` (`status`);--> statement-
 CREATE INDEX `submissions_created_idx` ON `submissions` (`created_at`);--> statement-breakpoint
 CREATE INDEX `submissions_surname_idx` ON `submissions` (`submitter_surname`);--> statement-breakpoint
 CREATE INDEX `submissions_search_indexed_idx` ON `submissions` (`search_indexed_at`);--> statement-breakpoint
-UPDATE `submissions` SET `status` = 'opt-out', `updated_at` = CURRENT_TIMESTAMP, `search_indexed_at` = NULL WHERE `screening` = 'No';
+ALTER TABLE `invalid_submissions` ADD `resolved_at` text;--> statement-breakpoint
+ALTER TABLE `invalid_submissions` ADD `resolved_by` text;--> statement-breakpoint
+ALTER TABLE `invalid_submissions` ADD `resolved_note` text;

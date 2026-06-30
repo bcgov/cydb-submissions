@@ -1,8 +1,8 @@
 {
-  "id": "85a6bdbb-4fd7-4f24-b534-ce4568e3649e",
-  "prevId": "cf8c4f1e-4a9e-47b9-a9e8-2408dc5e2fa3",
   "version": "6",
   "dialect": "sqlite",
+  "id": "f7ef09ea-8791-4e3b-9468-1b3c4f2555eb",
+  "prevId": "cf8c4f1e-4a9e-47b9-a9e8-2408dc5e2fa3",
   "tables": {
     "invalid_submissions": {
       "name": "invalid_submissions",
@@ -59,6 +59,27 @@
         },
         "search_indexed_at": {
           "name": "search_indexed_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "resolved_at": {
+          "name": "resolved_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "resolved_by": {
+          "name": "resolved_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "resolved_note": {
+          "name": "resolved_note",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
@@ -336,28 +357,28 @@
         "keyword_hits_submission_id_submissions_id_fk": {
           "name": "keyword_hits_submission_id_submissions_id_fk",
           "tableFrom": "keyword_hits",
+          "tableTo": "submissions",
           "columnsFrom": [
             "submission_id"
           ],
-          "tableTo": "submissions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "keyword_hits_attachment_id_submission_attachments_id_fk": {
           "name": "keyword_hits_attachment_id_submission_attachments_id_fk",
           "tableFrom": "keyword_hits",
+          "tableTo": "submission_attachments",
           "columnsFrom": [
             "attachment_id"
           ],
-          "tableTo": "submission_attachments",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -472,15 +493,15 @@
         "ocr_jobs_attachment_id_submission_attachments_id_fk": {
           "name": "ocr_jobs_attachment_id_submission_attachments_id_fk",
           "tableFrom": "ocr_jobs",
+          "tableTo": "submission_attachments",
           "columnsFrom": [
             "attachment_id"
           ],
-          "tableTo": "submission_attachments",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -559,15 +580,15 @@
         "ocr_results_attachment_id_submission_attachments_id_fk": {
           "name": "ocr_results_attachment_id_submission_attachments_id_fk",
           "tableFrom": "ocr_results",
+          "tableTo": "submission_attachments",
           "columnsFrom": [
             "attachment_id"
           ],
-          "tableTo": "submission_attachments",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -698,15 +719,15 @@
         "revoked_user_roles_user_id_user_id_fk": {
           "name": "revoked_user_roles_user_id_user_id_fk",
           "tableFrom": "revoked_user_roles",
+          "tableTo": "user",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "user",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -799,15 +820,15 @@
         "submission_attachments_submission_id_submissions_id_fk": {
           "name": "submission_attachments_submission_id_submissions_id_fk",
           "tableFrom": "submission_attachments",
+          "tableTo": "submissions",
           "columnsFrom": [
             "submission_id"
           ],
-          "tableTo": "submissions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -853,28 +874,28 @@
         "submission_claims_submission_id_submissions_id_fk": {
           "name": "submission_claims_submission_id_submissions_id_fk",
           "tableFrom": "submission_claims",
+          "tableTo": "submissions",
           "columnsFrom": [
             "submission_id"
           ],
-          "tableTo": "submissions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "submission_claims_user_id_user_id_fk": {
           "name": "submission_claims_user_id_user_id_fk",
           "tableFrom": "submission_claims",
+          "tableTo": "user",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "user",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -983,15 +1004,15 @@
         "submission_metadata_submission_id_submissions_id_fk": {
           "name": "submission_metadata_submission_id_submissions_id_fk",
           "tableFrom": "submission_metadata",
+          "tableTo": "submissions",
           "columnsFrom": [
             "submission_id"
           ],
-          "tableTo": "submissions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1286,7 +1307,7 @@
       "checkConstraints": {
         "submissions_status_check": {
           "name": "submissions_status_check",
-          "value": "\"submissions\".\"status\" IN ('submitted','OCR queued','OCR Error','OCR processed','ready for review','ready for clinician','reviewed','accepted','rejected','invalid')"
+          "value": "\"submissions\".\"status\" IN ('submitted','OCR queued','OCR Error','OCR processed','ready for review','ready for clinician','reviewed','accepted','rejected','invalid','opt-out')"
         },
         "submissions_decision_check": {
           "name": "submissions_decision_check",
@@ -1373,15 +1394,15 @@
         "user_roles_user_id_user_id_fk": {
           "name": "user_roles_user_id_user_id_fk",
           "tableFrom": "user_roles",
+          "tableTo": "user",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "user",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1502,15 +1523,15 @@
         "account_user_id_user_id_fk": {
           "name": "account_user_id_user_id_fk",
           "tableFrom": "account",
+          "tableTo": "user",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "user",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1598,15 +1619,15 @@
         "session_user_id_user_id_fk": {
           "name": "session_user_id_user_id_fk",
           "tableFrom": "session",
+          "tableTo": "user",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "user",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1749,9 +1770,9 @@
   "views": {},
   "enums": {},
   "_meta": {
-    "columns": {},
     "schemas": {},
-    "tables": {}
+    "tables": {},
+    "columns": {}
   },
   "internal": {
     "indexes": {}

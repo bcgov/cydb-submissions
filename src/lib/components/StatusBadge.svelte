@@ -14,7 +14,8 @@
 		reviewed: 'bg-green-100 text-green-800 border-green-200',
 		accepted: 'bg-emerald-100 text-emerald-800 border-emerald-200',
 		rejected: 'bg-rose-100 text-rose-800 border-rose-200',
-		invalid: 'bg-red-100 text-red-800 border-red-200'
+		invalid: 'bg-red-100 text-red-800 border-red-200',
+		'opt-out': 'bg-gray-100 text-gray-600 border-gray-200'
 	};
 </script>
 

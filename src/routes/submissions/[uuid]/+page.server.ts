@@ -27,7 +27,7 @@ function csrfOk(formCsrf: FormDataEntryValue | null, cookieCsrf: string | undefi
 }
 
 export const load: PageServerLoad = async ({ params, locals, url }) => {
-	requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker');
+	requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator');
 	const categoryMap = await getCategoryMapping();
 	const rows = await db
 		.select()
@@ -40,7 +40,14 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 
 	const submission = row.submissions;
 
-	if (!locals.roles.has('admin') && !CFD_WORKER_STATUSES.has(submission.status as never)) {
+	const isAdmin = locals.roles.has('admin');
+	const isCfdWorker = locals.roles.has('cfd_worker');
+	const isValidator = locals.roles.has('validator') && !isAdmin && !isCfdWorker;
+
+	if (isCfdWorker && !isAdmin && !CFD_WORKER_STATUSES.has(submission.status as never)) {
+		throw error(403, 'Access denied');
+	}
+	if (isValidator && submission.status !== 'OCR processed') {
 		throw error(403, 'Access denied');
 	}
 	const claimRow = row.submission_claims;
@@ -196,7 +203,7 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 
 export const actions: Actions = {
 	claim: async ({ request, params, locals, url, cookies }) => {
-		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker');
+		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator');
 		const form = await request.formData();
 		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
 			return fail(403, { action: 'claim', error: 'CSRF token mismatch' });
@@ -245,7 +252,7 @@ export const actions: Actions = {
 	},
 
 	unclaim: async ({ request, params, locals, url, cookies }) => {
-		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker');
+		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator');
 		const form = await request.formData();
 		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
 			return fail(403, { action: 'unclaim', error: 'CSRF token mismatch' });
@@ -503,7 +510,7 @@ export const actions: Actions = {
 	},
 
 	saveNotes: async ({ request, params, locals, cookies }) => {
-		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker');
+		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator');
 		const form = await request.formData();
 		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
 			return fail(403, { action: 'saveNotes', error: 'CSRF token mismatch' });

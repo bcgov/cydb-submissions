@@ -152,7 +152,7 @@ export const userRoles = sqliteTable(
 	},
 	(t) => ({
 		uniqByUserRole: uniqueIndex('user_roles_unique').on(t.userId, t.role),
-		roleCheck: check('user_roles_role_check', sql`${t.role} IN ('admin','cfd_worker','clinician')`)
+		roleCheck: check('user_roles_role_check', sql`${t.role} IN ('admin','cfd_worker','clinician','validator')`)
 	})
 );
 
@@ -175,7 +175,7 @@ export const revokedUserRoles = sqliteTable(
 		byUser: index('revoked_user_roles_user_idx').on(t.userId),
 		roleCheck: check(
 			'revoked_user_roles_role_check',
-			sql`${t.role} IN ('admin','cfd_worker','clinician')`
+			sql`${t.role} IN ('admin','cfd_worker','clinician','validator')`
 		)
 	})
 );

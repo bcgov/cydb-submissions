@@ -14,7 +14,8 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 		{ user: locals.user ?? null, roles: locals.roles },
 		'admin',
 		'cfd_worker',
-		'clinician'
+		'clinician',
+		'validator'
 	);
 	const id = Number.parseInt(params.id, 10);
 	if (!Number.isFinite(id)) throw error(400, 'bad id');

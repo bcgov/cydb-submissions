@@ -254,7 +254,8 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 					.orderBy(invalidOrderExpr)
 			: Promise.resolve([])
 	]);
-	const total = totalRow[0]?.n ?? 0;
+	const regularTotal = totalRow[0]?.n ?? 0;
+	const total = regularTotal + invalidRows.length;
 
 	auditLog(
 		'submission_listed',
@@ -272,7 +273,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		invalidRows,
 		total,
 		query: q,
-		totalPages: Math.max(1, Math.ceil(total / q.size)),
+		totalPages: Math.max(1, Math.ceil(regularTotal / q.size)),
 		searchError: null as string | null,
 		categoryMap
 	};

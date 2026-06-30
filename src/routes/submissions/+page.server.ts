@@ -12,8 +12,9 @@ import { getCategoryMapping } from '$lib/server/ocr/keywords';
 import { WORKER_BLOCKED_STATUSES } from '$lib/server/security/attachment-scope';
 
 export const load: PageServerLoad = async ({ url, locals }) => {
-	requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker');
+	requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator');
 	const isAdmin = locals.roles.has('admin');
+	const isValidator = locals.roles.has('validator') && !isAdmin && !locals.roles.has('cfd_worker');
 	const categoryMap = await getCategoryMapping();
 	const q = parseSubmissionsQuery(url);
 
@@ -29,9 +30,10 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			locals.logger
 		);
 		try {
+			const effectiveStatusFilter = isValidator ? 'ocr_processed' : q.statusFilter;
 			const result = await runSearch(db, getSearchClient(), {
 				query: q.q,
-				...buildStatusFilter(q.statusFilter),
+				...buildStatusFilter(effectiveStatusFilter),
 				limit: q.size,
 				offset: (q.page - 1) * q.size,
 				fuzzy: true,
@@ -39,7 +41,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 				sort: q.sort,
 				order: q.order
 			});
-			if (!isAdmin) {
+			if (!isAdmin && !isValidator) {
 				result.rows = result.rows.filter(
 					(r) => !WORKER_BLOCKED_STATUSES.includes(r.status as never)
 				);
@@ -47,22 +49,23 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			}
 			return {
 				rows: result.rows,
-				invalidRows: [] as { 
+				invalidRows: [] as {
 					uuid: string; receivedAt: string; validationErrors: unknown; ipAddress: string | null;
-					childYouthFirstName: string; childYouthLastName: string; surname: string; screening: string; 
+					childYouthFirstName: string; childYouthLastName: string; surname: string; screening: string;
 					assessments: number; attachmentCount: number | string;
 				}[],
 				total: result.total,
 				query: q,
 				totalPages: Math.max(1, Math.ceil(result.total / q.size)),
 				searchError: null as string | null,
-				categoryMap
+				categoryMap,
+				showStatusFilter: !isValidator
 			};
 		} catch (e) {
 			if (e instanceof SearchQueryError) {
 				return {
 					rows: [],
-					invalidRows: [] as { 
+					invalidRows: [] as {
 						uuid: string; receivedAt: string; validationErrors: unknown; ipAddress: string | null;
 						childYouthFirstName: string; childYouthLastName: string; surname: string; screening: string; assessments: number;
 					}[],
@@ -70,23 +73,25 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 					query: q,
 					totalPages: 1,
 					searchError: e.message,
-					categoryMap
+					categoryMap,
+					showStatusFilter: !isValidator
 				};
 			}
 			throw e;
 		}
 	}
 
-	const filterClause =
-		q.statusFilter === 'all'
+	const filterClause = isValidator
+		? eq(submissions.status, 'OCR processed')
+		: q.statusFilter === 'all'
 			? undefined
 			: q.statusFilter === 'exclude_invalid'
 				? ne(submissions.status, 'invalid')
-				  : q.statusFilter === 'ocr_processed'
-				   ? eq(submissions.status, 'OCR processed')
+				: q.statusFilter === 'ocr_processed'
+					? eq(submissions.status, 'OCR processed')
 					: eq(submissions.status, q.statusFilter);
 
-	const workerRestriction = !isAdmin
+	const workerRestriction = !isAdmin && !isValidator
 		? notInArray(submissions.status, WORKER_BLOCKED_STATUSES)
 		: undefined;
 
@@ -204,7 +209,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		: db.select({ n: count() }).from(submissions);
 
 	const shouldIncludeInvalidTable =
-		q.statusFilter === 'all' || q.statusFilter === 'invalid';
+		!isValidator && (q.statusFilter === 'all' || q.statusFilter === 'invalid');
 
 	function createSubFieldFromRawJsonSQLStatement(fieldPath: string): SQL<string> {
 		const rawFieldPath = sql.raw(`'$.${fieldPath}'`);
@@ -275,6 +280,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		query: q,
 		totalPages: Math.max(1, Math.ceil(regularTotal / q.size)),
 		searchError: null as string | null,
-		categoryMap
+		categoryMap,
+		showStatusFilter: !isValidator
 	};
 };

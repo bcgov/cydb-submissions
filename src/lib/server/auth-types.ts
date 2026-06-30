@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const ROLES = ['admin', 'cfd_worker', 'clinician'] as const;
+export const ROLES = ['admin', 'cfd_worker', 'clinician', 'validator'] as const;
 export type Role = (typeof ROLES)[number];
 export const RoleSchema = z.enum(ROLES);
 

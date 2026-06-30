@@ -113,16 +113,18 @@
 	{/if}
 
 	<div class="mb-4 mx-auto max-w-3xl flex flex-wrap gap-2">
-		{#each filterOptions as opt}
-			<a
-				href={statusFilterHref(opt.value)}
-				class="rounded border px-3 py-1 text-sm {data.query.statusFilter === opt.value
-					? 'border-blue-300 bg-blue-50'
-					: 'border-gray-200'}"
-			>
-				{opt.label}
-			</a>
-		{/each}
+		{#if data.showStatusFilter}
+			{#each filterOptions as opt}
+				<a
+					href={statusFilterHref(opt.value)}
+					class="rounded border px-3 py-1 text-sm {data.query.statusFilter === opt.value
+						? 'border-blue-300 bg-blue-50'
+						: 'border-gray-200'}"
+				>
+					{opt.label}
+				</a>
+			{/each}
+		{/if}
 	</div>
 
 	<Table.Root>

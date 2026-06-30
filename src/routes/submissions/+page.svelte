@@ -61,7 +61,8 @@
 		{ value: 'accepted', label: 'Accepted' },
 		{ value: 'rejected', label: 'Rejected' },
 		{ value: 'invalid', label: 'Invalid' },
-		{ value: 'ocr_processed', label: 'OCR processed' }
+		{ value: 'ocr_processed', label: 'OCR processed' },
+		{ value: 'opt-out', label: 'Opt-Out' }
 	];
 </script>
 

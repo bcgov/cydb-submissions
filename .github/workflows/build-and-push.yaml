@@ -4,15 +4,12 @@ permissions:
   deployments: write
   packages: write
 
-run-name: Build and Deploy (${{ inputs.environment }})
-
 on:
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Environment to build package for'
-        type: environment
-        required: true
+  push:
+    branches:
+      - main
+      - test
+      - dev
 
 env:
   HELM_RELEASE_NAME: cydb-submissions-deployment
@@ -63,7 +60,7 @@ jobs:
 
   deploy:
     needs: build_and_push
-    environment: ${{ inputs.environment }}
+    environment: ${{ github.ref_name }}
     runs-on: ubuntu-22.04
 
     steps:
@@ -76,7 +73,7 @@ jobs:
           valueFile: 'openshift/helm/values.yaml'
           changes: |
             {
-              "image.tag": "${{ inputs.environment }}",
+              "image.tag": "${{ github.ref_name }}",
               "aps.namespace": "${{ secrets.APS_NAMESPACE }}"
             }
           commitChange: false

@@ -167,7 +167,7 @@
 					Mark as provisionally eligible
 				</Button>
 			{/if}
-			<Button variant="default" onclick={() => (readyForPolicyDialogOpen = true)}>
+			<Button variant="outline" onclick={() => (readyForPolicyDialogOpen = true)}>
 				Mark for policy review
 			</Button>
 
@@ -471,10 +471,10 @@
 			<p class="text-sm text-gray-600">
 				To send this submission for review, press one of the following buttons. Any notes you have saved will be visible to the clinician / validator.
 			</p>
-			<Button variant="default" disabled={notesDirty} onclick={() => (readyForClinicianDialogOpen = true)}>
+			<Button variant="outline" disabled={notesDirty} onclick={() => (readyForClinicianDialogOpen = true)}>
 				Mark for clinician review
 			</Button>
-			<Button variant="default" disabled={notesDirty} onclick={() => (readyForValidatorDialogOpen = true)}>
+			<Button variant="outline" disabled={notesDirty} onclick={() => (readyForValidatorDialogOpen = true)}>
 				Mark for validator review
 			</Button>
 			{#if notesDirty}

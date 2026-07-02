@@ -55,9 +55,6 @@
 
 	// Whether the ready-for-clinician dialog is open
 	let readyForClinicianDialogOpen = $state(false);
-	// Whether the ready-for-validator dialog is open
-	let readyForValidatorDialogOpen = $state(false);
-
 	// True after the ready-for-clinician action succeeds
 	let readyForClinicianSuccess = $state(false);
 		// True after the ready-for-validator action succeeds
@@ -65,14 +62,9 @@
 
 	// Whether the reset-ready-for-clinician dialog is open
 	let resetReadyForClinicianDialogOpen = $state(false);
-	// Whether the reset-ready-for-validator dialog is open
-	let resetReadyForValidatorDialogOpen = $state(false);
 
 	// Whether the ready-for-validator dialog is open
 	let readyForValidatorDialogOpen = $state(false);
-
-	// True after the ready-for-validator action succeeds
-	let readyForValidatorSuccess = $state(false);
 
 	// Whether the reset-ready-for-validator dialog is open
 	let resetReadyForValidatorDialogOpen = $state(false);

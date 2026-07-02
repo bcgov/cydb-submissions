@@ -55,6 +55,7 @@ export const AUDIT_EVENTS = [
 	'submission_ready_for_validator',
 	'submission_ready_for_validator_reset',
 	'submission_ready_for_policy',
-	'submission_provisionally_eligible'
+	'submission_provisionally_eligible',
+	'invalid_submissions_cleared'
 ] as const;
 export type AuditEvent = (typeof AUDIT_EVENTS)[number];

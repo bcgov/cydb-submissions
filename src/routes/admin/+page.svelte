@@ -10,6 +10,7 @@
 
 	let seedOpen = $state(false);
 	let clearOpen = $state(false);
+	let clearInvalidOpen = $state(false);
 </script>
 
 <div class="mx-auto max-w-2xl space-y-8 p-6">
@@ -44,6 +45,7 @@
 			<Button variant="destructive" onclick={() => (clearOpen = true)}>Clear all submissions</Button
 			>
 			{/if}
+			<Button variant="outline" onclick={() => (clearInvalidOpen = true)}>Clear invalid &amp; re-ingest</Button>
 		</div>
 
 		<p class="text-xs text-gray-600">
@@ -94,6 +96,34 @@
 				>
 					<input type="hidden" name="csrf" value={page.data.csrfToken} />
 					<AlertDialog.Action type="submit">Seed</AlertDialog.Action>
+				</form>
+			</AlertDialog.Footer>
+		</AlertDialog.Content>
+	</AlertDialog.Root>
+
+	<!-- Clear invalid & re-ingest confirmation -->
+	<AlertDialog.Root bind:open={clearInvalidOpen}>
+		<AlertDialog.Content>
+			<AlertDialog.Header>
+				<AlertDialog.Title>Clear invalid submissions and re-ingest?</AlertDialog.Title>
+				<AlertDialog.Description>
+					This removes all invalid submission records and immediately re-syncs from CHEFS.
+					Submissions that previously failed validation will be retried.
+				</AlertDialog.Description>
+			</AlertDialog.Header>
+			<AlertDialog.Footer>
+				<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+				<form
+					method="POST"
+					action="?/clearInvalidAndSync"
+					use:enhance={() =>
+						async ({ update }) => {
+							await update();
+							clearInvalidOpen = false;
+						}}
+				>
+					<input type="hidden" name="csrf" value={page.data.csrfToken} />
+					<AlertDialog.Action type="submit">Confirm</AlertDialog.Action>
 				</form>
 			</AlertDialog.Footer>
 		</AlertDialog.Content>

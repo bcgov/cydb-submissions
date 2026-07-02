@@ -92,7 +92,15 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 				? ne(submissions.status, 'invalid')
 				: q.statusFilter === 'ocr_processed'
 					? eq(submissions.status, 'OCR processed')
-					: eq(submissions.status, q.statusFilter);
+					: q.statusFilter === 'ready_for_review'
+						? eq(submissions.status, 'ready for review')
+						: q.statusFilter === 'ready_for_clinician'
+							? eq(submissions.status, 'ready for clinician')
+							: q.statusFilter === 'ready_for_policy'
+								? eq(submissions.status, 'ready for policy')
+								: q.statusFilter === 'provisionally_eligible'
+									? eq(submissions.status, 'provisionally eligible')
+									: eq(submissions.status, q.statusFilter);
 
 	const workerRestriction = !isAdmin && !isValidator && !isClinicianOnly
 		? notInArray(submissions.status, WORKER_BLOCKED_STATUSES)
@@ -212,7 +220,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		: db.select({ n: count() }).from(submissions);
 
 	const shouldIncludeInvalidTable =
-		!isValidator && (q.statusFilter === 'all' || q.statusFilter === 'invalid');
+		!isValidator && !isClinicianOnly && (q.statusFilter === 'all' || q.statusFilter === 'invalid');
 
 	function createSubFieldFromRawJsonSQLStatement(fieldPath: string): SQL<string> {
 		const rawFieldPath = sql.raw(`'$.${fieldPath}'`);

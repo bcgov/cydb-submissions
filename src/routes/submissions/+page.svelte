@@ -62,6 +62,7 @@
 		{ value: 'rejected', label: 'Rejected' },
 		{ value: 'invalid', label: 'Invalid' },
 		{ value: 'ocr_processed', label: 'OCR processed' },
+		{ value: 'ready_for_review', label: 'Ready for validator' },
 		{ value: 'ready for clinician', label: 'Ready for clinician' },
 		{ value: 'ready for policy', label: 'Ready for policy' },
 		{ value: 'provisionally eligible', label: 'Provisionally eligible' },

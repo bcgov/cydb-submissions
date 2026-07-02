@@ -1,5 +1,5 @@
 import { asc, eq, sql } from 'drizzle-orm';
-import { rejectionReasons } from './db/schema';
+import { acceptReasons, rejectionReasons } from './db/schema';
 import type { DrizzleDb } from './roles';
 
 export interface Reason {
@@ -29,6 +29,27 @@ export async function listAllReasons(db: DrizzleDb): Promise<Reason[]> {
 		.orderBy(asc(rejectionReasons.id));
 }
 
+export async function listActiveAcceptReasons(
+	db: DrizzleDb
+): Promise<Array<{ id: number; text: string }>> {
+	return db
+		.select({ id: acceptReasons.id, text: acceptReasons.text })
+		.from(acceptReasons)
+		.where(eq(acceptReasons.active, true))
+		.orderBy(asc(acceptReasons.id));
+}
+
+export async function listAllAcceptReasons(db: DrizzleDb): Promise<Reason[]> {
+	return db
+		.select({
+			id: acceptReasons.id,
+			text: acceptReasons.text,
+			active: acceptReasons.active
+		})
+		.from(acceptReasons)
+		.orderBy(asc(acceptReasons.id));
+}
+
 export async function addReason(db: DrizzleDb, text: string): Promise<void> {
 	await db.insert(rejectionReasons).values({ text });
 }
@@ -45,4 +66,22 @@ export async function setReasonActive(db: DrizzleDb, id: number, active: boolean
 		.update(rejectionReasons)
 		.set({ active, updatedAt: sql`CURRENT_TIMESTAMP` })
 		.where(eq(rejectionReasons.id, id));
+}
+
+export async function addReasonAccept(db: DrizzleDb, text: string): Promise<void> {
+	await db.insert(acceptReasons).values({ text });
+}
+
+export async function editReasonAccept(db: DrizzleDb, id: number, text: string): Promise<void> {
+	await db
+		.update(acceptReasons)
+		.set({ text, updatedAt: sql`CURRENT_TIMESTAMP` })
+		.where(eq(acceptReasons.id, id));
+}
+
+export async function setReasonActiveAccept(db: DrizzleDb, id: number, active: boolean): Promise<void> {
+	await db
+		.update(acceptReasons)
+		.set({ active, updatedAt: sql`CURRENT_TIMESTAMP` })
+		.where(eq(acceptReasons.id, id));
 }

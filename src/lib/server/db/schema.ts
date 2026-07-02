@@ -195,6 +195,18 @@ export const rejectionReasons = sqliteTable('rejection_reasons', {
 		.default(sql`CURRENT_TIMESTAMP`)
 });
 
+export const acceptReasons = sqliteTable('accept_reasons', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	text: text('text').notNull().unique(),
+	active: integer('active', { mode: 'boolean' }).notNull().default(true),
+	createdAt: text('created_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text('updated_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`)
+});
+
 export const ocrJobs = sqliteTable(
 	'ocr_jobs',
 	{

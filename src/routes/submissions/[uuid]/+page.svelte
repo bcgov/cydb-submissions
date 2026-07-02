@@ -20,6 +20,9 @@
 	// Local checkbox state for reject reasons, keyed by reason id
 	let selectedReasonIds = $state<Record<number, boolean>>({});
 
+	// Local checkbox state for accept reasons, keyed by reason id
+	let selectedAcceptReasonIds = $state<Record<number, boolean>>({});
+
 	// Whether the decide dialog is open
 	let decideDialogOpen = $state(false);
 
@@ -40,12 +43,20 @@
 	const decideDisabled = $derived(
 		notesDirty ||
 			decisionChoice === null ||
-			(decisionChoice === 'rejected' && !Object.values(selectedReasonIds).some((v) => v === true))
+			(decisionChoice === 'rejected' && !Object.values(selectedReasonIds).some((v) => v === true)) ||
+			(decisionChoice === 'accepted' && !Object.values(selectedAcceptReasonIds).some((v) => v === true))
 	);
 
 	// Ticked reason ids for injection into the hidden form inputs
 	const tickedReasonIds = $derived(
 		Object.entries(selectedReasonIds)
+			.filter(([, checked]) => checked)
+			.map(([id]) => Number(id))
+	);
+
+	// Ticked reason ids for injection into the hidden form inputs
+	const tickedAcceptReasonIds = $derived(
+		Object.entries(selectedAcceptReasonIds)
 			.filter(([, checked]) => checked)
 			.map(([id]) => Number(id))
 	);
@@ -282,7 +293,6 @@
 									checked={decisionChoice === 'accepted'}
 									onchange={() => {
 										decisionChoice = 'accepted';
-										selectedReasonIds = {};
 									}}
 								/>
 								Accept
@@ -332,6 +342,26 @@
 							{/each}
 						</div>
 					{/if}
+					{#if decisionChoice === 'accepted'}
+						<div class="space-y-2">
+							<p class="text-sm font-medium text-gray-700">Select all that apply</p>
+							{#each data.activeAcceptReasons as reason (reason.id)}
+								<label class="flex cursor-pointer items-center gap-2 text-sm">
+									<input
+										type="checkbox"
+										checked={!!selectedAcceptReasonIds[reason.id]}
+										onchange={(e) => {
+											selectedAcceptReasonIds = {
+												...selectedAcceptReasonIds,
+												[reason.id]: (e.currentTarget as HTMLInputElement).checked
+											};
+										}}
+									/>
+									{reason.text}
+								</label>
+							{/each}
+						</div>
+					{/if}
 				</fieldset>
 
 				<Button variant="default" disabled={decideDisabled} onclick={() => (decideDialogOpen = true)}>
@@ -372,6 +402,11 @@
 							<input type="hidden" name="decision" value={decisionChoice ?? ''} />
 							{#if decisionChoice === 'rejected'}
 								{#each tickedReasonIds as id (id)}
+									<input type="hidden" name="reasonIds" value={id} />
+								{/each}
+							{/if}
+							{#if decisionChoice === 'accepted'}
+								{#each tickedAcceptReasonIds as id (id)}
 									<input type="hidden" name="reasonIds" value={id} />
 								{/each}
 							{/if}
@@ -624,63 +659,6 @@
 					role="alert"
 					class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
 				>
-					{form.error}
-				</p>
-			{/if}
-
-			<p class="text-sm text-gray-600">This submission is currently awaiting validator review.</p>
-			<Button variant="outline" size="sm" onclick={() => (resetReadyForValidatorDialogOpen = true)}>
-				Reset status
-			</Button>
-
-			<AlertDialog.Root
-				open={resetReadyForValidatorDialogOpen}
-				onOpenChange={(open) => {
-					if (!open) resetReadyForValidatorDialogOpen = false;
-				}}
-			>
-				<AlertDialog.Content>
-					<AlertDialog.Header>
-						<AlertDialog.Title>Reset validator status?</AlertDialog.Title>
-						<AlertDialog.Description>
-							This will return the submission to the appropriate review status based on its OCR
-							processing state.
-						</AlertDialog.Description>
-					</AlertDialog.Header>
-					<AlertDialog.Footer>
-						<AlertDialog.Cancel onclick={() => (resetReadyForValidatorDialogOpen = false)}>
-							Cancel
-						</AlertDialog.Cancel>
-						<form
-							method="POST"
-							action="?/resetReadyForValidator"
-							use:enhance={() =>
-								async ({ update }) => {
-									await update();
-									resetReadyForValidatorDialogOpen = false;
-								}}
-						>
-							<input type="hidden" name="csrf" value={page.data.csrfToken} />
-							<AlertDialog.Action type="submit">Reset</AlertDialog.Action>
-						</form>
-					</AlertDialog.Footer>
-				</AlertDialog.Content>
-			</AlertDialog.Root>
-		</section>
-	{/if}
-
-	<!-- Admin: reset ready-for-validator -->
-	{#if data.isAdmin && data.claimedByMe && data.submission.status === 'ready for review'}
-		<section class="space-y-4 rounded border border-gray-200 bg-gray-50 px-5 py-4">
-			<h2 class="text-base font-semibold">Ready for Validator</h2>
-
-			{#if form?.action === 'resetReadyForValidator' && form?.success}
-				<p role="status" class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
-					{form.success}
-				</p>
-			{/if}
-			{#if form?.action === 'resetReadyForValidator' && form?.error}
-				<p role="alert" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
 					{form.error}
 				</p>
 			{/if}

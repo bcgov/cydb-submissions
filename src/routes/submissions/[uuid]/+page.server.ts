@@ -699,10 +699,10 @@ export const actions: Actions = {
 				.limit(1)
 		)[0];
 		if (!sub) return fail(404, { action: 'provisionallyEligible', error: 'Submission not found.' });
-		if (sub.status !== 'ready for review')
+		if (sub.status !== 'ready for review' && sub.status !== 'ready for policy')
 			return fail(400, {
 				action: 'provisionallyEligible',
-				error: 'Submission must be in ready for review status to perform this action.'
+				error: 'Submission must be in ready for review or ready for policy status to perform this action.'
 			});
 
 		const claim = (

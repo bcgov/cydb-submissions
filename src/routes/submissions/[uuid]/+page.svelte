@@ -15,7 +15,7 @@
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	// Local radio state for the decide form (no default)
-	let decisionChoice = $state<'accepted' | 'rejected' | null>(null);
+	let decisionChoice = $state<'accepted' | 'rejected' | 'provisionally eligible' | null>(null);
 
 	// Local checkbox state for reject reasons, keyed by reason id
 	let selectedReasonIds = $state<Record<number, boolean>>({});
@@ -283,6 +283,18 @@
 						Accept
 					</label>
 					{/if}
+					{#if onlyReject}
+					<label class="flex cursor-pointer items-center gap-2 text-sm">
+						<input
+							type="radio"
+							name="decisionChoice"
+							value="provisionally eligible"
+							checked={decisionChoice === 'provisionally eligible'}
+							onchange={() => { decisionChoice = 'provisionally eligible'; selectedReasonIds = {}; }}
+						/>
+						Provisionally eligible
+					</label>
+					{/if}
 					<label class="flex cursor-pointer items-center gap-2 text-sm">
 						<input
 							type="radio"
@@ -342,24 +354,39 @@
 						<AlertDialog.Cancel onclick={() => (decideDialogOpen = false)}>
 							Cancel
 						</AlertDialog.Cancel>
-						<form
-							method="POST"
-							action="?/decide"
-							use:enhance={() =>
-								async ({ update }) => {
-									await update();
-									decideDialogOpen = false;
-								}}
-						>
-							<input type="hidden" name="csrf" value={page.data.csrfToken} />
-							<input type="hidden" name="decision" value={decisionChoice ?? ''} />
-							{#if decisionChoice === 'rejected'}
-								{#each tickedReasonIds as id (id)}
-									<input type="hidden" name="reasonIds" value={id} />
-								{/each}
-							{/if}
-							<AlertDialog.Action type="submit">Confirm</AlertDialog.Action>
-						</form>
+						{#if decisionChoice === 'provisionally eligible'}
+							<form
+								method="POST"
+								action="?/provisionallyEligible"
+								use:enhance={() =>
+									async ({ update }) => {
+										await update();
+										decideDialogOpen = false;
+									}}
+							>
+								<input type="hidden" name="csrf" value={page.data.csrfToken} />
+								<AlertDialog.Action type="submit">Confirm</AlertDialog.Action>
+							</form>
+						{:else}
+							<form
+								method="POST"
+								action="?/decide"
+								use:enhance={() =>
+									async ({ update }) => {
+										await update();
+										decideDialogOpen = false;
+									}}
+							>
+								<input type="hidden" name="csrf" value={page.data.csrfToken} />
+								<input type="hidden" name="decision" value={decisionChoice ?? ''} />
+								{#if decisionChoice === 'rejected'}
+									{#each tickedReasonIds as id (id)}
+										<input type="hidden" name="reasonIds" value={id} />
+									{/each}
+								{/if}
+								<AlertDialog.Action type="submit">Confirm</AlertDialog.Action>
+							</form>
+						{/if}
 					</AlertDialog.Footer>
 				</AlertDialog.Content>
 			</AlertDialog.Root>

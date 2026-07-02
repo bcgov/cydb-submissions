@@ -459,6 +459,57 @@ export const actions: Actions = {
 		return { action: 'resetReadyForClinician', success: `Status reset to: ${newStatus}.` };
 	},
 
+	resetReadyForValidator: async ({ request, params, locals, url, cookies }) => {
+		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin');
+		const form = await request.formData();
+		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
+			return fail(403, { action: 'resetReadyForValidator', error: 'CSRF token mismatch' });
+
+		const sub = (
+			await db
+				.select({ id: submissions.id, status: submissions.status })
+				.from(submissions)
+				.where(eq(submissions.submissionUuid, params.uuid))
+				.limit(1)
+		)[0];
+		if (!sub) return fail(404, { action: 'resetReadyForValidator', error: 'Submission not found.' });
+		if (sub.status !== 'ready for review')
+			return fail(400, {
+				action: 'resetReadyForValidator',
+				error: 'Submission is not in ready for review status.'
+			});
+
+		const claim = (
+			await db
+				.select()
+				.from(submissionClaims)
+				.where(eq(submissionClaims.submissionId, sub.id))
+				.limit(1)
+		)[0];
+		if (!claim || claim.userId !== locals.user!.id)
+			return fail(403, {
+				action: 'resetReadyForValidator',
+				error: 'You must claim this submission before resetting its status.'
+			});
+
+		const newStatus = recomputeSubmissionStatus(db, sub.id);
+
+		auditLog(
+			'submission_ready_for_validator_reset',
+			{
+				actorUserId: locals.user!.id,
+				actorRole: [...locals.roles][0],
+				submissionUuid: params.uuid,
+				submissionId: sub.id,
+				newStatus,
+				route: url.pathname,
+				requestId: locals.requestId
+			},
+			locals.logger
+		);
+		return { action: 'resetReadyForValidator', success: `Status reset to: ${newStatus}.` };
+	},
+
 	readyForClinician: async ({ request, params, locals, url, cookies }) => {
 		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker');
 		const form = await request.formData();
@@ -512,6 +563,61 @@ export const actions: Actions = {
 		);
 		if (!locals.roles.has('admin')) redirect(303, '/submissions');
 		return { action: 'readyForClinician', success: 'Submission marked as ready for clinician.' };
+	},
+
+	readyForValidator: async ({ request, params, locals, url, cookies }) => {
+		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker');
+		const form = await request.formData();
+		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
+			return fail(403, { action: 'readyForValidator', error: 'CSRF token mismatch' });
+
+		const sub = (
+			await db
+				.select({ id: submissions.id, status: submissions.status })
+				.from(submissions)
+				.where(eq(submissions.submissionUuid, params.uuid))
+				.limit(1)
+		)[0];
+		if (!sub) return fail(404, { action: 'readyForValidator', error: 'Submission not found.' });
+		if (sub.status !== 'OCR processed')
+			return fail(400, {
+				action: 'readyForValidator',
+				error: 'Submission must be in OCR processed status to perform this action.'
+			});
+
+		const claim = (
+			await db
+				.select()
+				.from(submissionClaims)
+				.where(eq(submissionClaims.submissionId, sub.id))
+				.limit(1)
+		)[0];
+		if (!claim || claim.userId !== locals.user!.id)
+			return fail(403, {
+				action: 'readyForValidator',
+				error: 'You must claim this submission to perform this action.'
+			});
+
+		await db
+			.update(submissions)
+			.set({ status: 'ready for review' })
+			.where(eq(submissions.id, sub.id));
+		await db.delete(submissionClaims).where(eq(submissionClaims.submissionId, sub.id));
+
+		auditLog(
+			'submission_ready_for_validator',
+			{
+				actorUserId: locals.user!.id,
+				actorRole: [...locals.roles][0],
+				submissionUuid: params.uuid,
+				submissionId: sub.id,
+				route: url.pathname,
+				requestId: locals.requestId
+			},
+			locals.logger
+		);
+		if (!locals.roles.has('admin')) redirect(303, '/submissions');
+		return { action: 'readyForValidator', success: 'Submission marked as ready for validator.' };
 	},
 
 	saveNotes: async ({ request, params, locals, cookies }) => {

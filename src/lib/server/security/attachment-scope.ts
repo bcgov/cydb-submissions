@@ -7,6 +7,7 @@ export const CFD_WORKER_STATUSES = new Set<SubmissionStatus>([
 	'OCR Error',
 	'OCR processed',
 	'ready for review',
+	'ready for clinician',
 	// Workers retain download access to submissions they have decided.
 	'accepted',
 	'rejected',
@@ -16,7 +17,7 @@ export const CFD_WORKER_STATUSES = new Set<SubmissionStatus>([
 const CLINICIAN_STATUSES = new Set<SubmissionStatus>(['ready for clinician']);
 export const VALIDATOR_STATUSES = new Set<SubmissionStatus>(['OCR processed']);
 
-export const WORKER_BLOCKED_STATUSES: SubmissionStatus[] = ['ready for clinician', 'reviewed'];
+export const WORKER_BLOCKED_STATUSES: SubmissionStatus[] = ['reviewed'];
 
 export function canAccessAttachmentByStatus(roles: Set<Role>, status: SubmissionStatus): boolean {
 	if (roles.has('admin')) return true;

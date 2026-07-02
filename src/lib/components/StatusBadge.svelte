@@ -19,4 +19,4 @@
 	};
 </script>
 
-<Badge class={COLOURS[status]} variant="outline">{status}</Badge>
+<Badge class={COLOURS[status]} variant="outline">{status === 'ready for review' ? 'ready for validator' : status}</Badge>

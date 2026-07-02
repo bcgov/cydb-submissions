@@ -62,6 +62,7 @@
 		{ value: 'rejected', label: 'Rejected' },
 		{ value: 'invalid', label: 'Invalid' },
 		{ value: 'ocr_processed', label: 'OCR processed' },
+		{ value: 'ready for clinician', label: 'Ready for clinician' },
 		{ value: 'opt-out', label: 'Opt-Out' }
 	];
 </script>

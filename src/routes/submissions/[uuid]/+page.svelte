@@ -50,6 +50,14 @@
 			.map(([id]) => Number(id))
 	);
 
+	const onlyReject = $derived(data.submission.status === 'ready for policy');
+
+	// Whether the ready-for-policy dialog is open
+	let readyForPolicyDialogOpen = $state(false);
+
+	// Whether the provisionally-eligible dialog is open
+	let provisionallyEligibleDialogOpen = $state(false);
+
 	// Whether the ready-for-clinician dialog is open
 	let readyForClinicianDialogOpen = $state(false);
 	// Whether the ready-for-validator dialog is open
@@ -133,7 +141,108 @@
 		<StatusBadge status={data.submission.status as never} />
 	</header>
 
+	{#if data.claimedByMe && data.canMarkForPolicy && (data.submission.status === 'ready for review' || data.submission.status === 'ready for clinician' || data.submission.status === 'OCR Error')}
+		<section class="space-y-4 rounded border border-gray-200 bg-gray-50 px-5 py-4">
+			<h2 class="text-base font-semibold">Send for{#if data.submission.status !== 'ready for review'}&nbsp;policy{/if} review</h2>
+
+			{#if form?.action === 'readyForPolicy' && form?.success}
+				<p role="status" class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+					{form.success}
+				</p>
+			{/if}
+			{#if form?.action === 'readyForPolicy' && form?.error}
+				<p role="alert" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+					{form.error}
+				</p>
+			{/if}
+			{#if form?.action === 'provisionallyEligible' && form?.error}
+				<p role="alert" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+					{form.error}
+				</p>
+			{/if}
+
+			<p class="text-sm text-gray-600">Mark this submission as ready for{#if data.submission.status !== 'ready for review'}&nbsp;policy{/if} review.</p>
+			{#if data.submission.status === 'ready for review'}
+				<Button variant="outline" onclick={() => (provisionallyEligibleDialogOpen = true)}>
+					Mark as provisionally eligible
+				</Button>
+			{/if}
+			<Button variant="default" onclick={() => (readyForPolicyDialogOpen = true)}>
+				Mark for policy review
+			</Button>
+
+			
+
+			<AlertDialog.Root
+				open={readyForPolicyDialogOpen}
+				onOpenChange={(open) => { if (!open) readyForPolicyDialogOpen = false; }}
+			>
+				<AlertDialog.Content>
+					<AlertDialog.Header>
+						<AlertDialog.Title>Mark for policy review?</AlertDialog.Title>
+						<AlertDialog.Description>
+							Are you sure you want to send this submission for policy review?
+							{#if !data.canDecide}
+							You will not be able to view or modify this submission later.
+							{/if}
+						</AlertDialog.Description>
+					</AlertDialog.Header>
+					<AlertDialog.Footer>
+						<AlertDialog.Cancel onclick={() => (readyForPolicyDialogOpen = false)}>
+							Cancel
+						</AlertDialog.Cancel>
+						<form
+							method="POST"
+							action="?/readyForPolicy"
+							use:enhance={() => async ({ update }) => {
+								await update();
+								readyForPolicyDialogOpen = false;
+							}}
+						>
+							<input type="hidden" name="csrf" value={page.data.csrfToken} />
+							<AlertDialog.Action type="submit">Confirm</AlertDialog.Action>
+						</form>
+					</AlertDialog.Footer>
+				</AlertDialog.Content>
+			</AlertDialog.Root>
+
+			<AlertDialog.Root
+				open={provisionallyEligibleDialogOpen}
+				onOpenChange={(open) => { if (!open) provisionallyEligibleDialogOpen = false; }}
+			>
+				<AlertDialog.Content>
+					<AlertDialog.Header>
+						<AlertDialog.Title>Mark as provisionally eligible?</AlertDialog.Title>
+						<AlertDialog.Description>
+							This will move the submission to provisionally eligible status.
+							{#if !data.canDecide}
+							You will not be able to view or modify this submission later.
+							{/if}
+						</AlertDialog.Description>
+					</AlertDialog.Header>
+					<AlertDialog.Footer>
+						<AlertDialog.Cancel onclick={() => (provisionallyEligibleDialogOpen = false)}>
+							Cancel
+						</AlertDialog.Cancel>
+						<form
+							method="POST"
+							action="?/provisionallyEligible"
+							use:enhance={() => async ({ update }) => {
+								await update();
+								provisionallyEligibleDialogOpen = false;
+							}}
+						>
+							<input type="hidden" name="csrf" value={page.data.csrfToken} />
+							<AlertDialog.Action type="submit">Confirm</AlertDialog.Action>
+						</form>
+					</AlertDialog.Footer>
+				</AlertDialog.Content>
+			</AlertDialog.Root>
+		</section>
+	{/if}
+
 	<!-- Decision block -->
+	{#if data.submission.status === 'provisionally eligible' || data.submission.status === 'ready for policy'}
 	<section class="space-y-4 rounded border border-gray-200 bg-gray-50 px-5 py-4">
 		<h2 class="text-base font-semibold">Decision</h2>
 
@@ -159,6 +268,7 @@
 			<fieldset class="space-y-3">
 				<legend class="text-sm font-medium text-gray-700">Record a decision</legend>
 				<div class="flex gap-6">
+					{#if !onlyReject}
 					<label class="flex cursor-pointer items-center gap-2 text-sm">
 						<input
 							type="radio"
@@ -172,6 +282,7 @@
 						/>
 						Accept
 					</label>
+					{/if}
 					<label class="flex cursor-pointer items-center gap-2 text-sm">
 						<input
 							type="radio"
@@ -324,6 +435,7 @@
 			<p class="text-sm text-gray-500">No decision has been recorded yet.</p>
 		{/if}
 	</section>
+	{/if}
 
 	{#if data.claimedByMe && data.canDecide && data.submission.status === 'OCR processed' && !data.decision.decision}
 		<section class="space-y-4 rounded border border-gray-200 bg-gray-50 px-5 py-4">

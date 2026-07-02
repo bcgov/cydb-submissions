@@ -17,7 +17,7 @@ export const CFD_WORKER_STATUSES = new Set<SubmissionStatus>([
 ]);
 
 const CLINICIAN_STATUSES = new Set<SubmissionStatus>(['ready for clinician']);
-export const VALIDATOR_STATUSES = new Set<SubmissionStatus>(['OCR processed']);
+export const VALIDATOR_STATUSES = new Set<SubmissionStatus>(['ready for review']);
 
 export const WORKER_BLOCKED_STATUSES: SubmissionStatus[] = ['reviewed'];
 

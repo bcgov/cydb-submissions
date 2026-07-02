@@ -27,7 +27,7 @@ function csrfOk(formCsrf: FormDataEntryValue | null, cookieCsrf: string | undefi
 }
 
 export const load: PageServerLoad = async ({ params, locals, url }) => {
-	requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator');
+	requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator', 'clinician');
 	const categoryMap = await getCategoryMapping();
 	const rows = await db
 		.select()
@@ -43,11 +43,15 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 	const isAdmin = locals.roles.has('admin');
 	const isCfdWorker = locals.roles.has('cfd_worker');
 	const isValidator = locals.roles.has('validator') && !isAdmin && !isCfdWorker;
+	const isClinicianOnly = locals.roles.has('clinician') && !isAdmin && !isCfdWorker && !locals.roles.has('validator');
 
 	if (isCfdWorker && !isAdmin && !CFD_WORKER_STATUSES.has(submission.status as never)) {
 		throw error(403, 'Access denied');
 	}
-	if (isValidator && submission.status !== 'OCR processed') {
+	if (isValidator && submission.status !== 'ready for review') {
+		throw error(403, 'Access denied');
+	}
+	if (isClinicianOnly && submission.status !== 'ready for clinician') {
 		throw error(403, 'Access denied');
 	}
 	const claimRow = row.submission_claims;
@@ -195,6 +199,7 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 		},
 		activeReasons,
 		canDecide: locals.roles.has('admin') || locals.roles.has('cfd_worker'),
+		canMarkForPolicy: locals.roles.has('admin') || locals.roles.has('cfd_worker') || locals.roles.has('validator') || locals.roles.has('clinician'),
 		isAdmin: locals.roles.has('admin'),
 		claim: claimRow ? { email: claimEmail } : null,
 		claimedByMe: claimRow?.userId === locals.user?.id,
@@ -203,7 +208,7 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 
 export const actions: Actions = {
 	claim: async ({ request, params, locals, url, cookies }) => {
-		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator');
+		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator', 'clinician');
 		const form = await request.formData();
 		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
 			return fail(403, { action: 'claim', error: 'CSRF token mismatch' });
@@ -252,7 +257,7 @@ export const actions: Actions = {
 	},
 
 	unclaim: async ({ request, params, locals, url, cookies }) => {
-		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator');
+		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator', 'clinician');
 		const form = await request.formData();
 		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
 			return fail(403, { action: 'unclaim', error: 'CSRF token mismatch' });
@@ -313,12 +318,16 @@ export const actions: Actions = {
 
 		const sub = (
 			await db
-				.select({ id: submissions.id, decision: submissions.decision })
+				.select({ id: submissions.id, decision: submissions.decision, status: submissions.status })
 				.from(submissions)
 				.where(eq(submissions.submissionUuid, params.uuid))
 				.limit(1)
 		)[0];
 		if (!sub) return fail(404, { action: 'decide', error: 'Submission not found.' });
+		if (sub.status !== 'provisionally eligible' && sub.status !== 'ready for policy')
+			return fail(400, { action: 'decide', error: 'Decisions can only be recorded for submissions in provisionally eligible or ready for policy status.' });
+		if (sub.status === 'ready for policy' && decision === 'accepted')
+			return fail(400, { action: 'decide', error: 'Only reject is permitted for submissions in ready for policy status.' });
 		if (sub.decision)
 			return fail(409, { action: 'decide', error: 'This submission has already been decided.' });
 
@@ -620,8 +629,118 @@ export const actions: Actions = {
 		return { action: 'readyForValidator', success: 'Submission marked as ready for validator.' };
 	},
 
-	saveNotes: async ({ request, params, locals, cookies }) => {
+	readyForPolicy: async ({ request, params, locals, url, cookies }) => {
+		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator', 'clinician');
+		const form = await request.formData();
+		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
+			return fail(403, { action: 'readyForPolicy', error: 'CSRF token mismatch' });
+
+		const sub = (
+			await db
+				.select({ id: submissions.id, status: submissions.status })
+				.from(submissions)
+				.where(eq(submissions.submissionUuid, params.uuid))
+				.limit(1)
+		)[0];
+		if (!sub) return fail(404, { action: 'readyForPolicy', error: 'Submission not found.' });
+
+		const ALLOWED_STATUSES = ['ready for review', 'ready for clinician', 'OCR Error'] as const;
+		if (!ALLOWED_STATUSES.includes(sub.status as never))
+			return fail(400, {
+				action: 'readyForPolicy',
+				error: 'Submission must be in ready for review, ready for clinician, or OCR Error status to perform this action.'
+			});
+
+		const claim = (
+			await db
+				.select()
+				.from(submissionClaims)
+				.where(eq(submissionClaims.submissionId, sub.id))
+				.limit(1)
+		)[0];
+		if (!claim || claim.userId !== locals.user!.id)
+			return fail(403, {
+				action: 'readyForPolicy',
+				error: 'You must claim this submission to perform this action.'
+			});
+
+		await db
+			.update(submissions)
+			.set({ status: 'ready for policy' })
+			.where(eq(submissions.id, sub.id));
+
+		auditLog(
+			'submission_ready_for_policy',
+			{
+				actorUserId: locals.user!.id,
+				actorRole: [...locals.roles][0],
+				submissionUuid: params.uuid,
+				submissionId: sub.id,
+				route: url.pathname,
+				requestId: locals.requestId
+			},
+			locals.logger
+		);
+		if (!locals.roles.has('admin') && !locals.roles.has('cfd_worker')) redirect(303, '/submissions');
+		return { action: 'readyForPolicy', success: 'Submission marked as ready for policy.' };
+	},
+
+	provisionallyEligible: async ({ request, params, locals, url, cookies }) => {
 		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator');
+		const form = await request.formData();
+		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
+			return fail(403, { action: 'provisionallyEligible', error: 'CSRF token mismatch' });
+
+		const sub = (
+			await db
+				.select({ id: submissions.id, status: submissions.status })
+				.from(submissions)
+				.where(eq(submissions.submissionUuid, params.uuid))
+				.limit(1)
+		)[0];
+		if (!sub) return fail(404, { action: 'provisionallyEligible', error: 'Submission not found.' });
+		if (sub.status !== 'ready for review')
+			return fail(400, {
+				action: 'provisionallyEligible',
+				error: 'Submission must be in ready for review status to perform this action.'
+			});
+
+		const claim = (
+			await db
+				.select()
+				.from(submissionClaims)
+				.where(eq(submissionClaims.submissionId, sub.id))
+				.limit(1)
+		)[0];
+		if (!claim || claim.userId !== locals.user!.id)
+			return fail(403, {
+				action: 'provisionallyEligible',
+				error: 'You must claim this submission to perform this action.'
+			});
+
+		await db
+			.update(submissions)
+			.set({ status: 'provisionally eligible' })
+			.where(eq(submissions.id, sub.id));
+
+		auditLog(
+			'submission_provisionally_eligible',
+			{
+				actorUserId: locals.user!.id,
+				actorRole: [...locals.roles][0],
+				submissionUuid: params.uuid,
+				submissionId: sub.id,
+				route: url.pathname,
+				requestId: locals.requestId
+			},
+			locals.logger
+		);
+		if (!locals.roles.has('admin') && !locals.roles.has('cfd_worker')) redirect(303, '/submissions');
+		return { action: 'provisionallyEligible', success: 'Submission marked as provisionally eligible.' };
+	},
+
+	saveNotes: async ({ request, params, locals, cookies }) => {
+		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator', 'clinician');
 		const form = await request.formData();
 		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
 			return fail(403, { action: 'saveNotes', error: 'CSRF token mismatch' });

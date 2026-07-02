@@ -24,12 +24,16 @@ export const SORT_COLUMNS = [
 ] as const;
 export type SortColumn = (typeof SORT_COLUMNS)[number];
 export type SortOrder = 'asc' | 'desc';
-export type StatusFilter = 'all' | 'exclude_invalid' | 'ocr_processed' | SubmissionStatus;
+export type StatusFilter = 'all' | 'exclude_invalid' | 'ocr_processed' | 'ready_for_review' | 'ready_for_clinician' | 'ready_for_policy' | 'provisionally_eligible' | SubmissionStatus;
 
 const STATUS_FILTER_VALUES = new Set<string>([
 	'all',
 	'exclude_invalid',
 	'ocr_processed',
+	'ready_for_review',
+	'ready_for_clinician',
+	'ready_for_policy',
+	'provisionally_eligible',
 	...SUBMISSION_STATUSES
 ]);
 

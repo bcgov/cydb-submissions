@@ -283,7 +283,7 @@ const handlePopulateRoles: Handle = async ({ event, resolve }) => {
 const ROUTE_RULES: Array<{ prefix: string; roles: Role[] }> = [
 	{ prefix: '/admin', roles: ['admin'] },
 	{ prefix: '/clinician', roles: ['clinician'] },
-	{ prefix: '/submissions', roles: ['admin', 'cfd_worker', 'validator'] },
+	{ prefix: '/submissions', roles: ['admin', 'cfd_worker', 'validator', 'clinician'] },
 	{ prefix: '/attachments', roles: ['admin', 'cfd_worker', 'clinician', 'validator'] }
 ];
 

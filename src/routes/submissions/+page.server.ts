@@ -12,9 +12,10 @@ import { getCategoryMapping } from '$lib/server/ocr/keywords';
 import { WORKER_BLOCKED_STATUSES } from '$lib/server/security/attachment-scope';
 
 export const load: PageServerLoad = async ({ url, locals }) => {
-	requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator');
+	requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator', 'clinician');
 	const isAdmin = locals.roles.has('admin');
 	const isValidator = locals.roles.has('validator') && !isAdmin && !locals.roles.has('cfd_worker');
+	const isClinicianOnly = locals.roles.has('clinician') && !isAdmin && !locals.roles.has('cfd_worker') && !locals.roles.has('validator');
 	const categoryMap = await getCategoryMapping();
 	const q = parseSubmissionsQuery(url);
 
@@ -30,7 +31,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			locals.logger
 		);
 		try {
-			const effectiveStatusFilter = isValidator ? 'ocr_processed' : q.statusFilter;
+			const effectiveStatusFilter = isClinicianOnly ? 'ready for clinician' : isValidator ? 'ready for review' : q.statusFilter;
 			const result = await runSearch(db, getSearchClient(), {
 				query: q.q,
 				...buildStatusFilter(effectiveStatusFilter),
@@ -59,7 +60,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 				totalPages: Math.max(1, Math.ceil(result.total / q.size)),
 				searchError: null as string | null,
 				categoryMap,
-				showStatusFilter: !isValidator
+				showStatusFilter: !isValidator && !isClinicianOnly
 			};
 		} catch (e) {
 			if (e instanceof SearchQueryError) {
@@ -74,22 +75,32 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 					totalPages: 1,
 					searchError: e.message,
 					categoryMap,
-					showStatusFilter: !isValidator
+					showStatusFilter: !isValidator && !isClinicianOnly
 				};
 			}
 			throw e;
 		}
 	}
 
-	const filterClause = isValidator
-		? eq(submissions.status, 'OCR processed')
+	const filterClause = isClinicianOnly
+		? eq(submissions.status, 'ready for clinician')
+		: isValidator
+		? eq(submissions.status, 'ready for review')
 		: q.statusFilter === 'all'
 			? undefined
 			: q.statusFilter === 'exclude_invalid'
 				? ne(submissions.status, 'invalid')
 				: q.statusFilter === 'ocr_processed'
 					? eq(submissions.status, 'OCR processed')
-					: eq(submissions.status, q.statusFilter);
+					: q.statusFilter === 'ready_for_review'
+						? eq(submissions.status, 'ready for review')
+						: q.statusFilter === 'ready_for_clinician'
+							? eq(submissions.status, 'ready for clinician')
+							: q.statusFilter === 'ready_for_policy'
+								? eq(submissions.status, 'ready for policy')
+								: q.statusFilter === 'provisionally_eligible'
+									? eq(submissions.status, 'provisionally eligible')
+									: eq(submissions.status, q.statusFilter);
 
 	const workerRestriction = !isAdmin && !isValidator
 		? notInArray(submissions.status, WORKER_BLOCKED_STATUSES)
@@ -209,7 +220,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		: db.select({ n: count() }).from(submissions);
 
 	const shouldIncludeInvalidTable =
-		!isValidator && (q.statusFilter === 'all' || q.statusFilter === 'invalid');
+		!isValidator && !isClinicianOnly && (q.statusFilter === 'all' || q.statusFilter === 'invalid');
 
 	function createSubFieldFromRawJsonSQLStatement(fieldPath: string): SQL<string> {
 		const rawFieldPath = sql.raw(`'$.${fieldPath}'`);
@@ -281,6 +292,6 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		totalPages: Math.max(1, Math.ceil(regularTotal / q.size)),
 		searchError: null as string | null,
 		categoryMap,
-		showStatusFilter: !isValidator
+		showStatusFilter: !isValidator && !isClinicianOnly
 	};
 };

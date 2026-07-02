@@ -61,7 +61,11 @@
 		{ value: 'accepted', label: 'Accepted' },
 		{ value: 'rejected', label: 'Rejected' },
 		{ value: 'invalid', label: 'Invalid' },
-		{ value: 'ocr_processed', label: 'OCR processed' }
+		{ value: 'ocr_processed', label: 'OCR processed' },
+		{ value: 'ready_for_review', label: 'Ready for validator' },
+		{ value: 'ready_for_clinician', label: 'Ready for clinician' },
+		{ value: 'ready_for_policy', label: 'Ready for policy' },
+		{ value: 'provisionally_eligible', label: 'Provisionally eligible' }
 	];
 </script>
 

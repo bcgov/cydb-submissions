@@ -22,7 +22,7 @@ export async function writeValidSubmission(
 			.insert(schema.submissions)
 			.values({
 				submissionUuid: args.submissionUuid,
-				status: 'submitted',
+				status: args.payload.screening === 'No' ? 'opt-out' : 'submitted',
 				submitterSurname: args.payload.agreementSignatorysLegalLastName,
 				childYouthFirstName: args.payload.childYouthsFirstName,
 				childYouthMiddleNames: args.payload.childYouthsMiddleNameS || null,

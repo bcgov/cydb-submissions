@@ -15,7 +15,7 @@
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	// Local radio state for the decide form (no default)
-	let decisionChoice = $state<'accepted' | 'rejected' | null>(null);
+	let decisionChoice = $state<'accepted' | 'rejected' | 'provisionally eligible' | null>(null);
 
 	// Local checkbox state for reject reasons, keyed by reason id
 	let selectedReasonIds = $state<Record<number, boolean>>({});
@@ -50,14 +50,28 @@
 			.map(([id]) => Number(id))
 	);
 
+	const onlyReject = $derived(data.submission.status === 'ready for policy');
+
+	// Whether the ready-for-policy dialog is open
+	let readyForPolicyDialogOpen = $state(false);
+
+	// Whether the provisionally-eligible dialog is open
+	let provisionallyEligibleDialogOpen = $state(false);
+
 	// Whether the ready-for-clinician dialog is open
 	let readyForClinicianDialogOpen = $state(false);
+	// Whether the ready-for-validator dialog is open
+	let readyForValidatorDialogOpen = $state(false);
 
 	// True after the ready-for-clinician action succeeds
 	let readyForClinicianSuccess = $state(false);
+		// True after the ready-for-validator action succeeds
+	let readyForValidatorSuccess = $state(false);
 
 	// Whether the reset-ready-for-clinician dialog is open
 	let resetReadyForClinicianDialogOpen = $state(false);
+	// Whether the reset-ready-for-validator dialog is open
+	let resetReadyForValidatorDialogOpen = $state(false);
 
 	beforeNavigate(({cancel}) => {
 		if (notesDirty && !confirm('You have unsaved changes to your notes! Discard them?')) {
@@ -127,7 +141,108 @@
 		<StatusBadge status={data.submission.status as never} />
 	</header>
 
+	{#if data.claimedByMe && data.canMarkForPolicy && (data.submission.status === 'ready for review' || data.submission.status === 'ready for clinician' || data.submission.status === 'OCR Error')}
+		<section class="space-y-4 rounded border border-gray-200 bg-gray-50 px-5 py-4">
+			<h2 class="text-base font-semibold">Send for{#if data.submission.status !== 'ready for review'}&nbsp;policy{/if} review</h2>
+
+			{#if form?.action === 'readyForPolicy' && form?.success}
+				<p role="status" class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+					{form.success}
+				</p>
+			{/if}
+			{#if form?.action === 'readyForPolicy' && form?.error}
+				<p role="alert" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+					{form.error}
+				</p>
+			{/if}
+			{#if form?.action === 'provisionallyEligible' && form?.error}
+				<p role="alert" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+					{form.error}
+				</p>
+			{/if}
+
+			<p class="text-sm text-gray-600">Mark this submission as ready for{#if data.submission.status !== 'ready for review'}&nbsp;policy{/if} review.</p>
+			{#if data.submission.status === 'ready for review'}
+				<Button variant="outline" onclick={() => (provisionallyEligibleDialogOpen = true)}>
+					Mark as provisionally eligible
+				</Button>
+			{/if}
+			<Button variant="outline" onclick={() => (readyForPolicyDialogOpen = true)}>
+				Mark for policy review
+			</Button>
+
+			
+
+			<AlertDialog.Root
+				open={readyForPolicyDialogOpen}
+				onOpenChange={(open) => { if (!open) readyForPolicyDialogOpen = false; }}
+			>
+				<AlertDialog.Content>
+					<AlertDialog.Header>
+						<AlertDialog.Title>Mark for policy review?</AlertDialog.Title>
+						<AlertDialog.Description>
+							Are you sure you want to send this submission for policy review?
+							{#if !data.canDecide}
+							You will not be able to view or modify this submission later.
+							{/if}
+						</AlertDialog.Description>
+					</AlertDialog.Header>
+					<AlertDialog.Footer>
+						<AlertDialog.Cancel onclick={() => (readyForPolicyDialogOpen = false)}>
+							Cancel
+						</AlertDialog.Cancel>
+						<form
+							method="POST"
+							action="?/readyForPolicy"
+							use:enhance={() => async ({ update }) => {
+								await update();
+								readyForPolicyDialogOpen = false;
+							}}
+						>
+							<input type="hidden" name="csrf" value={page.data.csrfToken} />
+							<AlertDialog.Action type="submit">Confirm</AlertDialog.Action>
+						</form>
+					</AlertDialog.Footer>
+				</AlertDialog.Content>
+			</AlertDialog.Root>
+
+			<AlertDialog.Root
+				open={provisionallyEligibleDialogOpen}
+				onOpenChange={(open) => { if (!open) provisionallyEligibleDialogOpen = false; }}
+			>
+				<AlertDialog.Content>
+					<AlertDialog.Header>
+						<AlertDialog.Title>Mark as provisionally eligible?</AlertDialog.Title>
+						<AlertDialog.Description>
+							This will move the submission to provisionally eligible status.
+							{#if !data.canDecide}
+							You will not be able to view or modify this submission later.
+							{/if}
+						</AlertDialog.Description>
+					</AlertDialog.Header>
+					<AlertDialog.Footer>
+						<AlertDialog.Cancel onclick={() => (provisionallyEligibleDialogOpen = false)}>
+							Cancel
+						</AlertDialog.Cancel>
+						<form
+							method="POST"
+							action="?/provisionallyEligible"
+							use:enhance={() => async ({ update }) => {
+								await update();
+								provisionallyEligibleDialogOpen = false;
+							}}
+						>
+							<input type="hidden" name="csrf" value={page.data.csrfToken} />
+							<AlertDialog.Action type="submit">Confirm</AlertDialog.Action>
+						</form>
+					</AlertDialog.Footer>
+				</AlertDialog.Content>
+			</AlertDialog.Root>
+		</section>
+	{/if}
+
 	<!-- Decision block -->
+	{#if data.submission.status === 'provisionally eligible' || data.submission.status === 'ready for policy'}
 	<section class="space-y-4 rounded border border-gray-200 bg-gray-50 px-5 py-4">
 		<h2 class="text-base font-semibold">Decision</h2>
 
@@ -153,6 +268,7 @@
 			<fieldset class="space-y-3">
 				<legend class="text-sm font-medium text-gray-700">Record a decision</legend>
 				<div class="flex gap-6">
+					{#if !onlyReject}
 					<label class="flex cursor-pointer items-center gap-2 text-sm">
 						<input
 							type="radio"
@@ -166,6 +282,19 @@
 						/>
 						Accept
 					</label>
+					{/if}
+					{#if onlyReject}
+					<label class="flex cursor-pointer items-center gap-2 text-sm">
+						<input
+							type="radio"
+							name="decisionChoice"
+							value="provisionally eligible"
+							checked={decisionChoice === 'provisionally eligible'}
+							onchange={() => { decisionChoice = 'provisionally eligible'; selectedReasonIds = {}; }}
+						/>
+						Provisionally eligible
+					</label>
+					{/if}
 					<label class="flex cursor-pointer items-center gap-2 text-sm">
 						<input
 							type="radio"
@@ -225,24 +354,39 @@
 						<AlertDialog.Cancel onclick={() => (decideDialogOpen = false)}>
 							Cancel
 						</AlertDialog.Cancel>
-						<form
-							method="POST"
-							action="?/decide"
-							use:enhance={() =>
-								async ({ update }) => {
-									await update();
-									decideDialogOpen = false;
-								}}
-						>
-							<input type="hidden" name="csrf" value={page.data.csrfToken} />
-							<input type="hidden" name="decision" value={decisionChoice ?? ''} />
-							{#if decisionChoice === 'rejected'}
-								{#each tickedReasonIds as id (id)}
-									<input type="hidden" name="reasonIds" value={id} />
-								{/each}
-							{/if}
-							<AlertDialog.Action type="submit">Confirm</AlertDialog.Action>
-						</form>
+						{#if decisionChoice === 'provisionally eligible'}
+							<form
+								method="POST"
+								action="?/provisionallyEligible"
+								use:enhance={() =>
+									async ({ update }) => {
+										await update();
+										decideDialogOpen = false;
+									}}
+							>
+								<input type="hidden" name="csrf" value={page.data.csrfToken} />
+								<AlertDialog.Action type="submit">Confirm</AlertDialog.Action>
+							</form>
+						{:else}
+							<form
+								method="POST"
+								action="?/decide"
+								use:enhance={() =>
+									async ({ update }) => {
+										await update();
+										decideDialogOpen = false;
+									}}
+							>
+								<input type="hidden" name="csrf" value={page.data.csrfToken} />
+								<input type="hidden" name="decision" value={decisionChoice ?? ''} />
+								{#if decisionChoice === 'rejected'}
+									{#each tickedReasonIds as id (id)}
+										<input type="hidden" name="reasonIds" value={id} />
+									{/each}
+								{/if}
+								<AlertDialog.Action type="submit">Confirm</AlertDialog.Action>
+							</form>
+						{/if}
 					</AlertDialog.Footer>
 				</AlertDialog.Content>
 			</AlertDialog.Root>
@@ -318,20 +462,23 @@
 			<p class="text-sm text-gray-500">No decision has been recorded yet.</p>
 		{/if}
 	</section>
+	{/if}
 
-	{#if data.claimedByMe && data.canDecide && data.submission.status !== 'ready for clinician' && !data.decision.decision}
+	{#if data.claimedByMe && data.canDecide && data.submission.status === 'OCR processed' && !data.decision.decision}
 		<section class="space-y-4 rounded border border-gray-200 bg-gray-50 px-5 py-4">
-			<h2 class="text-base font-semibold">Send for clinician review</h2>
+			<h2 class="text-base font-semibold">Send for review</h2>
 
 			<p class="text-sm text-gray-600">
-				If this submission requires clinician review, press the following button.
-				Any notes you have saved will be visible to the clinician.
+				To send this submission for review, press one of the following buttons. Any notes you have saved will be visible to the clinician / validator.
 			</p>
-			<Button variant="default" disabled={notesDirty} onclick={() => (readyForClinicianDialogOpen = true)}>
+			<Button variant="outline" disabled={notesDirty} onclick={() => (readyForClinicianDialogOpen = true)}>
 				Mark for clinician review
 			</Button>
+			<Button variant="outline" disabled={notesDirty} onclick={() => (readyForValidatorDialogOpen = true)}>
+				Mark for validator review
+			</Button>
 			{#if notesDirty}
-				<p class="text-xs text-amber-600">Save your notes before sending for clinician review.</p>
+				<p class="text-xs text-amber-600">Save your notes before sending for review.</p>
 			{/if}
 
 			<AlertDialog.Root
@@ -344,8 +491,8 @@
 					<AlertDialog.Header>
 						<AlertDialog.Title>Mark for clinician review?</AlertDialog.Title>
 						<AlertDialog.Description>
-							Once marked for clinician review, this submission will no longer be visible to
-							you. This action cannot be undone.
+							Are you sure you want to send this submission for clinician review? 
+							This action cannot be undone.
 						</AlertDialog.Description>
 					</AlertDialog.Header>
 					<AlertDialog.Footer>
@@ -361,6 +508,42 @@
 									if (result.type === 'success') {
 										readyForClinicianDialogOpen = false;
 										readyForClinicianSuccess = true;
+									}
+								}}
+						>
+							<input type="hidden" name="csrf" value={page.data.csrfToken} />
+							<AlertDialog.Action type="submit">Confirm</AlertDialog.Action>
+						</form>
+					</AlertDialog.Footer>
+				</AlertDialog.Content>
+			</AlertDialog.Root>
+			<AlertDialog.Root
+				open={readyForValidatorDialogOpen}
+				onOpenChange={(open) => {
+					if (!open) readyForValidatorDialogOpen = false;
+				}}
+			>
+				<AlertDialog.Content>
+					<AlertDialog.Header>
+						<AlertDialog.Title>Mark for validator review?</AlertDialog.Title>
+						<AlertDialog.Description>
+							Are you sure you want to send this submission for validator review?
+							This action cannot be undone.
+						</AlertDialog.Description>
+					</AlertDialog.Header>
+					<AlertDialog.Footer>
+						<AlertDialog.Cancel onclick={() => (readyForValidatorDialogOpen = false)}>
+							Cancel
+						</AlertDialog.Cancel>
+						<form
+							method="POST"
+							action="?/readyForValidator"
+							use:enhance={() =>
+								async ({ result, update }) => {
+									await update({ reset: false });
+									if (result.type === 'success') {
+										readyForValidatorDialogOpen = false;
+										readyForValidatorSuccess = true;
 									}
 								}}
 						>
@@ -431,6 +614,66 @@
 				</AlertDialog.Content>
 			</AlertDialog.Root>
 		</section>
+	{:else if data.isAdmin && data.claimedByMe && data.submission.status === 'ready for review'}
+		<section class="space-y-4 rounded border border-gray-200 bg-gray-50 px-5 py-4">
+			<h2 class="text-base font-semibold">Ready for Validator</h2>
+
+			{#if form?.action === 'resetReadyForValidator' && form?.success}
+				<p
+					role="status"
+					class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800"
+				>
+					{form.success}
+				</p>
+			{/if}
+			{#if form?.action === 'resetReadyForValidator' && form?.error}
+				<p
+					role="alert"
+					class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+				>
+					{form.error}
+				</p>
+			{/if}
+
+			<p class="text-sm text-gray-600">This submission is currently awaiting validator review.</p>
+			<Button variant="outline" size="sm" onclick={() => (resetReadyForValidatorDialogOpen = true)}>
+				Reset status
+			</Button>
+
+			<AlertDialog.Root
+				open={resetReadyForValidatorDialogOpen}
+				onOpenChange={(open) => {
+					if (!open) resetReadyForValidatorDialogOpen = false;
+				}}
+			>
+				<AlertDialog.Content>
+					<AlertDialog.Header>
+						<AlertDialog.Title>Reset validator status?</AlertDialog.Title>
+						<AlertDialog.Description>
+							This will return the submission to the appropriate review status based on its OCR
+							processing state.
+						</AlertDialog.Description>
+					</AlertDialog.Header>
+					<AlertDialog.Footer>
+						<AlertDialog.Cancel onclick={() => (resetReadyForValidatorDialogOpen = false)}>
+							Cancel
+						</AlertDialog.Cancel>
+						<form
+							method="POST"
+							action="?/resetReadyForValidator"
+							use:enhance={() =>
+								async ({ update }) => {
+									await update();
+									resetReadyForValidatorDialogOpen = false;
+								}}
+						>
+							<input type="hidden" name="csrf" value={page.data.csrfToken} />
+							<AlertDialog.Action type="submit">Reset</AlertDialog.Action>
+						</form>
+					</AlertDialog.Footer>
+				</AlertDialog.Content>
+			</AlertDialog.Root>
+		</section>
 	{/if}
 
 	<AlertDialog.Root
@@ -444,6 +687,27 @@
 				<AlertDialog.Title>Marked for clinician review</AlertDialog.Title>
 				<AlertDialog.Description>
 					This submission has been successfully marked for clinician review.
+				</AlertDialog.Description>
+			</AlertDialog.Header>
+			<AlertDialog.Footer>
+				<AlertDialog.Action onclick={() => goto('/submissions')}>
+					Return to submissions
+				</AlertDialog.Action>
+			</AlertDialog.Footer>
+		</AlertDialog.Content>
+	</AlertDialog.Root>
+
+	<AlertDialog.Root
+		open={readyForValidatorSuccess}
+		onOpenChange={(open) => {
+			if (!open) goto('/submissions');
+		}}
+	>
+	<AlertDialog.Content>
+			<AlertDialog.Header>
+				<AlertDialog.Title>Marked for validator review</AlertDialog.Title>
+				<AlertDialog.Description>
+					This submission has been successfully marked for validator review.
 				</AlertDialog.Description>
 			</AlertDialog.Header>
 			<AlertDialog.Footer>

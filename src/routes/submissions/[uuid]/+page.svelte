@@ -55,12 +55,18 @@
 
 	// Whether the ready-for-clinician dialog is open
 	let readyForClinicianDialogOpen = $state(false);
+	// Whether the ready-for-validator dialog is open
+	let readyForValidatorDialogOpen = $state(false);
 
 	// True after the ready-for-clinician action succeeds
 	let readyForClinicianSuccess = $state(false);
+		// True after the ready-for-validator action succeeds
+	let readyForValidatorSuccess = $state(false);
 
 	// Whether the reset-ready-for-clinician dialog is open
 	let resetReadyForClinicianDialogOpen = $state(false);
+	// Whether the reset-ready-for-validator dialog is open
+	let resetReadyForValidatorDialogOpen = $state(false);
 
 	// Whether the ready-for-validator dialog is open
 	let readyForValidatorDialogOpen = $state(false);
@@ -600,6 +606,66 @@
 								async ({ update }) => {
 									await update();
 									resetReadyForClinicianDialogOpen = false;
+								}}
+						>
+							<input type="hidden" name="csrf" value={page.data.csrfToken} />
+							<AlertDialog.Action type="submit">Reset</AlertDialog.Action>
+						</form>
+					</AlertDialog.Footer>
+				</AlertDialog.Content>
+			</AlertDialog.Root>
+		</section>
+	{:else if data.isAdmin && data.claimedByMe && data.submission.status === 'ready for review'}
+		<section class="space-y-4 rounded border border-gray-200 bg-gray-50 px-5 py-4">
+			<h2 class="text-base font-semibold">Ready for Validator</h2>
+
+			{#if form?.action === 'resetReadyForValidator' && form?.success}
+				<p
+					role="status"
+					class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800"
+				>
+					{form.success}
+				</p>
+			{/if}
+			{#if form?.action === 'resetReadyForValidator' && form?.error}
+				<p
+					role="alert"
+					class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+				>
+					{form.error}
+				</p>
+			{/if}
+
+			<p class="text-sm text-gray-600">This submission is currently awaiting validator review.</p>
+			<Button variant="outline" size="sm" onclick={() => (resetReadyForValidatorDialogOpen = true)}>
+				Reset status
+			</Button>
+
+			<AlertDialog.Root
+				open={resetReadyForValidatorDialogOpen}
+				onOpenChange={(open) => {
+					if (!open) resetReadyForValidatorDialogOpen = false;
+				}}
+			>
+				<AlertDialog.Content>
+					<AlertDialog.Header>
+						<AlertDialog.Title>Reset validator status?</AlertDialog.Title>
+						<AlertDialog.Description>
+							This will return the submission to the appropriate review status based on its OCR
+							processing state.
+						</AlertDialog.Description>
+					</AlertDialog.Header>
+					<AlertDialog.Footer>
+						<AlertDialog.Cancel onclick={() => (resetReadyForValidatorDialogOpen = false)}>
+							Cancel
+						</AlertDialog.Cancel>
+						<form
+							method="POST"
+							action="?/resetReadyForValidator"
+							use:enhance={() =>
+								async ({ update }) => {
+									await update();
+									resetReadyForValidatorDialogOpen = false;
 								}}
 						>
 							<input type="hidden" name="csrf" value={page.data.csrfToken} />

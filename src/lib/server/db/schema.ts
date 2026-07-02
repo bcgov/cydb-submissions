@@ -309,7 +309,10 @@ export const invalidSubmissions = sqliteTable('invalid_submissions', {
 	receivedAt: text('received_at')
 		.notNull()
 		.default(sql`CURRENT_TIMESTAMP`),
-	searchIndexedAt: text('search_indexed_at')
+	searchIndexedAt: text('search_indexed_at'),
+	resolvedAt: text('resolved_at'),
+	resolvedBy: text('resolved_by'),
+	resolvedNote: text('resolved_note')
 });
 
 export const submissionClaims = sqliteTable('submission_claims', {

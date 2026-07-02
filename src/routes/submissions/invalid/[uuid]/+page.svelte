@@ -1,9 +1,11 @@
 <script lang="ts">
-	import type { PageData } from './$types';
+	import type { PageData, ActionData } from './$types';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { formatDate } from '$lib/format-date';
 
-	let { data }: { data: PageData } = $props();
+	let { data, form }: { data: PageData; form: ActionData } = $props();
+
+	let note = $state('');
 </script>
 
 <div class="mx-auto max-w-3xl space-y-8 p-6">
@@ -54,5 +56,44 @@
 	<section class="space-y-3 rounded border border-gray-200 px-5 py-4">
 		<h2 class="text-base font-semibold">Raw Payload</h2>
 		<pre class="max-h-96 overflow-auto whitespace-pre-wrap rounded bg-gray-100 p-3 font-mono text-xs">{JSON.stringify(data.submission.rawPayload, null, 2)}</pre>
+	</section>
+
+	<section class="space-y-3 rounded border border-gray-200 px-5 py-4">
+		<h2 class="text-base font-semibold">Resolution</h2>
+		{#if data.submission.resolvedAt}
+			<p class="text-sm text-gray-700">
+				Marked as resolved by <span class="font-medium">{data.submission.resolvedBy}</span>
+				on {formatDate(data.submission.resolvedAt)}.
+			</p>
+			{#if data.submission.resolvedNote}
+				<p class="text-sm text-gray-700"><span class="font-medium">Note:</span> {data.submission.resolvedNote}</p>
+			{/if}
+		{:else}
+			<p class="text-sm text-gray-500">This submission has not been resolved.</p>
+			<form method="POST" action="?/resolve" class="space-y-3">
+				<div class="space-y-1">
+					<label for="note" class="block text-sm font-medium text-gray-700">Resolution note <span class="text-red-600">*</span></label>
+					<textarea
+						id="note"
+						name="note"
+						bind:value={note}
+						required
+						rows="3"
+						class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
+						placeholder="Describe why this submission is being marked as resolved..."
+					></textarea>
+					{#if form?.error}
+						<p class="text-sm text-red-600">{form.error}</p>
+					{/if}
+				</div>
+				<button
+					type="submit"
+					disabled={!note.trim()}
+					class="rounded border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+				>
+					Mark as Resolved
+				</button>
+			</form>
+		{/if}
 	</section>
 </div>

@@ -51,6 +51,7 @@ export const AUDIT_EVENTS = [
 	'submission_unclaimed',
 	'submission_ready_for_clinician',
 	'submission_ready_for_clinician_reset',
+	'invalid_submission_resolved',
 	'submission_ready_for_validator',
 	'submission_ready_for_validator_reset',
 	'submission_ready_for_policy',

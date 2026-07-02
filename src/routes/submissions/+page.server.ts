@@ -1,5 +1,5 @@
 import type { PageServerLoad } from './$types';
-import { sql, eq, desc, asc, ne, count, and, notInArray, SQL } from 'drizzle-orm';
+import { sql, eq, desc, asc, ne, count, and, notInArray, isNull, SQL } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { submissions, invalidSubmissions } from '$lib/server/db/schema';
 import { parseSubmissionsQuery } from '$lib/server/sort';
@@ -31,7 +31,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			locals.logger
 		);
 		try {
-			const effectiveStatusFilter = isClinicianOnly ? 'ready for clinician' : isValidator ? 'ready for review' : q.statusFilter;
+			const effectiveStatusFilter = isValidator ? 'ready for review' : isClinicianOnly ? 'ready for clinician' : q.statusFilter;
 			const result = await runSearch(db, getSearchClient(), {
 				query: q.q,
 				...buildStatusFilter(effectiveStatusFilter),
@@ -42,7 +42,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 				sort: q.sort,
 				order: q.order
 			});
-			if (!isAdmin && !isValidator) {
+			if (!isAdmin && !isValidator && !isClinicianOnly) {
 				result.rows = result.rows.filter(
 					(r) => !WORKER_BLOCKED_STATUSES.includes(r.status as never)
 				);
@@ -82,11 +82,11 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		}
 	}
 
-	const filterClause = isClinicianOnly
-		? eq(submissions.status, 'ready for clinician')
-		: isValidator
+	const filterClause = isValidator
 		? eq(submissions.status, 'ready for review')
-		: q.statusFilter === 'all'
+		: isClinicianOnly
+			? eq(submissions.status, 'ready for clinician')
+			: q.statusFilter === 'all'
 			? undefined
 			: q.statusFilter === 'exclude_invalid'
 				? ne(submissions.status, 'invalid')
@@ -102,7 +102,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 									? eq(submissions.status, 'provisionally eligible')
 									: eq(submissions.status, q.statusFilter);
 
-	const workerRestriction = !isAdmin && !isValidator
+	const workerRestriction = !isAdmin && !isValidator && !isClinicianOnly
 		? notInArray(submissions.status, WORKER_BLOCKED_STATUSES)
 		: undefined;
 
@@ -267,6 +267,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 						assessments: assessmentCountRawJsonSQLStatement()
 					})
 					.from(invalidSubmissions)
+					.where(isNull(invalidSubmissions.resolvedAt))
 					.orderBy(invalidOrderExpr)
 			: Promise.resolve([])
 	]);

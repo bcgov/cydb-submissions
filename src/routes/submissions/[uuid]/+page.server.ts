@@ -325,6 +325,10 @@ export const actions: Actions = {
 				.limit(1)
 		)[0];
 		if (!sub) return fail(404, { action: 'decide', error: 'Submission not found.' });
+		if (sub.status !== 'provisionally eligible' && sub.status !== 'ready for policy')
+			return fail(400, { action: 'decide', error: 'Decisions can only be recorded for submissions in provisionally eligible or ready for policy status.' });
+		if (sub.status === 'ready for policy' && decision === 'accepted')
+			return fail(400, { action: 'decide', error: 'Only reject is permitted for submissions in ready for policy status.' });
 		if (sub.decision)
 			return fail(409, { action: 'decide', error: 'This submission has already been decided.' });
 		if (sub.status !== 'provisionally eligible' && sub.status !== 'ready for policy')
@@ -357,7 +361,8 @@ export const actions: Actions = {
 		});
 		if (result === 'already_decided')
 			return fail(409, { action: 'decide', error: 'This submission has already been decided.' });
-
+    await db.delete(submissionClaims).where(eq(submissionClaims.submissionId, sub.id));
+    
 		auditLog(
 			'submission_decided',
 			{
@@ -638,9 +643,13 @@ export const actions: Actions = {
 				.limit(1)
 		)[0];
 		if (!sub) return fail(404, { action: 'readyForPolicy', error: 'Submission not found.' });
-		const allowedSources: string[] = ['ready for review', 'ready for clinician', 'OCR Error'];
-		if (!allowedSources.includes(sub.status))
-			return fail(400, { action: 'readyForPolicy', error: 'Submission cannot be moved to ready for policy from its current status.' });
+
+		const ALLOWED_STATUSES = ['ready for review', 'ready for clinician', 'OCR Error'] as const;
+		if (!ALLOWED_STATUSES.includes(sub.status as never))
+			return fail(400, {
+				action: 'readyForPolicy',
+				error: 'Submission must be in ready for review, ready for clinician, or OCR Error status to perform this action.'
+			});
 
 		const claim = (
 			await db
@@ -691,9 +700,11 @@ export const actions: Actions = {
 				.limit(1)
 		)[0];
 		if (!sub) return fail(404, { action: 'provisionallyEligible', error: 'Submission not found.' });
-		const allowedSources: string[] = ['ready for review', 'ready for policy'];
-		if (!allowedSources.includes(sub.status))
-			return fail(400, { action: 'provisionallyEligible', error: 'Submission cannot be moved to provisionally eligible from its current status.' });
+		if (sub.status !== 'ready for review' && sub.status !== 'ready for policy')
+			return fail(400, {
+				action: 'provisionallyEligible',
+				error: 'Submission must be in ready for review or ready for policy status to perform this action.'
+			});
 
 		const claim = (
 			await db

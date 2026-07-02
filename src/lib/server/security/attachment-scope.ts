@@ -8,6 +8,8 @@ export const CFD_WORKER_STATUSES = new Set<SubmissionStatus>([
 	'OCR processed',
 	'ready for review',
 	'ready for clinician',
+	'ready for policy',
+	'provisionally eligible',
 	// Workers retain download access to submissions they have decided.
 	'accepted',
 	'rejected',

@@ -9,6 +9,8 @@ export const SUBMISSION_STATUSES = [
 	'OCR processed',
 	'ready for review',
 	'ready for clinician',
+	'ready for policy',
+	'provisionally eligible',
 	'reviewed',
 	'accepted',
 	'rejected',
@@ -86,7 +88,7 @@ export const submissions = sqliteTable(
 		bySearchIndexed: index('submissions_search_indexed_idx').on(t.searchIndexedAt),
 		statusCheck: check(
 			'submissions_status_check',
-			sql`${t.status} IN ('submitted','OCR queued','OCR Error','OCR processed','ready for review','ready for clinician','reviewed','accepted','rejected','invalid','opt-out')`
+			sql`${t.status} IN ('submitted','OCR queued','OCR Error','OCR processed','ready for review','ready for clinician','ready for policy','provisionally eligible','reviewed','accepted','rejected','invalid','opt-out')`
 		),
 		decisionCheck: check(
 			'submissions_decision_check',

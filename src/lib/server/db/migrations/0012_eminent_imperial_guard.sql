@@ -34,7 +34,7 @@ CREATE TABLE `__new_submissions` (
 	`decided_by` text,
 	`decided_at` text,
 	`level_of_need_summary` text,
-	CONSTRAINT "submissions_status_check" CHECK("__new_submissions"."status" IN ('submitted','OCR queued','OCR Error','OCR processed','ready for review','ready for clinician','reviewed','accepted','rejected','invalid','opt-out')),
+	CONSTRAINT "submissions_status_check" CHECK("__new_submissions"."status" IN ('submitted','OCR queued','OCR Error','OCR processed','ready for review','ready for clinician','ready for policy','provisionally eligible','reviewed','accepted','rejected','invalid','opt-out')),
 	CONSTRAINT "submissions_decision_check" CHECK("__new_submissions"."decision" IS NULL OR "__new_submissions"."decision" IN ('accepted','rejected'))
 );
 --> statement-breakpoint

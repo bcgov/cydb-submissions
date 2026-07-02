@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "f7ef09ea-8791-4e3b-9468-1b3c4f2555eb",
+  "id": "b514e99b-47f5-43c6-b577-8136a4547498",
   "prevId": "cf8c4f1e-4a9e-47b9-a9e8-2408dc5e2fa3",
   "tables": {
     "invalid_submissions": {
@@ -1307,7 +1307,7 @@
       "checkConstraints": {
         "submissions_status_check": {
           "name": "submissions_status_check",
-          "value": "\"submissions\".\"status\" IN ('submitted','OCR queued','OCR Error','OCR processed','ready for review','ready for clinician','reviewed','accepted','rejected','invalid','opt-out')"
+          "value": "\"submissions\".\"status\" IN ('submitted','OCR queued','OCR Error','OCR processed','ready for review','ready for clinician','ready for policy','provisionally eligible','reviewed','accepted','rejected','invalid','opt-out')"
         },
         "submissions_decision_check": {
           "name": "submissions_decision_check",

@@ -11,6 +11,8 @@
 		'OCR processed': 'bg-blue-100 text-blue-800 border-blue-200',
 		'ready for review': 'bg-violet-100 text-violet-800 border-violet-200',
 		'ready for clinician': 'bg-violet-100 text-violet-800 border-violet-200',
+		'ready for policy': 'bg-violet-100 text-violet-800 border-violet-200',
+		'provisionally eligible': 'bg-teal-100 text-teal-800 border-teal-200',
 		reviewed: 'bg-green-100 text-green-800 border-green-200',
 		accepted: 'bg-emerald-100 text-emerald-800 border-emerald-200',
 		rejected: 'bg-rose-100 text-rose-800 border-rose-200',

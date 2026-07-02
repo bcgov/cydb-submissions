@@ -473,6 +473,11 @@ export const actions: Actions = {
 				.limit(1)
 		)[0];
 		if (!sub) return fail(404, { action: 'readyForClinician', error: 'Submission not found.' });
+		if (sub.status !== 'OCR processed')
+			return fail(400, {
+				action: 'readyForClinician',
+				error: 'Submission must be in OCR processed status to perform this action.'
+			});
 
 		const claim = (
 			await db

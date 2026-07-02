@@ -319,7 +319,7 @@
 		{/if}
 	</section>
 
-	{#if data.claimedByMe && data.canDecide && data.submission.status !== 'ready for clinician' && !data.decision.decision}
+	{#if data.claimedByMe && data.canDecide && data.submission.status === 'OCR processed' && !data.decision.decision}
 		<section class="space-y-4 rounded border border-gray-200 bg-gray-50 px-5 py-4">
 			<h2 class="text-base font-semibold">Send for clinician review</h2>
 

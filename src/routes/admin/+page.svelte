@@ -45,7 +45,7 @@
 			<Button variant="destructive" onclick={() => (clearOpen = true)}>Clear all submissions</Button
 			>
 			{/if}
-			<Button variant="outline" onclick={() => (clearInvalidOpen = true)}>Clear invalid &amp; re-ingest</Button>
+			<Button variant="destructive" onclick={() => (clearInvalidOpen = true)}>Clear invalid &amp; re-ingest</Button>
 		</div>
 
 		<p class="text-xs text-gray-600">

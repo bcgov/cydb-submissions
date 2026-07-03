@@ -195,6 +195,7 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 		decision: {
 			decision: submission.decision as 'accepted' | 'rejected' | null,
 			reasons: (submission.decisionReasons ?? []) as string[],
+			acceptTier: submission.acceptTier,
 			decidedAt: submission.decidedAt,
 			decidedByEmail
 		},

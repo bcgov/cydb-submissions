@@ -42,12 +42,13 @@
 	// The decide button is disabled when:
 	// - no radio chosen
 	// - rejected is chosen but no reason is ticked
+	// - accepted is chosen but no reason or tier is ticked
 	// - there are unsaved notes changes
 	const decideDisabled = $derived(
 		notesDirty ||
 			decisionChoice === null ||
 			(decisionChoice === 'rejected' && !Object.values(selectedReasonIds).some((v) => v === true)) ||
-			(decisionChoice === 'accepted' && !Object.values(selectedAcceptReasonIds).some((v) => v === true) && tierChoice !== null)
+			(decisionChoice === 'accepted' && (!Object.values(selectedAcceptReasonIds).some((v) => v === true) || tierChoice === null))
 	);
 
 	// Ticked reason ids for injection into the hidden form inputs
@@ -156,6 +157,33 @@
 		</div>
 		<StatusBadge status={data.submission.status as never} />
 	</header>
+
+	{#if ['accepted', 'rejected'].includes(data.submission.status)}
+		<section class="space-y-3 rounded border px-5 py-4 {data.submission.status === 'accepted' ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}">
+			<div class="flex items-center justify-between">
+				<h2 class="text-base font-semibold {data.submission.status === 'accepted' ? 'text-green-900' : 'text-red-900'}">
+					{data.submission.status === 'accepted' ? 'Accepted' : 'Rejected'}
+				</h2>
+				{#if data.submission.status === 'accepted' && data.decision.acceptTier}
+					<span class="rounded-full px-2.5 py-0.5 text-xs font-medium capitalize bg-green-100 text-green-800 border border-green-200">
+						{data.decision.acceptTier}
+					</span>
+				{/if}
+			</div>
+			{#if data.decision.reasons && data.decision.reasons.length > 0}
+				<div>
+					<p class="mb-1.5 text-sm font-semibold tracking-wide {data.submission.status === 'accepted' ? 'text-green-800' : 'text-red-800'}">
+						{data.submission.status === 'accepted' ? 'Accept Reasons' : 'Reject Reasons'}
+					</p>
+					<ul class="space-y-1 pl-5">
+						{#each data.decision.reasons as reason}
+							<li class="list-disc text-sm {data.submission.status === 'accepted' ? 'text-green-800' : 'text-red-800'}">{reason}</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
+		</section>
+	{/if}
 
 	<!-- Ready-for-policy component -->
 	{#if data.claimedByMe && data.canMarkForPolicy && ['ready for review', 'ready for clinician', 'OCR Error'].includes(data.submission.status) && !data.decision.decision}

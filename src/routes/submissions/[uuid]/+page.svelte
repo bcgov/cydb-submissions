@@ -95,6 +95,13 @@
 			cancel(); // Stop navigation if the user cancels
 		}
   });
+
+	const backHref = $derived(
+		(() => {
+			const from = page.url.searchParams.get('from');
+			return from ? `/submissions${decodeURIComponent(from)}` : '/submissions';
+		})()
+	);
 </script>
 
 <div class="mx-auto max-w-3xl space-y-8 p-6">
@@ -152,7 +159,7 @@
 
 	<header class="flex items-center justify-between">
 		<div>
-			<a href="/submissions" class="text-sm text-blue-700 underline">← Back to submissions</a>
+			<a href={backHref} class="text-sm text-blue-700 underline">← Back to submissions</a>
 			<h1 class="mt-2 text-2xl font-semibold">Submission {data.submission.submissionUuid}</h1>
 		</div>
 		<StatusBadge status={data.submission.status as never} />

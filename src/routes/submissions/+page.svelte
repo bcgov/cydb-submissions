@@ -11,9 +11,17 @@
 
 	// Whole-row navigation (mouse enhancement; the "View" link remains the
 	// keyboard-accessible path). Don't navigate when the user is selecting text.
+	function rowHref(uuid: string, isInvalid = false) {
+		const base = isInvalid ? `/submissions/invalid/${uuid}` : `/submissions/${uuid}`;
+		const params = new URLSearchParams(page.url.searchParams);
+		if (!params.has('sort')) params.set('sort', 'date');
+		if (!params.has('order')) params.set('order', 'desc');
+		return `${base}?from=${encodeURIComponent(`?${params.toString()}`)}`;
+	}
+
 	function openRow(uuid: string, isInvalid = false) {
 		if (window.getSelection()?.toString()) return;
-		goto(isInvalid ? `/submissions/invalid/${uuid}` : `/submissions/${uuid}`);
+		goto(rowHref(uuid, isInvalid));
 	}
 
 	function sortHref(col: string) {
@@ -183,7 +191,7 @@
 					<Table.Cell class="whitespace-nowrap">{row.category12}</Table.Cell>
 					<Table.Cell class="whitespace-nowrap">{row.category13}</Table.Cell>
 					<Table.Cell>
-						<a class="text-blue-700 underline" href={isInvalid ? `/submissions/invalid/${row.uuid}` : `/submissions/${row.uuid}`}>View</a>
+						<a class="text-blue-700 underline" href={rowHref(row.uuid, isInvalid)}>View</a>
 					</Table.Cell>
 				</Table.Row>
 				{#if hasQuery && 'snippet' in row && row.snippet}
@@ -197,7 +205,7 @@
 				{/if}
 			{/each}
 			{#each data.invalidRows as row (row.uuid)}
-				<Table.Row class="cursor-pointer hover:bg-muted/50" onclick={() => goto(`/submissions/invalid/${row.uuid}`)}>
+				<Table.Row class="cursor-pointer hover:bg-muted/50" onclick={() => goto(rowHref(row.uuid, true))}>
 					<Table.Cell class="whitespace-nowrap">{formatDate(row.receivedAt)}</Table.Cell>
 					<Table.Cell class="whitespace-nowrap">{row.childYouthFirstName}{row.childYouthLastName === '—' && row.childYouthFirstName === '—' ? '' : ' ' + row.childYouthLastName}</Table.Cell>
 					<Table.Cell class="whitespace-nowrap">{row.surname}</Table.Cell>
@@ -219,7 +227,7 @@
 					<Table.Cell>—</Table.Cell>
 					<Table.Cell>—</Table.Cell>
 					<Table.Cell
-						><a class="text-blue-700 underline" href="/submissions/invalid/{row.uuid}">View</a></Table.Cell
+						><a class="text-blue-700 underline" href={rowHref(row.uuid, true)}>View</a></Table.Cell
 					>
 				</Table.Row>
 			{/each}

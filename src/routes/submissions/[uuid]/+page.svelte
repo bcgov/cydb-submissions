@@ -17,6 +17,9 @@
 	// Local radio state for the decide form (no default)
 	let decisionChoice = $state<'accepted' | 'rejected' | 'provisionally eligible' | null>(null);
 
+	// Local radio state for the accept form (no default)
+	let tierChoice = $state<'tier one' | 'tier two' | null>(null);
+
 	// Local checkbox state for reject reasons, keyed by reason id
 	let selectedReasonIds = $state<Record<number, boolean>>({});
 
@@ -44,7 +47,7 @@
 		notesDirty ||
 			decisionChoice === null ||
 			(decisionChoice === 'rejected' && !Object.values(selectedReasonIds).some((v) => v === true)) ||
-			(decisionChoice === 'accepted' && !Object.values(selectedAcceptReasonIds).some((v) => v === true))
+			(decisionChoice === 'accepted' && !Object.values(selectedAcceptReasonIds).some((v) => v === true) && tierChoice !== null)
 	);
 
 	// Ticked reason ids for injection into the hidden form inputs
@@ -320,7 +323,7 @@
 							/>
 							Reject
 						</label>
-					</div>
+					</div>			
 
 					{#if decisionChoice === 'rejected'}
 						<div class="space-y-2">
@@ -343,6 +346,32 @@
 						</div>
 					{/if}
 					{#if decisionChoice === 'accepted'}
+						<div class="space-y-2">
+							<label class="flex cursor-pointer items-center gap-2 text-sm">
+								<input
+									type="radio"
+									name="tierChoice"
+									value="tier one"
+									checked={tierChoice === 'tier one'}
+									onchange={() => {
+										tierChoice = 'tier one';
+									}}
+								/>
+								Tier One
+							</label>
+							<label class="flex cursor-pointer items-center gap-2 text-sm">
+								<input
+									type="radio"
+									name="tierChoice"
+									value="tier two"
+									checked={tierChoice === 'tier two'}
+									onchange={() => {
+										tierChoice = 'tier two';
+									}}
+								/>
+								Tier Two
+							</label>
+						</div>
 						<div class="space-y-2">
 							<p class="text-sm font-medium text-gray-700">Select all that apply</p>
 							{#each data.activeAcceptReasons as reason (reason.id)}
@@ -409,6 +438,7 @@
 								{#each tickedAcceptReasonIds as id (id)}
 									<input type="hidden" name="reasonIds" value={id} />
 								{/each}
+								<input type="hidden" name="tier" value={tierChoice} />
 							{/if}
 							<AlertDialog.Action type="submit">Confirm</AlertDialog.Action>
 						</form>

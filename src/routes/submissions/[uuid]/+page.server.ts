@@ -318,6 +318,7 @@ export const actions: Actions = {
 			.getAll('reasonIds')
 			.map((v) => Number(v))
 			.filter((n) => Number.isInteger(n) && n > 0);
+		const tierChoice = form.get('tier') ? form.get('tier') as string : null;
 
 		const sub = (
 			await db
@@ -350,7 +351,7 @@ export const actions: Actions = {
 
 		const active = await listActiveReasons(db);
 		const activeAccept = await listActiveAcceptReasons(db);
-		const v = validateDecision({ decision, reasonIds }, active, activeAccept);
+		const v = validateDecision({ decision, reasonIds }, active, activeAccept, tierChoice);
 		if (!v.ok) {
 			const msg =
 				v.error === 'empty_reasons' ? 'Select at least one reason.' : 'Invalid reason selection.';
@@ -360,6 +361,7 @@ export const actions: Actions = {
 			submissionId: sub.id,
 			decision: v.decision,
 			reasons: v.reasons,
+			tierChoice: tierChoice,
 			decidedBy: locals.user!.id
 		});
 		if (result === 'already_decided')

@@ -170,6 +170,11 @@
 					</span>
 				{/if}
 			</div>
+			{#if data.decision.decidedByEmail}
+				<p class="text-sm {data.submission.status === 'accepted' ? 'text-green-700' : 'text-red-700'}">
+					Decided by {data.decision.decidedByEmail}{#if data.decision.decidedAt}&nbsp;on {formatDate(data.decision.decidedAt)}{/if}
+				</p>
+			{/if}
 			{#if data.decision.reasons && data.decision.reasons.length > 0}
 				<div>
 					<p class="mb-1.5 text-sm font-semibold tracking-wide {data.submission.status === 'accepted' ? 'text-green-800' : 'text-red-800'}">

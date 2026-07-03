@@ -192,7 +192,7 @@
 	{/if}
 
 	<!-- Ready-for-policy component -->
-	{#if data.claimedByMe && data.canMarkForPolicy && ['ready for review', 'ready for clinician', 'OCR Error'].includes(data.submission.status) && !data.decision.decision}
+	{#if data.claimedByMe && data.canMarkForPolicy && ['ready for review', 'ready for clinician'].includes(data.submission.status) && !data.decision.decision}
 		<section class="space-y-4 rounded border border-gray-200 bg-gray-50 px-5 py-4">
 			<h2 class="text-base font-semibold">Send for{#if data.submission.status !== 'ready for review'}&nbsp;policy{/if} review</h2>
 
@@ -554,7 +554,7 @@
 	{/if}
 
 	<!-- Send for review section (clinician / validator) -->
-	{#if data.claimedByMe && data.canDecide && data.submission.status === 'OCR processed' && !data.decision.decision}
+	{#if data.claimedByMe && data.canDecide && ['OCR processed', 'OCR Error'].includes(data.submission.status) && !data.decision.decision}
 		<section class="space-y-4 rounded border border-gray-200 bg-gray-50 px-5 py-4">
 			<h2 class="text-base font-semibold">Send for review</h2>
 

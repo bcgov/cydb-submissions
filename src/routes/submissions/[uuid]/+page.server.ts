@@ -443,8 +443,8 @@ export const actions: Actions = {
 				.limit(1)
 		)[0];
 		if (!sub) return fail(404, { action: 'readyForClinician', error: 'Submission not found.' });
-		if (sub.status !== 'OCR processed')
-			return fail(400, { action: 'readyForClinician', error: 'Submission is not in OCR processed status.' });
+		if (!['OCR processed', 'OCR Error'].includes(sub.status))
+			return fail(400, { action: 'readyForClinician', error: 'Submission is not in OCR processed or OCR error status.' });
 
 		const claim = (
 			await db
@@ -546,8 +546,8 @@ export const actions: Actions = {
 				.limit(1)
 		)[0];
 		if (!sub) return fail(404, { action: 'readyForValidator', error: 'Submission not found.' });
-		if (sub.status !== 'OCR processed')
-			return fail(400, { action: 'readyForValidator', error: 'Submission is not in OCR processed status.' });
+		if (!['OCR processed', 'OCR Error'].includes(sub.status))
+			return fail(400, { action: 'readyForValidator', error: 'Submission is not in OCR processed or OCR error status.' });
 
 		const claim = (
 			await db
@@ -650,11 +650,11 @@ export const actions: Actions = {
 		)[0];
 		if (!sub) return fail(404, { action: 'readyForPolicy', error: 'Submission not found.' });
 
-		const ALLOWED_STATUSES = ['ready for review', 'ready for clinician', 'OCR Error'] as const;
+		const ALLOWED_STATUSES = ['ready for review', 'ready for clinician'] as const;
 		if (!ALLOWED_STATUSES.includes(sub.status as never))
 			return fail(400, {
 				action: 'readyForPolicy',
-				error: 'Submission must be in ready for review, ready for clinician, or OCR Error status to perform this action.'
+				error: 'Submission must be in ready for review or ready for clinician status to perform this action.'
 			});
 
 		const claim = (

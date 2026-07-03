@@ -13,7 +13,8 @@ export const CFD_WORKER_STATUSES = new Set<SubmissionStatus>([
 	// Workers retain download access to submissions they have decided.
 	'accepted',
 	'rejected',
-	'invalid'
+	'invalid',
+	'duplicate'
 ]);
 
 const CLINICIAN_STATUSES = new Set<SubmissionStatus>(['ready for clinician']);

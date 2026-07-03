@@ -17,8 +17,14 @@
 	// Local radio state for the decide form (no default)
 	let decisionChoice = $state<'accepted' | 'rejected' | 'provisionally eligible' | null>(null);
 
+	// Local radio state for the accept form (no default)
+	let tierChoice = $state<'tier one' | 'tier two' | null>(null);
+
 	// Local checkbox state for reject reasons, keyed by reason id
 	let selectedReasonIds = $state<Record<number, boolean>>({});
+
+	// Local checkbox state for accept reasons, keyed by reason id
+	let selectedAcceptReasonIds = $state<Record<number, boolean>>({});
 
 	// Whether the decide dialog is open
 	let decideDialogOpen = $state(false);
@@ -36,16 +42,25 @@
 	// The decide button is disabled when:
 	// - no radio chosen
 	// - rejected is chosen but no reason is ticked
+	// - accepted is chosen but no reason or tier is ticked
 	// - there are unsaved notes changes
 	const decideDisabled = $derived(
 		notesDirty ||
 			decisionChoice === null ||
-			(decisionChoice === 'rejected' && !Object.values(selectedReasonIds).some((v) => v === true))
+			(decisionChoice === 'rejected' && !Object.values(selectedReasonIds).some((v) => v === true)) ||
+			(decisionChoice === 'accepted' && (!Object.values(selectedAcceptReasonIds).some((v) => v === true) || tierChoice === null))
 	);
 
 	// Ticked reason ids for injection into the hidden form inputs
 	const tickedReasonIds = $derived(
 		Object.entries(selectedReasonIds)
+			.filter(([, checked]) => checked)
+			.map(([id]) => Number(id))
+	);
+
+	// Ticked reason ids for injection into the hidden form inputs
+	const tickedAcceptReasonIds = $derived(
+		Object.entries(selectedAcceptReasonIds)
 			.filter(([, checked]) => checked)
 			.map(([id]) => Number(id))
 	);
@@ -142,6 +157,39 @@
 		</div>
 		<StatusBadge status={data.submission.status as never} />
 	</header>
+
+	<!-- Decision block: read only for decided statuses -->
+	{#if ['accepted', 'rejected'].includes(data.submission.status)}
+		<section class="space-y-3 rounded border px-5 py-4 {data.submission.status === 'accepted' ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}">
+			<div class="flex items-center justify-between">
+				<h2 class="text-base font-semibold {data.submission.status === 'accepted' ? 'text-green-900' : 'text-red-900'}">
+					{data.submission.status === 'accepted' ? 'Accepted' : 'Rejected'}
+				</h2>
+				{#if data.submission.status === 'accepted' && data.decision.acceptTier}
+					<span class="rounded-full px-2.5 py-0.5 text-xs font-medium capitalize bg-green-100 text-green-800 border border-green-200">
+						{data.decision.acceptTier}
+					</span>
+				{/if}
+			</div>
+			{#if data.decision.decidedByEmail}
+				<p class="text-sm {data.submission.status === 'accepted' ? 'text-green-700' : 'text-red-700'}">
+					Decided by {data.decision.decidedByEmail}{#if data.decision.decidedAt}&nbsp;on {formatDate(data.decision.decidedAt)}{/if}
+				</p>
+			{/if}
+			{#if data.decision.reasons && data.decision.reasons.length > 0}
+				<div>
+					<p class="mb-1.5 text-sm font-semibold tracking-wide {data.submission.status === 'accepted' ? 'text-green-800' : 'text-red-800'}">
+						{data.submission.status === 'accepted' ? 'Accept Reasons' : 'Reject Reasons'}
+					</p>
+					<ul class="space-y-1 pl-5">
+						{#each data.decision.reasons as reason}
+							<li class="list-disc text-sm {data.submission.status === 'accepted' ? 'text-green-800' : 'text-red-800'}">{reason}</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
+		</section>
+	{/if}
 
 	<!-- Ready-for-policy component -->
 	{#if data.claimedByMe && data.canMarkForPolicy && ['ready for review', 'ready for clinician', 'OCR Error'].includes(data.submission.status) && !data.decision.decision}
@@ -282,7 +330,6 @@
 									checked={decisionChoice === 'accepted'}
 									onchange={() => {
 										decisionChoice = 'accepted';
-										selectedReasonIds = {};
 									}}
 								/>
 								Accept
@@ -323,6 +370,52 @@
 										onchange={(e) => {
 											selectedReasonIds = {
 												...selectedReasonIds,
+												[reason.id]: (e.currentTarget as HTMLInputElement).checked
+											};
+										}}
+									/>
+									{reason.text}
+								</label>
+							{/each}
+						</div>
+					{/if}
+					{#if decisionChoice === 'accepted'}
+						<div class="space-y-2">
+							<label class="flex cursor-pointer items-center gap-2 text-sm">
+								<input
+									type="radio"
+									name="tierChoice"
+									value="tier one"
+									checked={tierChoice === 'tier one'}
+									onchange={() => {
+										tierChoice = 'tier one';
+									}}
+								/>
+								Tier One
+							</label>
+							<label class="flex cursor-pointer items-center gap-2 text-sm">
+								<input
+									type="radio"
+									name="tierChoice"
+									value="tier two"
+									checked={tierChoice === 'tier two'}
+									onchange={() => {
+										tierChoice = 'tier two';
+									}}
+								/>
+								Tier Two
+							</label>
+						</div>
+						<div class="space-y-2">
+							<p class="text-sm font-medium text-gray-700">Select all that apply</p>
+							{#each data.activeAcceptReasons as reason (reason.id)}
+								<label class="flex cursor-pointer items-center gap-2 text-sm">
+									<input
+										type="checkbox"
+										checked={!!selectedAcceptReasonIds[reason.id]}
+										onchange={(e) => {
+											selectedAcceptReasonIds = {
+												...selectedAcceptReasonIds,
 												[reason.id]: (e.currentTarget as HTMLInputElement).checked
 											};
 										}}
@@ -374,6 +467,12 @@
 								{#each tickedReasonIds as id (id)}
 									<input type="hidden" name="reasonIds" value={id} />
 								{/each}
+							{/if}
+							{#if decisionChoice === 'accepted'}
+								{#each tickedAcceptReasonIds as id (id)}
+									<input type="hidden" name="reasonIds" value={id} />
+								{/each}
+								<input type="hidden" name="tier" value={tierChoice} />
 							{/if}
 							<AlertDialog.Action type="submit">Confirm</AlertDialog.Action>
 						</form>
@@ -624,63 +723,6 @@
 					role="alert"
 					class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
 				>
-					{form.error}
-				</p>
-			{/if}
-
-			<p class="text-sm text-gray-600">This submission is currently awaiting validator review.</p>
-			<Button variant="outline" size="sm" onclick={() => (resetReadyForValidatorDialogOpen = true)}>
-				Reset status
-			</Button>
-
-			<AlertDialog.Root
-				open={resetReadyForValidatorDialogOpen}
-				onOpenChange={(open) => {
-					if (!open) resetReadyForValidatorDialogOpen = false;
-				}}
-			>
-				<AlertDialog.Content>
-					<AlertDialog.Header>
-						<AlertDialog.Title>Reset validator status?</AlertDialog.Title>
-						<AlertDialog.Description>
-							This will return the submission to the appropriate review status based on its OCR
-							processing state.
-						</AlertDialog.Description>
-					</AlertDialog.Header>
-					<AlertDialog.Footer>
-						<AlertDialog.Cancel onclick={() => (resetReadyForValidatorDialogOpen = false)}>
-							Cancel
-						</AlertDialog.Cancel>
-						<form
-							method="POST"
-							action="?/resetReadyForValidator"
-							use:enhance={() =>
-								async ({ update }) => {
-									await update();
-									resetReadyForValidatorDialogOpen = false;
-								}}
-						>
-							<input type="hidden" name="csrf" value={page.data.csrfToken} />
-							<AlertDialog.Action type="submit">Reset</AlertDialog.Action>
-						</form>
-					</AlertDialog.Footer>
-				</AlertDialog.Content>
-			</AlertDialog.Root>
-		</section>
-	{/if}
-
-	<!-- Admin: reset ready-for-validator -->
-	{#if data.isAdmin && data.claimedByMe && data.submission.status === 'ready for review'}
-		<section class="space-y-4 rounded border border-gray-200 bg-gray-50 px-5 py-4">
-			<h2 class="text-base font-semibold">Ready for Validator</h2>
-
-			{#if form?.action === 'resetReadyForValidator' && form?.success}
-				<p role="status" class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
-					{form.success}
-				</p>
-			{/if}
-			{#if form?.action === 'resetReadyForValidator' && form?.error}
-				<p role="alert" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
 					{form.error}
 				</p>
 			{/if}

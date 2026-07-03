@@ -16,7 +16,7 @@ import { requireRole } from '$lib/server/roles';
 import { auditLog } from '$lib/server/audit';
 import { CFD_WORKER_STATUSES } from '$lib/server/security/attachment-scope';
 import type { AttachmentOcr } from '$lib/types';
-import { listActiveReasons } from '$lib/server/reasons';
+import { listActiveAcceptReasons, listActiveReasons } from '$lib/server/reasons';
 import { validateDecision, type DecisionOutcome } from '$lib/server/decision';
 import { recordDecision, resetDecision } from '$lib/server/decision-store';
 import { recomputeSubmissionStatus } from '$lib/server/ocr/status-transition';
@@ -77,6 +77,7 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 	}
 
 	const activeReasons = await listActiveReasons(db);
+	const activeAcceptReasons = await listActiveAcceptReasons(db);
 
 	const [atts, metaRows] = await Promise.all([
 		db
@@ -194,10 +195,12 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 		decision: {
 			decision: submission.decision as 'accepted' | 'rejected' | null,
 			reasons: (submission.decisionReasons ?? []) as string[],
+			acceptTier: submission.acceptTier,
 			decidedAt: submission.decidedAt,
 			decidedByEmail
 		},
 		activeReasons,
+		activeAcceptReasons,
 		canDecide: locals.roles.has('admin') || locals.roles.has('cfd_worker'),
 		canMarkForPolicy: locals.roles.has('admin') || locals.roles.has('cfd_worker') || locals.roles.has('validator') || locals.roles.has('clinician'),
 		isAdmin: locals.roles.has('admin'),
@@ -316,6 +319,7 @@ export const actions: Actions = {
 			.getAll('reasonIds')
 			.map((v) => Number(v))
 			.filter((n) => Number.isInteger(n) && n > 0);
+		const tierChoice = form.get('tier') ? form.get('tier') as string : null;
 
 		const sub = (
 			await db
@@ -347,7 +351,8 @@ export const actions: Actions = {
 			return fail(403, { action: 'decide', error: 'You must claim this submission before recording a decision.' });
 
 		const active = await listActiveReasons(db);
-		const v = validateDecision({ decision, reasonIds }, active);
+		const activeAccept = await listActiveAcceptReasons(db);
+		const v = validateDecision({ decision, reasonIds }, active, activeAccept, tierChoice);
 		if (!v.ok) {
 			const msg =
 				v.error === 'empty_reasons' ? 'Select at least one reason.' : 'Invalid reason selection.';
@@ -357,6 +362,7 @@ export const actions: Actions = {
 			submissionId: sub.id,
 			decision: v.decision,
 			reasons: v.reasons,
+			tierChoice: tierChoice,
 			decidedBy: locals.user!.id
 		});
 		if (result === 'already_decided')

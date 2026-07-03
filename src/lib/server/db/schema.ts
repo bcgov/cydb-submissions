@@ -79,6 +79,7 @@ export const submissions = sqliteTable(
 		decisionReasons: text('decision_reasons', { mode: 'json' }).$type<string[]>(),
 		decidedBy: text('decided_by'),
 		decidedAt: text('decided_at'),
+		acceptTier: text('accept_tier'),
 		levelOfNeedSummary: text('level_of_need_summary')
 	},
 	(t) => ({
@@ -93,6 +94,10 @@ export const submissions = sqliteTable(
 		decisionCheck: check(
 			'submissions_decision_check',
 			sql`${t.decision} IS NULL OR ${t.decision} IN ('accepted','rejected')`
+		),
+		acceptCheck: check(
+			'submissions_accept_check',
+			sql`${t.decision} IS NULL OR ${t.decision} IN ('rejected') OR ${t.acceptTier} IS NULL OR ${t.acceptTier} IN ('tier one', 'tier two')`
 		)
 	})
 );
@@ -184,6 +189,18 @@ export const revokedUserRoles = sqliteTable(
 );
 
 export const rejectionReasons = sqliteTable('rejection_reasons', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	text: text('text').notNull().unique(),
+	active: integer('active', { mode: 'boolean' }).notNull().default(true),
+	createdAt: text('created_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text('updated_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`)
+});
+
+export const acceptReasons = sqliteTable('accept_reasons', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
 	text: text('text').notNull().unique(),
 	active: integer('active', { mode: 'boolean' }).notNull().default(true),

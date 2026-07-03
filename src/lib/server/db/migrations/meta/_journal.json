@@ -92,6 +92,20 @@
       "when": 1783009236389,
       "tag": "0012_eminent_imperial_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1783031259897,
+      "tag": "0013_friendly_paladin",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1783102877116,
+      "tag": "0014_harsh_sauron",
+      "breakpoints": true
     }
   ]
 }

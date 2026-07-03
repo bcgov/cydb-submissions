@@ -69,7 +69,7 @@
 		<h2 class="text-lg font-semibold">Access control</h2>
 		<div class="flex flex-col gap-1">
 			<a href="/admin/users" class="text-blue-700 underline">User roles &amp; revocation →</a>
-			<a href="/admin/reasons" class="text-blue-700 underline">Rejection reasons →</a>
+			<a href="/admin/reasons" class="text-blue-700 underline">Accept and rejection reasons →</a>
 		</div>
 	</section>
 

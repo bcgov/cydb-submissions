@@ -158,6 +158,7 @@
 		<StatusBadge status={data.submission.status as never} />
 	</header>
 
+	<!-- Decision block: read only for decided statuses -->
 	{#if ['accepted', 'rejected'].includes(data.submission.status)}
 		<section class="space-y-3 rounded border px-5 py-4 {data.submission.status === 'accepted' ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}">
 			<div class="flex items-center justify-between">
@@ -356,7 +357,7 @@
 							/>
 							Reject
 						</label>
-					</div>			
+					</div>
 
 					{#if decisionChoice === 'rejected'}
 						<div class="space-y-2">

@@ -747,6 +747,92 @@ export const actions: Actions = {
 		return { action: 'provisionallyEligible', success: 'Submission marked as provisionally eligible.' };
 	},
 
+	markDuplicate: async ({ request, params, locals, url, cookies }) => {
+		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator', 'clinician');
+		const form = await request.formData();
+		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
+			return fail(403, { action: 'markDuplicate', error: 'CSRF token mismatch' });
+
+		const sub = (
+			await db
+				.select({ id: submissions.id, status: submissions.status })
+				.from(submissions)
+				.where(eq(submissions.submissionUuid, params.uuid))
+				.limit(1)
+		)[0];
+		if (!sub) return fail(404, { action: 'markDuplicate', error: 'Submission not found.' });
+
+		const ALLOWED_STATUSES = [
+			'submitted', 'OCR queued', 'OCR processed', 'OCR Error',
+			'ready for review', 'ready for clinician', 'ready for policy', 'provisionally eligible'
+		] as const;
+		if (!ALLOWED_STATUSES.includes(sub.status as never))
+			return fail(400, { action: 'markDuplicate', error: 'Submission cannot be marked as duplicate from its current status.' });
+
+		await db.update(submissions).set({ status: 'duplicate' }).where(eq(submissions.id, sub.id));
+		await db.delete(submissionClaims).where(eq(submissionClaims.submissionId, sub.id));
+
+		auditLog(
+			'submission_marked_duplicate',
+			{
+				actorUserId: locals.user!.id,
+				actorRole: [...locals.roles][0],
+				submissionUuid: params.uuid,
+				submissionId: sub.id,
+				route: url.pathname,
+				requestId: locals.requestId
+			},
+			locals.logger
+		);
+		if (!locals.roles.has('admin') && !locals.roles.has('cfd_worker')) redirect(303, '/submissions');
+		return { action: 'markDuplicate', success: 'Submission marked as duplicate.' };
+	},
+
+	resetDuplicate: async ({ request, params, locals, url, cookies }) => {
+		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker');
+		const form = await request.formData();
+		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
+			return fail(403, { action: 'resetDuplicate', error: 'CSRF token mismatch' });
+
+		const sub = (
+			await db
+				.select({ id: submissions.id, status: submissions.status })
+				.from(submissions)
+				.where(eq(submissions.submissionUuid, params.uuid))
+				.limit(1)
+		)[0];
+		if (!sub) return fail(404, { action: 'resetDuplicate', error: 'Submission not found.' });
+		if (sub.status !== 'duplicate')
+			return fail(400, { action: 'resetDuplicate', error: 'Submission is not in duplicate status.' });
+
+		const claim = (
+			await db
+				.select()
+				.from(submissionClaims)
+				.where(eq(submissionClaims.submissionId, sub.id))
+				.limit(1)
+		)[0];
+		if (!claim || claim.userId !== locals.user!.id)
+			return fail(403, { action: 'resetDuplicate', error: 'You must claim this submission before resetting its status.' });
+
+		const newStatus = recomputeSubmissionStatus(db, sub.id);
+
+		auditLog(
+			'submission_duplicate_reset',
+			{
+				actorUserId: locals.user!.id,
+				actorRole: [...locals.roles][0],
+				submissionUuid: params.uuid,
+				submissionId: sub.id,
+				newStatus,
+				route: url.pathname,
+				requestId: locals.requestId
+			},
+			locals.logger
+		);
+		return { action: 'resetDuplicate', success: `Status reset to: ${newStatus}.` };
+	},
+
 	saveNotes: async ({ request, params, locals, cookies }) => {
 		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator', 'clinician');
 		const form = await request.formData();

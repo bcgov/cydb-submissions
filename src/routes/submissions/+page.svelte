@@ -74,7 +74,10 @@
 		{ value: 'ready for clinician', label: 'Ready for clinician' },
 		{ value: 'ready for policy', label: 'Ready for policy' },
 		{ value: 'provisionally eligible', label: 'Provisionally eligible' },
-		{ value: 'opt-out', label: 'Opt-Out' }
+		{ value: 'opt-out', label: 'Opt-Out' },
+		{ value: 'OCR Error', label: 'OCR Error' },
+		{ value: 'OCR queued', label: 'OCR Queued'},
+		{ value: 'duplicate', label: 'Duplicate' }
 	];
 </script>
 
@@ -125,7 +128,7 @@
 		</p>
 	{/if}
 
-	<div class="mb-4 mx-auto max-w-3xl flex flex-wrap gap-2">
+	<div class="mb-4 mx-auto max-w-5xl flex flex-wrap gap-2">
 		{#if data.showStatusFilter}
 			{#each filterOptions as opt}
 				<a

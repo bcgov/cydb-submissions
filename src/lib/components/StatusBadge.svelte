@@ -17,7 +17,8 @@
 		accepted: 'bg-emerald-100 text-emerald-800 border-emerald-200',
 		rejected: 'bg-rose-100 text-rose-800 border-rose-200',
 		invalid: 'bg-red-100 text-red-800 border-red-200',
-		'opt-out': 'bg-gray-100 text-gray-600 border-gray-200'
+		'opt-out': 'bg-gray-100 text-gray-600 border-gray-200',
+		duplicate: 'bg-orange-100 text-orange-800 border-orange-200'
 	};
 </script>
 

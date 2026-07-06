@@ -5,6 +5,8 @@ export interface SearchDocument {
 	status: string;
 	createdAt: number;
 	surname: string;
+	childFirstName: string;
+	childLastName: string;
 	structuredText: string;
 	ocrText: string;
 	metadataText: string;
@@ -58,6 +60,10 @@ export interface SearchClient {
 	ensureIndex(): Promise<void>;
 	/** Idempotently create the invalid submissions index if absent. */
 	ensureInvalidIndex(): Promise<void>;
+	/** Drop the submissions index (used before schema-version rebuilds). */
+	dropIndex(): Promise<void>;
+	/** Drop the invalid submissions index. */
+	dropInvalidIndex(): Promise<void>;
 	replaceDoc(doc: SearchDocument): Promise<void>;
 	deleteDoc(id: number): Promise<void>;
 	search(input: SearchInput): Promise<SearchResult>;

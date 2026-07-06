@@ -147,7 +147,8 @@
 		<Table.Header>
 			<Table.Row>
 				<Table.Head><a href={sortHref('date')}>Submitted</a></Table.Head>
-				<Table.Head>Child</Table.Head>
+				<Table.Head><a href={sortHref('child_first_name')}>Child first name</a></Table.Head>
+				<Table.Head><a href={sortHref('child_last_name')}>Child last name</a></Table.Head>
 				<Table.Head><a href={sortHref('surname')}>Signatory surname</a></Table.Head>
 				<Table.Head><a href={sortHref('screening')}>Screening</a></Table.Head>
 				<Table.Head><a href={sortHref('assessments')}># Assessments</a></Table.Head>
@@ -174,7 +175,8 @@
 				{@const isInvalid = 'isInvalidSubmission' in row && row.isInvalidSubmission}
 				<Table.Row class="cursor-pointer hover:bg-muted/50" onclick={() => openRow(row.uuid, isInvalid)}>
 					<Table.Cell class="whitespace-nowrap">{formatDate(row.submittedAt)}</Table.Cell>
-					<Table.Cell class="whitespace-nowrap">{row.childYouthFirstName} {row.childYouthLastName}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap">{row.childYouthFirstName}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap">{row.childYouthLastName}</Table.Cell>
 					<Table.Cell class="whitespace-nowrap">{row.surname ?? '—'}</Table.Cell>
 					<Table.Cell class="whitespace-nowrap">{row.screening}</Table.Cell>
 					<Table.Cell class="whitespace-nowrap">{isInvalid ? row.attachmentCount : row.assessments?.length ?? 0}</Table.Cell>
@@ -199,7 +201,7 @@
 				</Table.Row>
 				{#if hasQuery && 'snippet' in row && row.snippet}
 					<Table.Row>
-						<Table.Cell colspan={7}>
+						<Table.Cell colspan={8}>
 							<span class="text-xs text-gray-600"
 								>…{@html sanitizeSnippet(String(row.snippet))}…</span
 							>
@@ -210,7 +212,8 @@
 			{#each data.invalidRows as row (row.uuid)}
 				<Table.Row class="cursor-pointer hover:bg-muted/50" onclick={() => goto(rowHref(row.uuid, true))}>
 					<Table.Cell class="whitespace-nowrap">{formatDate(row.receivedAt)}</Table.Cell>
-					<Table.Cell class="whitespace-nowrap">{row.childYouthFirstName}{row.childYouthLastName === '—' && row.childYouthFirstName === '—' ? '' : ' ' + row.childYouthLastName}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap">{row.childYouthFirstName === '—' ? '—' : row.childYouthFirstName}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap">{row.childYouthLastName === '—' ? '—' : row.childYouthLastName}</Table.Cell>
 					<Table.Cell class="whitespace-nowrap">{row.surname}</Table.Cell>
 					<Table.Cell class="whitespace-nowrap">{row.screening}</Table.Cell>
 					<Table.Cell class="whitespace-nowrap">{row.assessments}</Table.Cell>
@@ -236,7 +239,7 @@
 			{/each}
 			{#if data.rows.length === 0 && data.invalidRows.length === 0}
 				<Table.Row>
-					<Table.Cell colspan={7}>No submissions match this filter.</Table.Cell>
+					<Table.Cell colspan={8}>No submissions match this filter.</Table.Cell>
 				</Table.Row>
 			{/if}
 		</Table.Body>

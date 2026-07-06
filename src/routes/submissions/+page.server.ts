@@ -156,6 +156,12 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		case 'surname':
 			orderColumn = submissions.submitterSurname;
 			break;
+		case 'child_first_name':
+			orderColumn = submissions.childYouthFirstName;
+			break;
+		case 'child_last_name':
+			orderColumn = submissions.childYouthLastName;
+			break;
 		case 'screening':
 			orderColumn = submissions.screening;
 			break;
@@ -243,11 +249,15 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	const invalidSortColumn =
 		q.sort === 'surname'
 			? createSubFieldFromRawJsonSQLStatement('agreementSignatorysLegalLastName')
-			: q.sort === 'screening'
-				? createSubFieldFromRawJsonSQLStatement('screening')
-				: q.sort === 'assessments'
-					? assessmentCountRawJsonSQLStatement()
-					: invalidSubmissions.receivedAt;
+			: q.sort === 'child_first_name'
+				? createSubFieldFromRawJsonSQLStatement('childYouthsFirstName')
+				: q.sort === 'child_last_name'
+					? createSubFieldFromRawJsonSQLStatement('childYouthsLastName')
+					: q.sort === 'screening'
+						? createSubFieldFromRawJsonSQLStatement('screening')
+						: q.sort === 'assessments'
+							? assessmentCountRawJsonSQLStatement()
+							: invalidSubmissions.receivedAt;
 	const invalidOrderExpr = q.order === 'asc' ? asc(invalidSortColumn) : desc(invalidSortColumn);
 
 	const [rows, totalRow, invalidRows] = await Promise.all([

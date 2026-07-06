@@ -291,6 +291,8 @@ function sortRows(rows: SearchRow[], sort: SortColumn, order: SortOrder): void {
 		switch (sort) {
 			case 'date':      av = a.submittedAt;    bv = b.submittedAt;    break;
 			case 'surname':   av = (a.surname ?? '').toLowerCase(); bv = (b.surname ?? '').toLowerCase(); break;
+			case 'child_first_name': av = (a.childYouthFirstName ?? '').toLowerCase(); bv = (b.childYouthFirstName ?? '').toLowerCase(); break;
+			case 'child_last_name':  av = (a.childYouthLastName ?? '').toLowerCase();  bv = (b.childYouthLastName ?? '').toLowerCase();  break;
 			case 'screening': av = (a.screening ?? '').toLowerCase(); bv = (b.screening ?? '').toLowerCase(); break;
 			case 'assessments':
 				av = a.isInvalidSubmission

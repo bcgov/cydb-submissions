@@ -22,6 +22,8 @@ import { startPoller, type PollerHandle } from '$lib/server/chefs/poller';
 import { getSearchClient } from '$lib/server/search/instance';
 import { indexSubmission } from '$lib/server/search/indexer';
 import { startReconciler, type ReconcilerHandle } from '$lib/server/search/reconciler';
+import { systemState } from '$lib/server/db/schema';
+import { eq } from 'drizzle-orm';
 import { getEffectiveConfig } from '$lib/server/chefs/config';
 import { listSubmissions, downloadFile } from '$lib/server/chefs/client';
 import { startBackupScheduler, type SchedulerHandle } from '$lib/server/db/backup';
@@ -157,6 +159,12 @@ async function maybeStartSearch() {
 	searchStarted = true;
 	const client = getSearchClient();
 	try {
+		const rebuildFlag = db.select().from(systemState).where(eq(systemState.key, 'manticore_rebuild_needed')).get();
+		if (rebuildFlag?.value === '1') {
+			await client.dropIndex();
+			await client.dropInvalidIndex();
+			db.delete(systemState).where(eq(systemState.key, 'manticore_rebuild_needed')).run();
+		}
 		await client.ensureIndex();
 		await client.ensureInvalidIndex();
 	} catch (e) {

@@ -11,6 +11,8 @@ export class InMemorySearchClient implements SearchClient {
 
 	async ensureIndex(): Promise<void> {}
 	async ensureInvalidIndex(): Promise<void> {}
+	async dropIndex(): Promise<void> {}
+	async dropInvalidIndex(): Promise<void> {}
 	async ping(): Promise<boolean> { return true; }
 
 	async replaceDoc(doc: SearchDocument): Promise<void> {

@@ -87,6 +87,8 @@ export const submissions = sqliteTable(
 		byStatus: index('submissions_status_idx').on(t.status),
 		byCreated: index('submissions_created_idx').on(t.createdAt),
 		bySurname: index('submissions_surname_idx').on(t.submitterSurname),
+		byChildFirstName: index('submissions_child_first_name_idx').on(t.childYouthFirstName),
+		byChildLastName: index('submissions_child_last_name_idx').on(t.childYouthLastName),
 		bySearchIndexed: index('submissions_search_indexed_idx').on(t.searchIndexedAt),
 		statusCheck: check(
 			'submissions_status_check',

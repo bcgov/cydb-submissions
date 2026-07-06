@@ -11,13 +11,14 @@ d('ManticoreClient (integration — requires MANTICORE_URL)', () => {
 		await c.ensureIndex();
 		await c.replaceDoc({
 			id: 1001, submissionUuid: 'int-1', status: 'submitted', createdAt: 1717230600,
-			surname: 'Vernon', structuredText: 'primary language English co-occurring conditions ADHD',
+			surname: 'Vernon', childFirstName: 'Alex', childLastName: 'Vernon',
+			structuredText: 'primary language English co-occurring conditions ADHD',
 			ocrText: 'The assessment indicates autism with notable speech delay and sensory processing concerns.',
 			metadataText: 'Mozilla/5.0 en-CA'
 		});
 		await c.replaceDoc({
 			id: 1002, submissionUuid: 'int-2', status: 'invalid', createdAt: 1717230600,
-			surname: 'Other', structuredText: '', ocrText: 'unrelated content', metadataText: ''
+			surname: 'Other', childFirstName: '', childLastName: '', structuredText: '', ocrText: 'unrelated content', metadataText: ''
 		});
 		await new Promise((r) => setTimeout(r, 300));
 	});

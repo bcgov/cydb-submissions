@@ -33,6 +33,8 @@ describe('ManticoreClient.replaceDoc', () => {
 			status: 'submitted',
 			createdAt: 1717230600,
 			surname: "O'Brien",
+			childFirstName: '',
+			childLastName: '',
 			structuredText: 'language English',
 			// Real OCR text routinely contains apostrophes (and occasionally backslashes).
 			ocrText: "BC Children's Hospital. Path C:\\scan",
@@ -129,6 +131,8 @@ describe('ManticoreClient sql-path error handling', () => {
 				status: 'submitted',
 				createdAt: 1,
 				surname: 'X',
+				childFirstName: '',
+				childLastName: '',
 				structuredText: '',
 				ocrText: '',
 				metadataText: ''

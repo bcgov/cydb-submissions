@@ -5,7 +5,8 @@ import type { SearchDocument } from '$lib/server/search/types';
 function doc(over: Partial<SearchDocument>): SearchDocument {
 	return {
 		id: 1, submissionUuid: 'u1', status: 'submitted', createdAt: 1000,
-		surname: 'Smith', structuredText: 'language English', ocrText: 'autism speech delay',
+		surname: 'Smith', childFirstName: '', childLastName: '',
+		structuredText: 'language English', ocrText: 'autism speech delay',
 		metadataText: 'UA Mozilla', ...over
 	};
 }

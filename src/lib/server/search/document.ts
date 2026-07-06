@@ -83,6 +83,8 @@ export function buildSearchDocument(
 		status: row.status,
 		createdAt: toUnixSeconds(row.createdAt),
 		surname: row.submitterSurname ?? '',
+		childFirstName: row.childYouthFirstName ?? '',
+		childLastName: row.childYouthLastName ?? '',
 		structuredText: parts.filter(Boolean).join(' \n '),
 		ocrText,
 		metadataText

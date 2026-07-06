@@ -3,6 +3,8 @@ import { SUBMISSION_STATUSES, type SubmissionStatus } from './db/schema';
 export const SORT_COLUMNS = [
 	'date',
 	'surname',
+	'child_first_name',
+	'child_last_name',
 	'screening',
 	'assessments',
 	'status',

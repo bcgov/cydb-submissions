@@ -9,7 +9,7 @@ import {
 
 const INDEX = 'submissions_idx';
 const INVALID_INDEX = 'invalid_submissions_idx';
-const HIGHLIGHT_FIELDS = ['ocr_text', 'structured_text', 'surname', 'metadata_text'];
+const HIGHLIGHT_FIELDS = ['ocr_text', 'structured_text', 'surname', 'child_first_name', 'child_last_name', 'metadata_text'];
 const INVALID_HIGHLIGHT_FIELDS = ['payload_text', 'errors_text', 'metadata_text'];
 
 function esc(v: string): string {
@@ -41,7 +41,7 @@ export class ManticoreClient implements SearchClient {
 	async ensureIndex(): Promise<void> {
 		await this.sql(
 			`CREATE TABLE IF NOT EXISTS ${INDEX} (` +
-				`surname text, structured_text text, ocr_text text, metadata_text text, ` +
+				`surname text, child_first_name text, child_last_name text, structured_text text, ocr_text text, metadata_text text, ` +
 				`submission_uuid string, status string, created_at timestamp` +
 				`) morphology='lemmatize_en_all' min_infix_len='2' index_exact_words='1'`
 		);
@@ -58,8 +58,8 @@ export class ManticoreClient implements SearchClient {
 
 	async replaceDoc(doc: SearchDocument): Promise<void> {
 		await this.sql(
-			`REPLACE INTO ${INDEX} (id, surname, structured_text, ocr_text, metadata_text, submission_uuid, status, created_at) VALUES (` +
-				`${doc.id}, '${esc(doc.surname)}', '${esc(doc.structuredText)}', '${esc(doc.ocrText)}', '${esc(doc.metadataText)}', ` +
+			`REPLACE INTO ${INDEX} (id, surname, child_first_name, child_last_name, structured_text, ocr_text, metadata_text, submission_uuid, status, created_at) VALUES (` +
+				`${doc.id}, '${esc(doc.surname)}', '${esc(doc.childFirstName)}', '${esc(doc.childLastName)}', '${esc(doc.structuredText)}', '${esc(doc.ocrText)}', '${esc(doc.metadataText)}', ` +
 				`'${esc(doc.submissionUuid)}', '${esc(doc.status)}', ${doc.createdAt})`
 		);
 	}
@@ -74,6 +74,14 @@ export class ManticoreClient implements SearchClient {
 
 	async deleteDoc(id: number): Promise<void> {
 		await this.sql(`DELETE FROM ${INDEX} WHERE id=${id}`);
+	}
+
+	async dropIndex(): Promise<void> {
+		await this.sql(`DROP TABLE IF EXISTS ${INDEX}`);
+	}
+
+	async dropInvalidIndex(): Promise<void> {
+		await this.sql(`DROP TABLE IF EXISTS ${INVALID_INDEX}`);
 	}
 
 	async deleteInvalidDoc(id: number): Promise<void> {

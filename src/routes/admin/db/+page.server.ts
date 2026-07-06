@@ -3,33 +3,50 @@ import { fail } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { requireRole } from '$lib/server/roles';
 import { auditLog } from '$lib/server/audit';
-import { readdir, stat } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
-import { createBackup, pruneBackups, MAX_BACKUPS } from '$lib/server/db/backup';
+import { readdir, stat, unlink } from 'node:fs/promises';
+import { dirname, join, basename } from 'node:path';
+import { createBackup } from '$lib/server/db/backup';
+
+function isValidBackupName(name: string): boolean {
+	return /^backup-(scheduled|manual)-[\dT\-Z]+\.db\.tar\.xz$/.test(name);
+}
 
 export const load: PageServerLoad = async ({ locals }) => {
 	requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin');
 
 	const dbPath = env.DATABASE_URL;
-	if (!dbPath) return { backups: [] };
+	if (!dbPath) return { scheduled: [], manual: [] };
 
 	const dbDir = dirname(dbPath);
 
 	try {
 		const files = await readdir(dbDir);
-		const backupFiles = files.filter((f) => f.startsWith('backup-') && f.endsWith('.db.tar.xz'));
 
-		const backups = await Promise.all(
-			backupFiles.map(async (name) => {
-				const info = await stat(join(dbDir, name));
-				return { name, sizeBytes: info.size, modifiedAt: info.mtime.toISOString() };
-			})
-		);
+		const toEntry = async (name: string) => {
+			const info = await stat(join(dbDir, name));
+			return { name, sizeBytes: info.size, modifiedAt: info.mtime.toISOString() };
+		};
 
-		backups.sort((a, b) => b.name.localeCompare(a.name));
-		return { backups };
+		const [scheduled, manual] = await Promise.all([
+			Promise.all(
+				files
+					.filter((f) => f.startsWith('backup-scheduled-') && f.endsWith('.db.tar.xz'))
+					.sort()
+					.reverse()
+					.map(toEntry)
+			),
+			Promise.all(
+				files
+					.filter((f) => f.startsWith('backup-manual-') && f.endsWith('.db.tar.xz'))
+					.sort()
+					.reverse()
+					.map(toEntry)
+			)
+		]);
+
+		return { scheduled, manual };
 	} catch {
-		return { backups: [] };
+		return { scheduled: [], manual: [] };
 	}
 };
 
@@ -48,8 +65,7 @@ export const actions: Actions = {
 		const dbPath = env.DATABASE_URL;
 		if (!dbPath) return fail(500, { action: 'backup', error: 'DATABASE_URL is not set' });
 
-		const result = await createBackup(dbPath);
-		await pruneBackups(dirname(dbPath), MAX_BACKUPS);
+		const result = await createBackup(dbPath, 'manual');
 
 		auditLog(
 			'db_backup_created',
@@ -58,7 +74,7 @@ export const actions: Actions = {
 				actorRole: 'admin',
 				route: url.pathname,
 				requestId: locals.requestId,
-				reason: `backup written to ${result.path} (${result.sizeBytes} bytes)`
+				reason: `manual backup written to ${result.path} (${result.sizeBytes} bytes)`
 			},
 			locals.logger
 		);
@@ -67,5 +83,39 @@ export const actions: Actions = {
 			action: 'backup',
 			success: `Backup written to ${result.path} (${(result.sizeBytes / 1024 / 1024).toFixed(2)} MB)`
 		};
-	}
+	},
+
+	deleteBackup: async ({ request, locals, url, cookies }) => {
+		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin');
+		const form = await request.formData();
+		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf'))) {
+			return fail(403, { action: 'deleteBackup', error: 'CSRF token mismatch' });
+		}
+
+		const name = form.get('name');
+		if (typeof name !== 'string' || !isValidBackupName(name) || !name.startsWith('backup-manual-')) {
+			return fail(400, { action: 'deleteBackup', error: 'Invalid backup name' });
+		}
+
+		const dbPath = env.DATABASE_URL;
+		if (!dbPath) return fail(500, { action: 'deleteBackup', error: 'DATABASE_URL is not set' });
+
+		// basename guards against path traversal
+		const filePath = join(dirname(dbPath), basename(name));
+		await unlink(filePath);
+
+		auditLog(
+			'db_backup_deleted',
+			{
+				actorUserId: locals.user!.id,
+				actorRole: 'admin',
+				route: url.pathname,
+				requestId: locals.requestId,
+				reason: `manual backup deleted: ${name}`
+			},
+			locals.logger
+		);
+
+		return { action: 'deleteBackup', success: `Deleted ${name}` };
+	},
 };

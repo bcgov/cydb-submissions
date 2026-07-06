@@ -23,11 +23,14 @@ export interface BackupResult {
 	sizeBytes: number;
 }
 
-export async function createBackup(dbPath: string): Promise<BackupResult> {
+export async function createBackup(
+	dbPath: string,
+	kind: 'scheduled' | 'manual' = 'scheduled'
+): Promise<BackupResult> {
 	const dbDir = dirname(dbPath);
 	const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-	const rawPath = join(dbDir, `backup-${timestamp}.db`);
-	const compressedPath = join(dbDir, `backup-${timestamp}.db.tar.xz`);
+	const rawPath = join(dbDir, `backup-${kind}-${timestamp}.db`);
+	const compressedPath = join(dbDir, `backup-${kind}-${timestamp}.db.tar.xz`);
 
 	sqlite().prepare('VACUUM INTO ?').run(rawPath);
 
@@ -41,15 +44,16 @@ export async function createBackup(dbPath: string): Promise<BackupResult> {
 	return { path: compressedPath, sizeBytes: size };
 }
 
-export async function pruneBackups(dbDir: string, maxCount: number): Promise<void> {
+export async function pruneBackups(dbDir: string, maxCount: number, logger: Logger): Promise<void> {
 	const files = await readdir(dbDir).catch((): string[] => []);
 	const sorted = files
-		.filter((f) => f.startsWith('backup-') && f.endsWith('.db.tar.xz'))
+		.filter((f) => f.startsWith('backup-scheduled-') && f.endsWith('.db.tar.xz'))
 		.sort()
 		.reverse();
 
 	for (const name of sorted.slice(maxCount)) {
 		await unlink(join(dbDir, name)).catch(() => undefined);
+		logger.info({ event: 'db_auto_backup_deleted' }, `db backup ${name} deleted`);
 	}
 }
 
@@ -87,13 +91,13 @@ export function startBackupScheduler(opts: {
 		if (stopped) return;
 		firstTick = false;
 		try {
-			const result = await createBackup(dbPath);
+			const result = await createBackup(dbPath, 'scheduled');
 			setSystemState(db, STATE_KEY, new Date().toISOString());
 			logger.info(
 				{ event: 'db_backup_created', path: result.path, sizeBytes: result.sizeBytes },
 				'nightly db backup created'
 			);
-			await pruneBackups(dirname(dbPath), maxBackups);
+			await pruneBackups(dirname(dbPath), maxBackups, logger);
 		} catch (e) {
 			logger.error(
 				{ event: 'db_backup_failed', message: (e as Error).message },

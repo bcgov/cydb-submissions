@@ -197,6 +197,11 @@ env:
       configMapKeyRef:
         name: cydb-submissions-config
         key: ALLOW_ADMIN_SUBMISSION_DELETION
+  - name: DB_BACKUP_ENABLED
+    valueFrom:
+      configMapKeyRef:
+        name: cydb-submissions-config
+        key: DB_BACKUP_ENABLED
 
   # Secrets
 

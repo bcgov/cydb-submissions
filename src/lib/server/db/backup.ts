@@ -113,7 +113,7 @@ export function startBackupScheduler(opts: {
 
 	if (isOverdue()) {
 		if (timeout) clearTimeout(timeout);
-		schedule();
+		timeout = setTimeout(() => void tick(), STARTUP_DELAY_MS);
 		logger.info({ event: 'db_backup_immediate' }, 'last backup overdue — running in 5 minutes');
 	}
 

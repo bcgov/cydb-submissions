@@ -1,15 +1,11 @@
 import type { Actions, PageServerLoad } from './$types';
 import { fail } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
-import { sqlite } from '$lib/server/db';
 import { requireRole } from '$lib/server/roles';
 import { auditLog } from '$lib/server/audit';
-import { readdir, stat, unlink } from 'node:fs/promises';
-import { dirname, join, basename } from 'node:path';
-import { execFile as execFileCb } from 'node:child_process';
-import { promisify } from 'node:util';
-
-const execFile = promisify(execFileCb);
+import { readdir, stat } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import { createBackup, pruneBackups, MAX_BACKUPS } from '$lib/server/db/backup';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin');
@@ -52,23 +48,8 @@ export const actions: Actions = {
 		const dbPath = env.DATABASE_URL;
 		if (!dbPath) return fail(500, { action: 'backup', error: 'DATABASE_URL is not set' });
 
-		const dbDir = dirname(dbPath);
-		const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-		const rawPath = join(dbDir, `backup-${timestamp}.db`);
-		const compressedPath = join(dbDir, `backup-${timestamp}.db.tar.xz`);
-
-		// VACUUM INTO produces a consistent, wal-checkpointed copy
-		sqlite().prepare('VACUUM INTO ?').run(rawPath);
-
-		try {
-			// -cJf: create, xz compression (LZMA2, highest ratio), to file
-			// -C: change to dbDir so the archive contains only the bare filename
-			await execFile('tar', ['-cJf', compressedPath, '-C', dbDir, basename(rawPath)]);
-		} finally {
-			await unlink(rawPath).catch(() => undefined);
-		}
-
-		const { size } = await stat(compressedPath);
+		const result = await createBackup(dbPath);
+		await pruneBackups(dirname(dbPath), MAX_BACKUPS);
 
 		auditLog(
 			'db_backup_created',
@@ -77,14 +58,14 @@ export const actions: Actions = {
 				actorRole: 'admin',
 				route: url.pathname,
 				requestId: locals.requestId,
-				reason: `backup written to ${compressedPath} (${size} bytes)`
+				reason: `backup written to ${result.path} (${result.sizeBytes} bytes)`
 			},
 			locals.logger
 		);
 
 		return {
 			action: 'backup',
-			success: `Backup written to ${compressedPath} (${(size / 1024 / 1024).toFixed(2)} MB)`
+			success: `Backup written to ${result.path} (${(result.sizeBytes / 1024 / 1024).toFixed(2)} MB)`
 		};
 	}
 };

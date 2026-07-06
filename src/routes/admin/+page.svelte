@@ -54,6 +54,9 @@
 			testable. Clear removes all submissions, metadata, attachments, OCR results, and invalid
 			records — users and roles are untouched.
 		</p>
+		<div class="flex flex-col gap-1">
+			<a href="/admin/db" class="text-blue-700 underline">Database backup →</a>
+		</div>
 	</section>
 
 	<section class="space-y-3">

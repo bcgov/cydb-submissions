@@ -36,13 +36,13 @@ export async function createBackup(
 	await mkdir(backupDir, { recursive: true });
 
 	const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-	const rawPath = join(dbDir, `backup-${kind}-${timestamp}.db`);
-	const compressedPath = join(backupDir, `backup-${kind}-${timestamp}.db.tar.xz`);
+	const rawPath = join(backupDir, `backup-${kind}-${timestamp}.db`);
+	const compressedPath = join(backupDir, `backup-${kind}-${timestamp}.db.tar.gzip`);
 
 	sqlite().prepare('VACUUM INTO ?').run(rawPath);
 
 	try {
-		await execFile('tar', ['-cJf', compressedPath, '-C', dbDir, basename(rawPath)]);
+		await execFile('tar', ['-czf', compressedPath, '-C', backupDir, basename(rawPath)]);
 	} finally {
 		await unlink(rawPath).catch(() => undefined);
 	}
@@ -54,7 +54,7 @@ export async function createBackup(
 export async function pruneBackups(dbDir: string, maxCount: number, logger: Logger): Promise<void> {
 	const files = await readdir(dbDir).catch((): string[] => []);
 	const sorted = files
-		.filter((f) => f.startsWith('backup-scheduled-') && f.endsWith('.db.tar.xz'))
+		.filter((f) => f.startsWith('backup-scheduled-') && f.endsWith('.db.tar.gzip'))
 		.sort()
 		.reverse();
 

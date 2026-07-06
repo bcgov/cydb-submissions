@@ -8,7 +8,7 @@ import { join, basename } from 'node:path';
 import { createBackup, getBackupDir } from '$lib/server/db/backup';
 
 function isValidBackupName(name: string): boolean {
-	return /^backup-(scheduled|manual)-[\dT\-Z]+\.db\.tar\.xz$/.test(name);
+	return /^backup-(scheduled|manual)-[\dT\-Z]+\.db\.tar\.gzip$/.test(name);
 }
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -30,14 +30,14 @@ export const load: PageServerLoad = async ({ locals }) => {
 		const [scheduled, manual] = await Promise.all([
 			Promise.all(
 				files
-					.filter((f) => f.startsWith('backup-scheduled-') && f.endsWith('.db.tar.xz'))
+					.filter((f) => f.startsWith('backup-scheduled-') && f.endsWith('.db.tar.gzip'))
 					.sort()
 					.reverse()
 					.map(toEntry)
 			),
 			Promise.all(
 				files
-					.filter((f) => f.startsWith('backup-manual-') && f.endsWith('.db.tar.xz'))
+					.filter((f) => f.startsWith('backup-manual-') && f.endsWith('.db.tar.gzip'))
 					.sort()
 					.reverse()
 					.map(toEntry)

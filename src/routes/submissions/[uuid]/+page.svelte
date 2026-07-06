@@ -129,7 +129,11 @@
 			<span class="text-sm text-blue-800">You have claimed this submission.</span>
 			<form method="POST" action="?/unclaim" use:enhance>
 				<input type="hidden" name="csrf" value={page.data.csrfToken} />
-				<Button variant="outline" size="sm" type="submit">Unclaim</Button>
+				{#if notesDirty}
+					<p class="text-xs text-gray-900">Save your notes before unclaiming.</p>
+				{:else}
+					<Button variant="outline" size="sm" type="submit">Unclaim</Button>
+				{/if}
 			</form>
 		{:else}
 			<span class="text-sm text-amber-800"
@@ -201,65 +205,6 @@
 					</ul>
 				</div>
 			{/if}
-		</section>
-	{/if}
-
-	<!-- Duplicate option component -->
-	{#if data.claimedByMe && ['submitted', 'OCR queued', 'OCR processed', 'OCR Error', 'ready for review', 'ready for clinician', 'ready for policy', 'provisionally eligible'].includes(data.submission.status)}
-		<section class="space-y-4 rounded border border-orange-200 bg-orange-50 px-5 py-4">
-			<h2 class="text-base font-semibold text-orange-900">Mark as duplicate</h2>
-
-			{#if form?.action === 'markDuplicate' && form?.success}
-				<p role="status" class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
-					{form.success}
-				</p>
-			{/if}
-			{#if form?.action === 'markDuplicate' && form?.error}
-				<p role="alert" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-					{form.error}
-				</p>
-			{/if}
-
-			<p class="text-sm text-orange-800">
-				Mark this submission as a duplicate of another submission. This action cannot be undone.
-			</p>
-			<Button variant="outline" class="border-orange-300 text-orange-800 hover:bg-orange-100" disabled={notesDirty} onclick={() => (duplicateDialogOpen = true)}>
-				Mark as duplicate
-			</Button>
-			{#if notesDirty}
-				<p class="text-xs text-amber-600">Save your notes before marking as duplicate.</p>
-			{/if}
-
-			<AlertDialog.Root
-				open={duplicateDialogOpen}
-				onOpenChange={(open) => { if (!open) duplicateDialogOpen = false; }}
-			>
-				<AlertDialog.Content>
-					<AlertDialog.Header>
-						<AlertDialog.Title>Mark as duplicate?</AlertDialog.Title>
-						<AlertDialog.Description>
-							Are you sure this is a duplicate submission? This action cannot be undone.
-						</AlertDialog.Description>
-					</AlertDialog.Header>
-					<AlertDialog.Footer>
-						<AlertDialog.Cancel onclick={() => (duplicateDialogOpen = false)}>
-							Cancel
-						</AlertDialog.Cancel>
-						<form
-							method="POST"
-							action="?/markDuplicate"
-							use:enhance={() =>
-								async ({ update }) => {
-									await update();
-									duplicateDialogOpen = false;
-								}}
-						>
-							<input type="hidden" name="csrf" value={page.data.csrfToken} />
-							<AlertDialog.Action type="submit">Confirm</AlertDialog.Action>
-						</form>
-					</AlertDialog.Footer>
-				</AlertDialog.Content>
-			</AlertDialog.Root>
 		</section>
 	{/if}
 
@@ -433,7 +378,7 @@
 
 					{#if decisionChoice === 'rejected'}
 						<div class="space-y-2">
-							<p class="text-sm font-medium text-gray-700">Select all that apply</p>
+							<p class="text-sm font-medium text-gray-700">Select reasons for rejection</p>
 							{#each data.activeReasons as reason (reason.id)}
 								<label class="flex cursor-pointer items-center gap-2 text-sm">
 									<input
@@ -453,6 +398,7 @@
 					{/if}
 					{#if decisionChoice === 'accepted'}
 						<div class="space-y-2">
+							<p class="text-sm font-medium text-gray-700">Select tier</p>
 							<label class="flex cursor-pointer items-center gap-2 text-sm">
 								<input
 									type="radio"
@@ -479,7 +425,7 @@
 							</label>
 						</div>
 						<div class="space-y-2">
-							<p class="text-sm font-medium text-gray-700">Select all that apply</p>
+							<p class="text-sm font-medium text-gray-700">Select reasons for approval</p>
 							{#each data.activeAcceptReasons as reason (reason.id)}
 								<label class="flex cursor-pointer items-center gap-2 text-sm">
 									<input
@@ -740,7 +686,7 @@
 			{/if}
 
 			<p class="text-sm text-gray-600">This submission is currently marked as a duplicate.</p>
-			<Button variant="default" size="sm" onclick={() => (resetDuplicateDialogOpen = true)}>
+			<Button variant="outline" size="sm" onclick={() => (resetDuplicateDialogOpen = true)}>
 				Reset status
 			</Button>
 
@@ -937,6 +883,7 @@
 		</AlertDialog.Content>
 	</AlertDialog.Root>
 
+	<!-- Notes -->
 	{#if data.claimedByMe}
 		<section class="space-y-3 rounded border border-gray-200 bg-gray-50 px-5 py-4">
 			<h2 class="text-base font-semibold">Notes about submission</h2>
@@ -990,6 +937,65 @@
 				value={data.submission.levelOfNeedSummary ?? ''}
 				class="w-full rounded border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-600"
 			></textarea>
+		</section>
+	{/if}
+
+		<!-- Duplicate option component -->
+	{#if data.claimedByMe && ['submitted', 'OCR queued', 'OCR processed', 'OCR Error', 'ready for review', 'ready for clinician', 'ready for policy', 'provisionally eligible'].includes(data.submission.status)}
+		<section class="space-y-4 rounded border border-gray-200 bg-gray-50  px-5 py-4">
+			<h2 class="text-base font-semibold">Mark as duplicate</h2>
+
+			{#if form?.action === 'markDuplicate' && form?.success}
+				<p role="status" class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+					{form.success}
+				</p>
+			{/if}
+			{#if form?.action === 'markDuplicate' && form?.error}
+				<p role="alert" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+					{form.error}
+				</p>
+			{/if}
+
+			<p class="text-sm text-gray-600">
+				Mark this submission as a duplicate of another submission. This action cannot be undone.
+			</p>
+			<Button variant="outline" size="sm" disabled={notesDirty} onclick={() => (duplicateDialogOpen = true)}>
+				Mark as duplicate
+			</Button>
+			{#if notesDirty}
+				<p class="text-xs text-amber-600">Save your notes before marking as duplicate.</p>
+			{/if}
+
+			<AlertDialog.Root
+				open={duplicateDialogOpen}
+				onOpenChange={(open) => { if (!open) duplicateDialogOpen = false; }}
+			>
+				<AlertDialog.Content>
+					<AlertDialog.Header>
+						<AlertDialog.Title>Mark as duplicate?</AlertDialog.Title>
+						<AlertDialog.Description>
+							Are you sure this is a duplicate submission? This action cannot be undone.
+						</AlertDialog.Description>
+					</AlertDialog.Header>
+					<AlertDialog.Footer>
+						<AlertDialog.Cancel onclick={() => (duplicateDialogOpen = false)}>
+							Cancel
+						</AlertDialog.Cancel>
+						<form
+							method="POST"
+							action="?/markDuplicate"
+							use:enhance={() =>
+								async ({ update }) => {
+									await update();
+									duplicateDialogOpen = false;
+								}}
+						>
+							<input type="hidden" name="csrf" value={page.data.csrfToken} />
+							<AlertDialog.Action type="submit">Confirm</AlertDialog.Action>
+						</form>
+					</AlertDialog.Footer>
+				</AlertDialog.Content>
+			</AlertDialog.Root>
 		</section>
 	{/if}
 

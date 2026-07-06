@@ -4,8 +4,8 @@ import { env } from '$env/dynamic/private';
 import { requireRole } from '$lib/server/roles';
 import { auditLog } from '$lib/server/audit';
 import { readdir, stat, unlink } from 'node:fs/promises';
-import { dirname, join, basename } from 'node:path';
-import { createBackup } from '$lib/server/db/backup';
+import { join, basename } from 'node:path';
+import { createBackup, getBackupDir } from '$lib/server/db/backup';
 
 function isValidBackupName(name: string): boolean {
 	return /^backup-(scheduled|manual)-[\dT\-Z]+\.db\.tar\.xz$/.test(name);
@@ -17,13 +17,13 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const dbPath = env.DATABASE_URL;
 	if (!dbPath) return { scheduled: [], manual: [] };
 
-	const dbDir = dirname(dbPath);
+	const backupDir = getBackupDir(dbPath);
 
 	try {
-		const files = await readdir(dbDir);
+		const files = await readdir(backupDir);
 
 		const toEntry = async (name: string) => {
-			const info = await stat(join(dbDir, name));
+			const info = await stat(join(backupDir, name));
 			return { name, sizeBytes: info.size, modifiedAt: info.mtime.toISOString() };
 		};
 
@@ -101,7 +101,7 @@ export const actions: Actions = {
 		if (!dbPath) return fail(500, { action: 'deleteBackup', error: 'DATABASE_URL is not set' });
 
 		// basename guards against path traversal
-		const filePath = join(dirname(dbPath), basename(name));
+		const filePath = join(getBackupDir(dbPath), basename(name));
 		await unlink(filePath);
 
 		auditLog(

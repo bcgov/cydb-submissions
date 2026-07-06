@@ -1,6 +1,6 @@
 import type { Logger } from 'pino';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import { readdir, stat, unlink } from 'node:fs/promises';
+import { readdir, stat, unlink, mkdir } from 'node:fs/promises';
 import { dirname, join, basename } from 'node:path';
 import { execFile as execFileCb } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -18,6 +18,10 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 export const MAX_BACKUPS = 10;
 export const BACKUP_HOUR = 2;
 
+export function getBackupDir(dbPath: string): string {
+	return join(dirname(dbPath), 'backups');
+}
+
 export interface BackupResult {
 	path: string;
 	sizeBytes: number;
@@ -28,9 +32,12 @@ export async function createBackup(
 	kind: 'scheduled' | 'manual' = 'scheduled'
 ): Promise<BackupResult> {
 	const dbDir = dirname(dbPath);
+	const backupDir = getBackupDir(dbPath);
+	await mkdir(backupDir, { recursive: true });
+
 	const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 	const rawPath = join(dbDir, `backup-${kind}-${timestamp}.db`);
-	const compressedPath = join(dbDir, `backup-${kind}-${timestamp}.db.tar.xz`);
+	const compressedPath = join(backupDir, `backup-${kind}-${timestamp}.db.tar.xz`);
 
 	sqlite().prepare('VACUUM INTO ?').run(rawPath);
 
@@ -97,7 +104,7 @@ export function startBackupScheduler(opts: {
 				{ event: 'db_backup_created', path: result.path, sizeBytes: result.sizeBytes },
 				'nightly db backup created'
 			);
-			await pruneBackups(dirname(dbPath), maxBackups, logger);
+			await pruneBackups(getBackupDir(dbPath), maxBackups, logger);
 		} catch (e) {
 			logger.error(
 				{ event: 'db_backup_failed', message: (e as Error).message },

@@ -98,7 +98,8 @@ export class ManticoreClient implements SearchClient {
 		highlightFields: string[],
 		input: SearchInput
 	): Promise<SearchResult> {
-		const must: unknown[] = [{ query_string: input.match }];
+		const matchQuery = input.fuzzy ? applyFuzzy(input.match, input.fuzzyDistance) : input.match;
+		const must: unknown[] = [{ query_string: matchQuery }];
 		const mustNot: unknown[] = [];
 		if (input.statusEquals) must.push({ equals: { status: input.statusEquals } });
 		if (input.statusNotEquals) mustNot.push({ equals: { status: input.statusNotEquals } });
@@ -110,7 +111,6 @@ export class ManticoreClient implements SearchClient {
 			limit: input.limit,
 			offset: input.offset
 		};
-		if (input.fuzzy) body.options = { fuzzy: 1, distance: input.fuzzyDistance };
 
 		const res = await fetch(`${this.baseUrl}/search`, {
 			method: 'POST',
@@ -152,6 +152,31 @@ export class ManticoreClient implements SearchClient {
 			return false;
 		}
 	}
+}
+
+/**
+ * Adds per-word fuzzy (~distance) to plain words in a query.
+ * Queries that contain advanced operators (phrases "…", NEAR/N, @field, quorum "/N")
+ * are returned unchanged — operator semantics must be preserved exactly, and
+ * morphology/lemmatisation still applies regardless.
+ * Short words (< 4 chars) are left unfuzzied to avoid matching noise.
+ */
+function applyFuzzy(query: string, distance: number): string {
+	if (/"/.test(query) || /NEAR\//i.test(query) || /@[a-z]/i.test(query)) {
+		return query;
+	}
+	return query
+		.trim()
+		.split(/\s+/)
+		.map((token) => {
+			if (!token) return token;
+			if (token.startsWith('-') || token.includes('*') || token.includes('~')) return token;
+			if (/^[a-zA-Z][a-zA-Z0-9]*$/.test(token) && token.length >= 4) {
+				return `${token}~${distance}`;
+			}
+			return token;
+		})
+		.join(' ');
 }
 
 /**

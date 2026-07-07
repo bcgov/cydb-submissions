@@ -112,15 +112,16 @@ export class ManticoreClient implements SearchClient {
 		if (input.statusEquals) conditions.push(`status = '${esc(input.statusEquals)}'`);
 		if (input.statusNotEquals) conditions.push(`status != '${esc(input.statusNotEquals)}'`);
 		const where = conditions.join(' AND ');
-		const optClause = input.fuzzy ? ' OPTION fuzzy=1' : '';
+		const hasQuorum = /"[^"]*"\/\d+/.test(input.match);
+		const optClause = (input.fuzzy && !hasQuorum) ? ' OPTION fuzzy=1' : '';
 		const hlFields = highlightFields.join(',');
 
-		let rawHits: unknown;
+		let rawIds: unknown;
 		let rawCount: unknown;
 		try {
-			[rawHits, rawCount] = await Promise.all([
+			[rawIds, rawCount] = await Promise.all([
 				this.sql(
-					`SELECT id, WEIGHT() as weight, HIGHLIGHT({limit=200}, '${hlFields}') as snippet ` +
+					`SELECT id, WEIGHT() as weight ` +
 						`FROM ${index} WHERE ${where} ` +
 						`LIMIT ${input.limit} OFFSET ${input.offset}${optClause}`
 				),
@@ -133,17 +134,36 @@ export class ManticoreClient implements SearchClient {
 			throw new SearchQueryError(msg);
 		}
 
-		type HitRow = { id: number | string; weight?: number; snippet?: string };
+		type IdRow = { id: number | string; weight?: number };
 		type CountRow = { n?: number };
-		const hitsData = (rawHits as Array<{ data?: HitRow[] }>)[0]?.data ?? [];
+		const idsData = (rawIds as Array<{ data?: IdRow[] }>)[0]?.data ?? [];
 		const countData = (rawCount as Array<{ data?: CountRow[] }>)[0]?.data ?? [];
 
+		// Fetch snippets in a separate query without OPTION fuzzy so HIGHLIGHT()
+		// does not interfere with row retrieval.
+		const snippetMap = new Map<number, string>();
+		if (idsData.length) {
+			try {
+				const idList = idsData.map((r) => Number(r.id)).join(',');
+				const rawSnippets = await this.sql(
+					`SELECT id, HIGHLIGHT({limit=200}, '${hlFields}') as snippet ` +
+						`FROM ${index} WHERE id IN (${idList}) AND MATCH('${esc(positiveOnly(input.match))}')`
+				);
+				type SnippetRow = { id: number | string; snippet?: string };
+				for (const r of ((rawSnippets as Array<{ data?: SnippetRow[] }>)[0]?.data ?? [])) {
+					snippetMap.set(Number(r.id), r.snippet ?? '');
+				}
+			} catch {
+				// Snippet generation is best-effort; don't fail the search if it errors.
+			}
+		}
+
 		return {
-			total: countData[0]?.n ?? hitsData.length,
-			hits: hitsData.map((r) => ({
+			total: countData[0]?.n ?? idsData.length,
+			hits: idsData.map((r) => ({
 				id: Number(r.id),
 				weight: r.weight ?? 0,
-				snippet: r.snippet ?? ''
+				snippet: snippetMap.get(Number(r.id)) ?? ''
 			}))
 		};
 	}
@@ -156,6 +176,13 @@ export class ManticoreClient implements SearchClient {
 			return false;
 		}
 	}
+}
+
+/** Strip -word and -"phrase" tokens, returning only the positive terms. */
+function positiveOnly(query: string): string {
+	return (query.match(/-?"[^"]*"(?:\/\d+)?|-?\S+/g) ?? [])
+		.filter((tok) => !tok.startsWith('-'))
+		.join(' ');
 }
 
 /**

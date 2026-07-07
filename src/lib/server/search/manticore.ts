@@ -106,6 +106,7 @@ export class ManticoreClient implements SearchClient {
 		highlightFields: string[],
 		input: SearchInput
 	): Promise<SearchResult> {
+		validateQuery(input.match);
 		const must: unknown[] = [{ query_string: input.match }];
 		const mustNot: unknown[] = [];
 		if (input.statusEquals) must.push({ equals: { status: input.statusEquals } });
@@ -118,7 +119,7 @@ export class ManticoreClient implements SearchClient {
 			limit: input.limit,
 			offset: input.offset
 		};
-		if (input.fuzzy) body.options = { fuzzy: 1, distance: input.fuzzyDistance };
+		if (input.fuzzy) body.options = { fuzzy: 1 };
 
 		const res = await fetch(`${this.baseUrl}/search`, {
 			method: 'POST',
@@ -159,6 +160,19 @@ export class ManticoreClient implements SearchClient {
 		} catch {
 			return false;
 		}
+	}
+}
+
+/**
+ * Catches common query syntax mistakes and throws a SearchQueryError with a
+ * user-readable message before the query reaches Manticore.
+ */
+function validateQuery(query: string): void {
+	// NEAR/N at end of query — missing right-hand operand
+	if (/NEAR\/\d+\s*$/i.test(query.trim())) {
+		throw new SearchQueryError(
+			'NEAR/N requires terms on both sides — e.g. onychophagy NEAR/3 nailbiting'
+		);
 	}
 }
 

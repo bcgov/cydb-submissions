@@ -108,8 +108,9 @@
 					<li><code>aut*</code> / <code>*ism*</code> — wildcards</li>
 					<li><code>"speech delay"</code> — exact phrase</li>
 					<li><code>@ocr_text vineland</code> — search one field</li>
-					<li><code>"speech delay" NEAR/3</code> — proximity</li>
-					<li><code>"adhd anxiety seizures"/2</code> — any 2 of 3</li>
+					<li><code>"speech delay"~2</code> — <a class="underline text-blue-600 hover:text-blue-800 visited:text-purple-600" href="https://manual.manticoresearch.com/Searching/Full_text_matching/Operators#Proximity-search-operator">proximity between speech and delay</a></li>
+					<li><code>"speech delay" NEAR/3 "autism"</code> — <a class="underline text-blue-600 hover:text-blue-800 visited:text-purple-600" href="https://manual.manticoresearch.com/Searching/Full_text_matching/Operators#NEAR-operator">both terms are seperated by 3 or less words</a></li>
+					<li><code>"adhd anxiety seizures"/2</code> — <a class="underline text-blue-600 hover:text-blue-800 visited:text-purple-600" href="https://manual.manticoresearch.com/Searching/Full_text_matching/Operators#Quorum-matching-operator">any 2 of 3</a></li>
 					<li><code>diagnosis -provisional</code> — exclude a term</li>
 					<li><code>running</code> matches run / ran (lemmas); typos tolerated automatically</li>
 				</ul>
@@ -166,7 +167,7 @@
 				<Table.Head><a href={sortHref('category10')}>{data.categoryMap?.get('category10') ?? 'Undefined'}</a></Table.Head>
 				<Table.Head><a href={sortHref('category11')}>{data.categoryMap?.get('category11') ?? 'Undefined'}</a></Table.Head>
 				<Table.Head><a href={sortHref('category12')}>{data.categoryMap?.get('category12') ?? 'Undefined'}</a></Table.Head>
-				<Table.Head><a href={sortHref('category13')}>{data.categoryMap?.get('category13') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a  href={sortHref('category13')}>{data.categoryMap?.get('category13') ?? 'Undefined'}</a></Table.Head>
 				<Table.Head></Table.Head>
 			</Table.Row>
 		</Table.Header>

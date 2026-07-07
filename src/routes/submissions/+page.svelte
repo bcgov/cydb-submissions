@@ -108,9 +108,9 @@
 					<li><code>aut*</code> / <code>*ism*</code> — wildcards</li>
 					<li><code>"speech delay"</code> — exact phrase</li>
 					<li><code>@ocr_text vineland</code> — search one field</li>
-					<li><code>"speech delay"~2</code> — <a href="https://manual.manticoresearch.com/Searching/Full_text_matching/Operators#Proximity-search-operator">proximity between speech and delay</a></li>
-					<li><code>"speech delay" NEAR/3 "autism"</code> — <a href="https://manual.manticoresearch.com/Searching/Full_text_matching/Operators#NEAR-operator">both terms are seperated by 3 or less words</a></li>
-					<li><code>"adhd anxiety seizures"/2</code> — <a href="https://manual.manticoresearch.com/Searching/Full_text_matching/Operators#Quorum-matching-operator">any 2 of 3</a></li>
+					<li><code>"speech delay"~2</code> — <a class="text-blue-700 underline" href="https://manual.manticoresearch.com/Searching/Full_text_matching/Operators#Proximity-search-operator">proximity between speech and delay</a></li>
+					<li><code>"speech delay" NEAR/3 "autism"</code> — <a class="text-blue-700 underline" href="https://manual.manticoresearch.com/Searching/Full_text_matching/Operators#NEAR-operator">both terms are seperated by 3 or less words</a></li>
+					<li><code>"adhd anxiety seizures"/2</code> — <a class="text-blue-700 underline" href="https://manual.manticoresearch.com/Searching/Full_text_matching/Operators#Quorum-matching-operator">any 2 of 3</a></li>
 					<li><code>diagnosis -provisional</code> — exclude a term</li>
 					<li><code>running</code> matches run / ran (lemmas); typos tolerated automatically</li>
 				</ul>
@@ -147,26 +147,26 @@
 	<Table.Root>
 		<Table.Header>
 			<Table.Row>
-				<Table.Head><a href={sortHref('date')}>Submitted</a></Table.Head>
+				<Table.Head><a class="text-blue-700 underline" href={sortHref('date')}>Submitted</a></Table.Head>
 				<Table.Head>Child</Table.Head>
-				<Table.Head><a href={sortHref('surname')}>Signatory surname</a></Table.Head>
-				<Table.Head><a href={sortHref('screening')}>Screening</a></Table.Head>
-				<Table.Head><a href={sortHref('assessments')}># Assessments</a></Table.Head>
-				<Table.Head><a href={sortHref('status')}>Status</a></Table.Head>
-				<Table.Head><a href={sortHref('total')}>Total from all categories</a></Table.Head>
-				<Table.Head><a href={sortHref('category1')}>{data.categoryMap?.get('category1') ?? 'Undefined'}</a></Table.Head>
-				<Table.Head><a href={sortHref('category2')}>{data.categoryMap?.get('category2') ?? 'Undefined'}</a></Table.Head>
-				<Table.Head><a href={sortHref('category3')}>{data.categoryMap?.get('category3') ?? 'Undefined'}</a></Table.Head>
-				<Table.Head><a href={sortHref('category4')}>{data.categoryMap?.get('category4') ?? 'Undefined'}</a></Table.Head>
-				<Table.Head><a href={sortHref('category5')}>{data.categoryMap?.get('category5') ?? 'Undefined'}</a></Table.Head>
-				<Table.Head><a href={sortHref('category6')}>{data.categoryMap?.get('category6') ?? 'Undefined'}</a></Table.Head>
-				<Table.Head><a href={sortHref('category7')}>{data.categoryMap?.get('category7') ?? 'Undefined'}</a></Table.Head>
-				<Table.Head><a href={sortHref('category8')}>{data.categoryMap?.get('category8') ?? 'Undefined'}</a></Table.Head>
-				<Table.Head><a href={sortHref('category9')}>{data.categoryMap?.get('category9') ?? 'Undefined'}</a></Table.Head>
-				<Table.Head><a href={sortHref('category10')}>{data.categoryMap?.get('category10') ?? 'Undefined'}</a></Table.Head>
-				<Table.Head><a href={sortHref('category11')}>{data.categoryMap?.get('category11') ?? 'Undefined'}</a></Table.Head>
-				<Table.Head><a href={sortHref('category12')}>{data.categoryMap?.get('category12') ?? 'Undefined'}</a></Table.Head>
-				<Table.Head><a href={sortHref('category13')}>{data.categoryMap?.get('category13') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a class="text-blue-700 underline" href={sortHref('surname')}>Signatory surname</a></Table.Head>
+				<Table.Head><a class="text-blue-700 underline" href={sortHref('screening')}>Screening</a></Table.Head>
+				<Table.Head><a class="text-blue-700 underline" href={sortHref('assessments')}># Assessments</a></Table.Head>
+				<Table.Head><a class="text-blue-700 underline" href={sortHref('status')}>Status</a></Table.Head>
+				<Table.Head><a class="text-blue-700 underline" href={sortHref('total')}>Total from all categories</a></Table.Head>
+				<Table.Head><a class="text-blue-700 underline" href={sortHref('category1')}>{data.categoryMap?.get('category1') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a class="text-blue-700 underline" href={sortHref('category2')}>{data.categoryMap?.get('category2') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a class="text-blue-700 underline" href={sortHref('category3')}>{data.categoryMap?.get('category3') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a class="text-blue-700 underline" href={sortHref('category4')}>{data.categoryMap?.get('category4') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a class="text-blue-700 underline" href={sortHref('category5')}>{data.categoryMap?.get('category5') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a class="text-blue-700 underline" href={sortHref('category6')}>{data.categoryMap?.get('category6') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a class="text-blue-700 underline" href={sortHref('category7')}>{data.categoryMap?.get('category7') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a class="text-blue-700 underline" href={sortHref('category8')}>{data.categoryMap?.get('category8') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a class="text-blue-700 underline" href={sortHref('category9')}>{data.categoryMap?.get('category9') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a class="text-blue-700 underline" href={sortHref('category10')}>{data.categoryMap?.get('category10') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a class="text-blue-700 underline" href={sortHref('category11')}>{data.categoryMap?.get('category11') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a class="text-blue-700 underline" href={sortHref('category12')}>{data.categoryMap?.get('category12') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a class="text-blue-700 underline" href={sortHref('category13')}>{data.categoryMap?.get('category13') ?? 'Undefined'}</a></Table.Head>
 				<Table.Head></Table.Head>
 			</Table.Row>
 		</Table.Header>

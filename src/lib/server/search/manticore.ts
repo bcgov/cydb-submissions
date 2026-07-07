@@ -106,9 +106,10 @@ export class ManticoreClient implements SearchClient {
 		highlightFields: string[],
 		input: SearchInput
 	): Promise<SearchResult> {
-		validateQuery(input.match);
-		const must: unknown[] = [{ query_string: input.match }];
-		const mustNot: unknown[] = [];
+		const { positive, negated } = splitNegations(input.match);
+		validateQuery(positive);
+		const must: unknown[] = [{ query_string: positive }];
+		const mustNot: unknown[] = negated.map((t) => ({ query_string: t }));
 		if (input.statusEquals) must.push({ equals: { status: input.statusEquals } });
 		if (input.statusNotEquals) mustNot.push({ equals: { status: input.statusNotEquals } });
 
@@ -161,6 +162,25 @@ export class ManticoreClient implements SearchClient {
 			return false;
 		}
 	}
+}
+
+/**
+ * Splits a query into positive terms and negated terms (-word or -"phrase").
+ * Negated tokens are lifted to the bool must_not layer so that fuzzy=1 cannot
+ * interfere with exclusion semantics.
+ */
+function splitNegations(query: string): { positive: string; negated: string[] } {
+	const tokens = query.match(/-?"[^"]*"|-?\S+/g) ?? [];
+	const positive: string[] = [];
+	const negated: string[] = [];
+	for (const tok of tokens) {
+		if (tok.startsWith('-') && tok.length > 1) {
+			negated.push(tok.slice(1));
+		} else {
+			positive.push(tok);
+		}
+	}
+	return { positive: positive.join(' '), negated };
 }
 
 /**

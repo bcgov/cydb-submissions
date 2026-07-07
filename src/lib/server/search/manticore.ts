@@ -111,7 +111,7 @@ export class ManticoreClient implements SearchClient {
 			limit: input.limit,
 			offset: input.offset
 		};
-		if (input.fuzzy) body.options = { fuzzy: 1, fuzzy_search_distance: input.fuzzyDistance };
+		if (input.fuzzy) body.options = { fuzzy: 1 };
 
 		const res = await fetch(`${this.baseUrl}/search`, {
 			method: 'POST',

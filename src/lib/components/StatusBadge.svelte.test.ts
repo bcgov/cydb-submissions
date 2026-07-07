@@ -14,7 +14,8 @@ describe('StatusBadge', () => {
       ['invalid', /red/],
       ['OCR queued', /amber/],
       ['ready for review', /violet/],
-      ['reviewed', /green/]
+      ['reviewed', /green/],
+      ['opt-out', /gray/]
     ];
     for (const [status, re] of cases) {
       const { container } = render(StatusBadge, { status: status as never });

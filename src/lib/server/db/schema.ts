@@ -9,10 +9,14 @@ export const SUBMISSION_STATUSES = [
 	'OCR processed',
 	'ready for review',
 	'ready for clinician',
+	'ready for policy',
+	'provisionally eligible',
 	'reviewed',
 	'accepted',
 	'rejected',
-	'invalid'
+	'invalid',
+	'opt-out',
+	'duplicate'
 ] as const;
 export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number];
 
@@ -76,6 +80,7 @@ export const submissions = sqliteTable(
 		decisionReasons: text('decision_reasons', { mode: 'json' }).$type<string[]>(),
 		decidedBy: text('decided_by'),
 		decidedAt: text('decided_at'),
+		acceptTier: text('accept_tier'),
 		levelOfNeedSummary: text('level_of_need_summary')
 	},
 	(t) => ({
@@ -85,11 +90,15 @@ export const submissions = sqliteTable(
 		bySearchIndexed: index('submissions_search_indexed_idx').on(t.searchIndexedAt),
 		statusCheck: check(
 			'submissions_status_check',
-			sql`${t.status} IN ('submitted','OCR queued','OCR Error','OCR processed','ready for review','ready for clinician','reviewed','accepted','rejected','invalid')`
+			sql`${t.status} IN ('submitted','OCR queued','OCR Error','OCR processed','ready for review','ready for clinician','ready for policy','provisionally eligible','reviewed','accepted','rejected','invalid','opt-out','duplicate')`
 		),
 		decisionCheck: check(
 			'submissions_decision_check',
 			sql`${t.decision} IS NULL OR ${t.decision} IN ('accepted','rejected')`
+		),
+		acceptCheck: check(
+			'submissions_accept_check',
+			sql`${t.decision} IS NULL OR ${t.decision} IN ('rejected') OR ${t.acceptTier} IS NULL OR ${t.acceptTier} IN ('tier one', 'tier two')`
 		)
 	})
 );
@@ -181,6 +190,18 @@ export const revokedUserRoles = sqliteTable(
 );
 
 export const rejectionReasons = sqliteTable('rejection_reasons', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	text: text('text').notNull().unique(),
+	active: integer('active', { mode: 'boolean' }).notNull().default(true),
+	createdAt: text('created_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: text('updated_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`)
+});
+
+export const acceptReasons = sqliteTable('accept_reasons', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
 	text: text('text').notNull().unique(),
 	active: integer('active', { mode: 'boolean' }).notNull().default(true),
@@ -306,7 +327,10 @@ export const invalidSubmissions = sqliteTable('invalid_submissions', {
 	receivedAt: text('received_at')
 		.notNull()
 		.default(sql`CURRENT_TIMESTAMP`),
-	searchIndexedAt: text('search_indexed_at')
+	searchIndexedAt: text('search_indexed_at'),
+	resolvedAt: text('resolved_at'),
+	resolvedBy: text('resolved_by'),
+	resolvedNote: text('resolved_note')
 });
 
 export const submissionClaims = sqliteTable('submission_claims', {

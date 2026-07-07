@@ -91,12 +91,6 @@ export const submissionSchema = z
 				path: ['childYouthsDateOfBirth1'],
 				message: 'signatory date of birth cannot be in the future'
 			});
-		if (!notFuture(v.dateSigned))
-			ctx.addIssue({
-				code: 'custom',
-				path: ['dateSigned'],
-				message: 'date signed cannot be in the future'
-			});
 		// PrimaryCareAndControl gates the signature in the form; require it true.
 		if (v.PrimaryCareAndControl !== true)
 			ctx.addIssue({
@@ -130,12 +124,6 @@ export const submissionSchema = z
 						code: 'custom',
 						path: ['editGrid', i, 'AttachAssessment'],
 						message: 'an attachment is required'
-					});
-				if (row.dateOfAssessment && !notFuture(row.dateOfAssessment))
-					ctx.addIssue({
-						code: 'custom',
-						path: ['editGrid', i, 'dateOfAssessment'],
-						message: 'date of assessment cannot be in the future'
 					});
 				const allowed = ASSESSMENT_TYPE_PROFESSIONALS[row.assessmentType];
 				if (allowed && row.completedBy && !allowed.includes(row.completedBy))

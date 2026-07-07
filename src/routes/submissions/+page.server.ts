@@ -1,5 +1,5 @@
 import type { PageServerLoad } from './$types';
-import { sql, eq, desc, asc, ne, count, and, notInArray, SQL } from 'drizzle-orm';
+import { sql, eq, desc, asc, ne, count, and, notInArray, isNull, SQL } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { submissions, invalidSubmissions } from '$lib/server/db/schema';
 import { parseSubmissionsQuery } from '$lib/server/sort';
@@ -12,9 +12,10 @@ import { getCategoryMapping } from '$lib/server/ocr/keywords';
 import { WORKER_BLOCKED_STATUSES } from '$lib/server/security/attachment-scope';
 
 export const load: PageServerLoad = async ({ url, locals }) => {
-	requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator');
+	requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator', 'clinician');
 	const isAdmin = locals.roles.has('admin');
 	const isValidator = locals.roles.has('validator') && !isAdmin && !locals.roles.has('cfd_worker');
+	const isClinicianOnly = locals.roles.has('clinician') && !isAdmin && !locals.roles.has('cfd_worker') && !locals.roles.has('validator');
 	const categoryMap = await getCategoryMapping();
 	const q = parseSubmissionsQuery(url);
 
@@ -30,7 +31,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			locals.logger
 		);
 		try {
-			const effectiveStatusFilter = isValidator ? 'ocr_processed' : q.statusFilter;
+			const effectiveStatusFilter = isValidator ? 'ready for review' : isClinicianOnly ? 'ready for clinician' : q.statusFilter;
 			const result = await runSearch(db, getSearchClient(), {
 				query: q.q,
 				...buildStatusFilter(effectiveStatusFilter),
@@ -41,7 +42,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 				sort: q.sort,
 				order: q.order
 			});
-			if (!isAdmin && !isValidator) {
+			if (!isAdmin && !isValidator && !isClinicianOnly) {
 				result.rows = result.rows.filter(
 					(r) => !WORKER_BLOCKED_STATUSES.includes(r.status as never)
 				);
@@ -59,7 +60,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 				totalPages: Math.max(1, Math.ceil(result.total / q.size)),
 				searchError: null as string | null,
 				categoryMap,
-				showStatusFilter: !isValidator
+				showStatusFilter: !isValidator && !isClinicianOnly
 			};
 		} catch (e) {
 			if (e instanceof SearchQueryError) {
@@ -74,7 +75,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 					totalPages: 1,
 					searchError: e.message,
 					categoryMap,
-					showStatusFilter: !isValidator
+					showStatusFilter: !isValidator && !isClinicianOnly
 				};
 			}
 			throw e;
@@ -82,16 +83,26 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	}
 
 	const filterClause = isValidator
-		? eq(submissions.status, 'OCR processed')
-		: q.statusFilter === 'all'
+		? eq(submissions.status, 'ready for review')
+		: isClinicianOnly
+			? eq(submissions.status, 'ready for clinician')
+			: q.statusFilter === 'all'
 			? undefined
 			: q.statusFilter === 'exclude_invalid'
 				? ne(submissions.status, 'invalid')
 				: q.statusFilter === 'ocr_processed'
 					? eq(submissions.status, 'OCR processed')
-					: eq(submissions.status, q.statusFilter);
+					: q.statusFilter === 'ready_for_review'
+						? eq(submissions.status, 'ready for review')
+						: q.statusFilter === 'ready_for_clinician'
+							? eq(submissions.status, 'ready for clinician')
+							: q.statusFilter === 'ready_for_policy'
+								? eq(submissions.status, 'ready for policy')
+								: q.statusFilter === 'provisionally_eligible'
+									? eq(submissions.status, 'provisionally eligible')
+									: eq(submissions.status, q.statusFilter);
 
-	const workerRestriction = !isAdmin && !isValidator
+	const workerRestriction = !isAdmin && !isValidator && !isClinicianOnly
 		? notInArray(submissions.status, WORKER_BLOCKED_STATUSES)
 		: undefined;
 
@@ -106,15 +117,6 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	const attachmentCountExpr = sql<number>`(
 		SELECT count(*) FROM submission_attachments WHERE submission_id = "submissions"."id"
 	)`;
-
-	function createCategorySQLStatement(categoryNumber: string): SQL<number> {
-		const name = sql.raw(`category${categoryNumber}`);
-		const sqlout = sql<number>`(
-			SELECT COALESCE( SUM("keyword_hits"."count"), 0 ) 
-			FROM keyword_hits WHERE keyword_hits.submission_id = "submissions"."id" 
-			AND ${name} >= 1)`
-		return sqlout;
-	}
 
 	const totalExpr = sql<number>`(
 		SELECT COALESCE(SUM(
@@ -158,9 +160,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			orderColumn = totalExpr;
 			break;
 		default:
-			orderColumn = q.sort.startsWith('category')
-				? createCategorySQLStatement(q.sort.replace('category', ''))
-				: attachmentCountExpr;
+			orderColumn = attachmentCountExpr;
 	}
 
 	const orderExpr = q.order === 'asc' ? asc(orderColumn) : desc(orderColumn);
@@ -175,19 +175,6 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			assessments: submissions.assessments,
 			submittedAt: submissions.dateSigned,
 			status: submissions.status,
-			category1: createCategorySQLStatement('1'),
-			category2: createCategorySQLStatement('2'),
-			category3: createCategorySQLStatement('3'),
-			category4: createCategorySQLStatement('4'),
-			category5: createCategorySQLStatement('5'),
-			category6: createCategorySQLStatement('6'),
-			category7: createCategorySQLStatement('7'),
-			category8: createCategorySQLStatement('8'),
-			category9: createCategorySQLStatement('9'),
-			category10: createCategorySQLStatement('10'),
-			category11: createCategorySQLStatement('11'),
-			category12: createCategorySQLStatement('12'),
-			category13: createCategorySQLStatement('13'),
 			total: totalExpr,
 			attachmentCount: attachmentCountExpr,
 		})
@@ -209,7 +196,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		: db.select({ n: count() }).from(submissions);
 
 	const shouldIncludeInvalidTable =
-		!isValidator && (q.statusFilter === 'all' || q.statusFilter === 'invalid');
+		!isValidator && !isClinicianOnly && (q.statusFilter === 'all' || q.statusFilter === 'invalid');
 
 	function createSubFieldFromRawJsonSQLStatement(fieldPath: string): SQL<string> {
 		const rawFieldPath = sql.raw(`'$.${fieldPath}'`);
@@ -256,6 +243,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 						assessments: assessmentCountRawJsonSQLStatement()
 					})
 					.from(invalidSubmissions)
+					.where(isNull(invalidSubmissions.resolvedAt))
 					.orderBy(invalidOrderExpr)
 			: Promise.resolve([])
 	]);
@@ -281,6 +269,6 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		totalPages: Math.max(1, Math.ceil(regularTotal / q.size)),
 		searchError: null as string | null,
 		categoryMap,
-		showStatusFilter: !isValidator
+		showStatusFilter: !isValidator && !isClinicianOnly
 	};
 };

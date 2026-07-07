@@ -24,6 +24,7 @@ import { indexSubmission } from '$lib/server/search/indexer';
 import { startReconciler, type ReconcilerHandle } from '$lib/server/search/reconciler';
 import { getEffectiveConfig } from '$lib/server/chefs/config';
 import { listSubmissions, downloadFile } from '$lib/server/chefs/client';
+import { startBackupScheduler, type SchedulerHandle } from '$lib/server/db/backup';
 
 // Surface crashes that would otherwise produce the bare
 // 'triggerUncaughtException' line with no stack. SvelteKit's adapter-node
@@ -59,6 +60,9 @@ let pollerStarted = false;
 
 let reconcilerHandle: ReconcilerHandle | null = null;
 let searchStarted = false;
+
+let backupHandle: SchedulerHandle | null = null;
+let backupStarted = false;
 
 async function maybeStartOcrWorker() {
 	if (workerStarted) return;
@@ -167,12 +171,24 @@ async function maybeStartSearch() {
 	});
 }
 
+function maybeStartBackupScheduler() {
+	if (backupStarted) return;
+	backupStarted = true;
+	if (env.DB_BACKUP_ENABLED !== '1') {
+		logger.info({ event: 'db_backup_disabled' }, 'DB_BACKUP_ENABLED is not set; backup scheduler not started');
+		return;
+	}
+	if (!env.DATABASE_URL) return;
+	backupHandle = startBackupScheduler({ db, dbPath: env.DATABASE_URL, logger });
+}
+
 if (!building) {
 	for (const sig of ['SIGINT', 'SIGTERM'] as const) {
 		process.once(sig, async () => {
 			await pollerHandle?.stop();
 			await workerHandle?.stop();
 			reconcilerHandle?.stop();
+			backupHandle?.stop();
 			process.exit(0);
 		});
 	}
@@ -184,6 +200,7 @@ const handlePhase1: Handle = async ({ event, resolve }) => {
 	await maybeStartOcrWorker();
 	await maybeStartChefsPoller();
 	await maybeStartSearch();
+	maybeStartBackupScheduler();
 	event.locals.requestId = nanoid(12);
 	event.locals.roles = new Set<Role>();
 
@@ -283,7 +300,7 @@ const handlePopulateRoles: Handle = async ({ event, resolve }) => {
 const ROUTE_RULES: Array<{ prefix: string; roles: Role[] }> = [
 	{ prefix: '/admin', roles: ['admin'] },
 	{ prefix: '/clinician', roles: ['clinician'] },
-	{ prefix: '/submissions', roles: ['admin', 'cfd_worker', 'validator'] },
+	{ prefix: '/submissions', roles: ['admin', 'cfd_worker', 'validator', 'clinician'] },
 	{ prefix: '/attachments', roles: ['admin', 'cfd_worker', 'clinician', 'validator'] }
 ];
 

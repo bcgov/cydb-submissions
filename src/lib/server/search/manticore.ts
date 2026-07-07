@@ -121,8 +121,8 @@ export class ManticoreClient implements SearchClient {
 			[rawHits, rawCount] = await Promise.all([
 				this.sql(
 					`SELECT id, WEIGHT() as weight, HIGHLIGHT({limit=200}, '${hlFields}') as snippet ` +
-						`FROM ${index} WHERE ${where}${optClause} ` +
-						`LIMIT ${input.limit} OFFSET ${input.offset}`
+						`FROM ${index} WHERE ${where} ` +
+						`LIMIT ${input.limit} OFFSET ${input.offset}${optClause}`
 				),
 				this.sql(`SELECT COUNT(*) as n FROM ${index} WHERE ${where}${optClause}`)
 			]);

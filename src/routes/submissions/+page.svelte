@@ -152,20 +152,7 @@
 				<Table.Head><a href={sortHref('screening')}>Screening</a></Table.Head>
 				<Table.Head><a href={sortHref('assessments')}># Assessments</a></Table.Head>
 				<Table.Head><a href={sortHref('status')}>Status</a></Table.Head>
-				<Table.Head><a href={sortHref('total')}>Total from all categories</a></Table.Head>
-				<Table.Head><a href={sortHref('category1')}>{data.categoryMap?.get('category1') ?? 'Undefined'}</a></Table.Head>
-				<Table.Head><a href={sortHref('category2')}>{data.categoryMap?.get('category2') ?? 'Undefined'}</a></Table.Head>
-				<Table.Head><a href={sortHref('category3')}>{data.categoryMap?.get('category3') ?? 'Undefined'}</a></Table.Head>
-				<Table.Head><a href={sortHref('category4')}>{data.categoryMap?.get('category4') ?? 'Undefined'}</a></Table.Head>
-				<Table.Head><a href={sortHref('category5')}>{data.categoryMap?.get('category5') ?? 'Undefined'}</a></Table.Head>
-				<Table.Head><a href={sortHref('category6')}>{data.categoryMap?.get('category6') ?? 'Undefined'}</a></Table.Head>
-				<Table.Head><a href={sortHref('category7')}>{data.categoryMap?.get('category7') ?? 'Undefined'}</a></Table.Head>
-				<Table.Head><a href={sortHref('category8')}>{data.categoryMap?.get('category8') ?? 'Undefined'}</a></Table.Head>
-				<Table.Head><a href={sortHref('category9')}>{data.categoryMap?.get('category9') ?? 'Undefined'}</a></Table.Head>
-				<Table.Head><a href={sortHref('category10')}>{data.categoryMap?.get('category10') ?? 'Undefined'}</a></Table.Head>
-				<Table.Head><a href={sortHref('category11')}>{data.categoryMap?.get('category11') ?? 'Undefined'}</a></Table.Head>
-				<Table.Head><a href={sortHref('category12')}>{data.categoryMap?.get('category12') ?? 'Undefined'}</a></Table.Head>
-				<Table.Head><a href={sortHref('category13')}>{data.categoryMap?.get('category13') ?? 'Undefined'}</a></Table.Head>
+				<Table.Head><a href={sortHref('total')}>Total keyword hits</a></Table.Head>
 				<Table.Head></Table.Head>
 			</Table.Row>
 		</Table.Header>
@@ -180,19 +167,6 @@
 					<Table.Cell class="whitespace-nowrap">{isInvalid ? row.attachmentCount : row.assessments?.length ?? 0}</Table.Cell>
 					<Table.Cell class="whitespace-nowrap"><StatusBadge status={row.status as never} /></Table.Cell>
 					<Table.Cell class="whitespace-nowrap">{row.total}</Table.Cell>
-					<Table.Cell class="whitespace-nowrap">{row.category1}</Table.Cell>
-					<Table.Cell class="whitespace-nowrap">{row.category2}</Table.Cell>
-					<Table.Cell class="whitespace-nowrap">{row.category3}</Table.Cell>
-					<Table.Cell class="whitespace-nowrap">{row.category4}</Table.Cell>
-					<Table.Cell class="whitespace-nowrap">{row.category5}</Table.Cell>
-					<Table.Cell class="whitespace-nowrap">{row.category6}</Table.Cell>
-					<Table.Cell class="whitespace-nowrap">{row.category7}</Table.Cell>
-					<Table.Cell class="whitespace-nowrap">{row.category8}</Table.Cell>
-					<Table.Cell class="whitespace-nowrap">{row.category9}</Table.Cell>
-					<Table.Cell class="whitespace-nowrap">{row.category10}</Table.Cell>
-					<Table.Cell class="whitespace-nowrap">{row.category11}</Table.Cell>
-					<Table.Cell class="whitespace-nowrap">{row.category12}</Table.Cell>
-					<Table.Cell class="whitespace-nowrap">{row.category13}</Table.Cell>
 					<Table.Cell>
 						<a class="text-blue-700 underline" href={rowHref(row.uuid, isInvalid)}>View</a>
 					</Table.Cell>
@@ -215,19 +189,6 @@
 					<Table.Cell class="whitespace-nowrap">{row.screening}</Table.Cell>
 					<Table.Cell class="whitespace-nowrap">{row.assessments}</Table.Cell>
 					<Table.Cell class="whitespace-nowrap"><StatusBadge status={'invalid' as never} /></Table.Cell>
-					<Table.Cell>—</Table.Cell>
-					<Table.Cell>—</Table.Cell>
-					<Table.Cell>—</Table.Cell>
-					<Table.Cell>—</Table.Cell>
-					<Table.Cell>—</Table.Cell>
-					<Table.Cell>—</Table.Cell>
-					<Table.Cell>—</Table.Cell>
-					<Table.Cell>—</Table.Cell>
-					<Table.Cell>—</Table.Cell>
-					<Table.Cell>—</Table.Cell>
-					<Table.Cell>—</Table.Cell>
-					<Table.Cell>—</Table.Cell>
-					<Table.Cell>—</Table.Cell>
 					<Table.Cell>—</Table.Cell>
 					<Table.Cell
 						><a class="text-blue-700 underline" href={rowHref(row.uuid, true)}>View</a></Table.Cell

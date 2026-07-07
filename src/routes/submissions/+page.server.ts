@@ -118,15 +118,6 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		SELECT count(*) FROM submission_attachments WHERE submission_id = "submissions"."id"
 	)`;
 
-	function createCategorySQLStatement(categoryNumber: string): SQL<number> {
-		const name = sql.raw(`category${categoryNumber}`);
-		const sqlout = sql<number>`(
-			SELECT COALESCE( SUM("keyword_hits"."count"), 0 ) 
-			FROM keyword_hits WHERE keyword_hits.submission_id = "submissions"."id" 
-			AND ${name} >= 1)`
-		return sqlout;
-	}
-
 	const totalExpr = sql<number>`(
 		SELECT COALESCE(SUM(
 			(CASE WHEN category1  >= 1 THEN "count" ELSE 0 END) +
@@ -169,9 +160,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			orderColumn = totalExpr;
 			break;
 		default:
-			orderColumn = q.sort.startsWith('category')
-				? createCategorySQLStatement(q.sort.replace('category', ''))
-				: attachmentCountExpr;
+			orderColumn = attachmentCountExpr;
 	}
 
 	const orderExpr = q.order === 'asc' ? asc(orderColumn) : desc(orderColumn);
@@ -186,19 +175,6 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			assessments: submissions.assessments,
 			submittedAt: submissions.dateSigned,
 			status: submissions.status,
-			category1: createCategorySQLStatement('1'),
-			category2: createCategorySQLStatement('2'),
-			category3: createCategorySQLStatement('3'),
-			category4: createCategorySQLStatement('4'),
-			category5: createCategorySQLStatement('5'),
-			category6: createCategorySQLStatement('6'),
-			category7: createCategorySQLStatement('7'),
-			category8: createCategorySQLStatement('8'),
-			category9: createCategorySQLStatement('9'),
-			category10: createCategorySQLStatement('10'),
-			category11: createCategorySQLStatement('11'),
-			category12: createCategorySQLStatement('12'),
-			category13: createCategorySQLStatement('13'),
 			total: totalExpr,
 			attachmentCount: attachmentCountExpr,
 		})

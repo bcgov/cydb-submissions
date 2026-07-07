@@ -106,50 +106,44 @@ export class ManticoreClient implements SearchClient {
 		highlightFields: string[],
 		input: SearchInput
 	): Promise<SearchResult> {
-		const { positive, negated } = splitNegations(input.match);
-		validateQuery(positive);
-		const must: unknown[] = [{ query_string: positive }];
-		const mustNot: unknown[] = negated.map((t) => ({ query_string: t }));
-		if (input.statusEquals) must.push({ equals: { status: input.statusEquals } });
-		if (input.statusNotEquals) mustNot.push({ equals: { status: input.statusNotEquals } });
+		validateQuery(input.match);
 
-		const body: Record<string, unknown> = {
-			index,
-			query: { bool: { must, ...(mustNot.length ? { must_not: mustNot } : {}) } },
-			highlight: { fields: highlightFields, limit: 1 },
-			limit: input.limit,
-			offset: input.offset
-		};
-		if (input.fuzzy) body.options = { fuzzy: 1 };
+		const conditions: string[] = [`MATCH('${esc(input.match)}')`];
+		if (input.statusEquals) conditions.push(`status = '${esc(input.statusEquals)}'`);
+		if (input.statusNotEquals) conditions.push(`status != '${esc(input.statusNotEquals)}'`);
+		const where = conditions.join(' AND ');
+		const optClause = input.fuzzy ? ' OPTION fuzzy=1' : '';
+		const hlFields = highlightFields.join(',');
 
-		const res = await fetch(`${this.baseUrl}/search`, {
-			method: 'POST',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify(body)
-		});
-		const json = (await res.json().catch(() => null)) as {
-			error?: string;
-			hits?: {
-				total?: number;
-				hits?: Array<{
-					_id: number | string;
-					_score?: number;
-					highlight?: Record<string, string[]>;
-				}>;
-			};
-		} | null;
-
-		if (!res.ok || !json || json.error) {
-			throw new SearchQueryError(json?.error ?? `search failed (${res.status})`);
+		let rawHits: unknown;
+		let rawCount: unknown;
+		try {
+			[rawHits, rawCount] = await Promise.all([
+				this.sql(
+					`SELECT id, WEIGHT() as weight, HIGHLIGHT({limit=200}, '${hlFields}') as snippet ` +
+						`FROM ${index} WHERE ${where}${optClause} ` +
+						`LIMIT ${input.limit} OFFSET ${input.offset}`
+				),
+				this.sql(`SELECT COUNT(*) as n FROM ${index} WHERE ${where}${optClause}`)
+			]);
+		} catch (e) {
+			const msg = e instanceof Error
+				? e.message.replace(/^manticore sql failed: \S+ /, '')
+				: String(e);
+			throw new SearchQueryError(msg);
 		}
 
-		const rawHits = json.hits?.hits ?? [];
+		type HitRow = { id: number | string; weight?: number; snippet?: string };
+		type CountRow = { n?: number };
+		const hitsData = (rawHits as Array<{ data?: HitRow[] }>)[0]?.data ?? [];
+		const countData = (rawCount as Array<{ data?: CountRow[] }>)[0]?.data ?? [];
+
 		return {
-			total: json.hits?.total ?? rawHits.length,
-			hits: rawHits.map((h) => ({
-				id: Number(h._id),
-				weight: h._score ?? 0,
-				snippet: firstHighlight(h.highlight, highlightFields)
+			total: countData[0]?.n ?? hitsData.length,
+			hits: hitsData.map((r) => ({
+				id: Number(r.id),
+				weight: r.weight ?? 0,
+				snippet: r.snippet ?? ''
 			}))
 		};
 	}
@@ -162,25 +156,6 @@ export class ManticoreClient implements SearchClient {
 			return false;
 		}
 	}
-}
-
-/**
- * Splits a query into positive terms and negated terms (-word or -"phrase").
- * Negated tokens are lifted to the bool must_not layer so that fuzzy=1 cannot
- * interfere with exclusion semantics.
- */
-function splitNegations(query: string): { positive: string; negated: string[] } {
-	const tokens = query.match(/-?"[^"]*"|-?\S+/g) ?? [];
-	const positive: string[] = [];
-	const negated: string[] = [];
-	for (const tok of tokens) {
-		if (tok.startsWith('-') && tok.length > 1) {
-			negated.push(tok.slice(1));
-		} else {
-			positive.push(tok);
-		}
-	}
-	return { positive: positive.join(' '), negated };
 }
 
 /**
@@ -209,13 +184,4 @@ function sqlError(json: unknown): string | null {
 		if (typeof e === 'string' && e.length > 0) return e;
 	}
 	return null;
-}
-
-function firstHighlight(h: Record<string, string[]> | undefined, fields: string[]): string {
-	if (!h) return '';
-	for (const field of fields) {
-		if (h[field]?.length) return h[field][0];
-	}
-	const any = Object.values(h)[0];
-	return any?.[0] ?? '';
 }

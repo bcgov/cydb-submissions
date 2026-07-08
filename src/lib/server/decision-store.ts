@@ -6,7 +6,7 @@ import type { DecisionOutcome } from './decision';
 /** Write-once: only sets the decision when none exists yet (atomic via the WHERE). */
 export async function recordDecision(
 	db: DrizzleDb,
-	args: { submissionId: number; decision: DecisionOutcome; reasons: string[]; decidedBy: string }
+	args: { submissionId: number; decision: DecisionOutcome; reasons: string[]; tierChoice: string | null; decidedBy: string }
 ): Promise<'ok' | 'already_decided'> {
 	const res = await db
 		.update(submissions)
@@ -15,6 +15,7 @@ export async function recordDecision(
 			decisionReasons: args.reasons,
 			decidedBy: args.decidedBy,
 			decidedAt: sql`CURRENT_TIMESTAMP`,
+			acceptTier: args.tierChoice,
 			status: args.decision
 		})
 		.where(and(eq(submissions.id, args.submissionId), isNull(submissions.decision)))
@@ -47,6 +48,7 @@ export async function resetDecision(db: DrizzleDb, submissionId: number): Promis
 			decisionReasons: null,
 			decidedBy: null,
 			decidedAt: null,
+			acceptTier: null,
 			status: next
 		})
 		.where(eq(submissions.id, submissionId));

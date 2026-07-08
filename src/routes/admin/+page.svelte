@@ -10,6 +10,7 @@
 
 	let seedOpen = $state(false);
 	let clearOpen = $state(false);
+	let clearInvalidOpen = $state(false);
 </script>
 
 <div class="mx-auto max-w-2xl space-y-8 p-6">
@@ -44,6 +45,7 @@
 			<Button variant="destructive" onclick={() => (clearOpen = true)}>Clear all submissions</Button
 			>
 			{/if}
+			<Button variant="destructive" onclick={() => (clearInvalidOpen = true)}>Clear invalid &amp; re-ingest</Button>
 		</div>
 
 		<p class="text-xs text-gray-600">
@@ -52,6 +54,9 @@
 			testable. Clear removes all submissions, metadata, attachments, OCR results, and invalid
 			records — users and roles are untouched.
 		</p>
+		<div class="flex flex-col gap-1">
+			<a href="/admin/db" class="text-blue-700 underline">Database backup →</a>
+		</div>
 	</section>
 
 	<section class="space-y-3">
@@ -67,7 +72,7 @@
 		<h2 class="text-lg font-semibold">Access control</h2>
 		<div class="flex flex-col gap-1">
 			<a href="/admin/users" class="text-blue-700 underline">User roles &amp; revocation →</a>
-			<a href="/admin/reasons" class="text-blue-700 underline">Rejection reasons →</a>
+			<a href="/admin/reasons" class="text-blue-700 underline">Accept and rejection reasons →</a>
 		</div>
 	</section>
 
@@ -94,6 +99,34 @@
 				>
 					<input type="hidden" name="csrf" value={page.data.csrfToken} />
 					<AlertDialog.Action type="submit">Seed</AlertDialog.Action>
+				</form>
+			</AlertDialog.Footer>
+		</AlertDialog.Content>
+	</AlertDialog.Root>
+
+	<!-- Clear invalid & re-ingest confirmation -->
+	<AlertDialog.Root bind:open={clearInvalidOpen}>
+		<AlertDialog.Content>
+			<AlertDialog.Header>
+				<AlertDialog.Title>Clear invalid submissions and re-ingest?</AlertDialog.Title>
+				<AlertDialog.Description>
+					This removes all invalid submission records and immediately re-syncs from CHEFS.
+					Submissions that previously failed validation will be retried.
+				</AlertDialog.Description>
+			</AlertDialog.Header>
+			<AlertDialog.Footer>
+				<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+				<form
+					method="POST"
+					action="?/clearInvalidAndSync"
+					use:enhance={() =>
+						async ({ update }) => {
+							await update();
+							clearInvalidOpen = false;
+						}}
+				>
+					<input type="hidden" name="csrf" value={page.data.csrfToken} />
+					<AlertDialog.Action type="submit">Confirm</AlertDialog.Action>
 				</form>
 			</AlertDialog.Footer>
 		</AlertDialog.Content>

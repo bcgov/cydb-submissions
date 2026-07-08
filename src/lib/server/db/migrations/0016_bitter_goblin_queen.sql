@@ -1,0 +1,1 @@
+UPDATE `submissions` SET "status"='opt-out' WHERE "screening"='No';

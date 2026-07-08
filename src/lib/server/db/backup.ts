@@ -37,7 +37,7 @@ export async function createBackup(
 
 	const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 	const rawPath = join(backupDir, `backup-${kind}-${timestamp}.db`);
-	const compressedPath = join(backupDir, `backup-${kind}-${timestamp}.db.tar.gzip`);
+	const compressedPath = join(backupDir, `backup-${kind}-${timestamp}.db.tar.gz`);
 
 	sqlite().prepare('VACUUM INTO ?').run(rawPath);
 
@@ -54,7 +54,7 @@ export async function createBackup(
 export async function pruneBackups(dbDir: string, maxCount: number, logger: Logger): Promise<void> {
 	const files = await readdir(dbDir).catch((): string[] => []);
 	const sorted = files
-		.filter((f) => f.startsWith('backup-scheduled-') && f.endsWith('.db.tar.gzip'))
+		.filter((f) => f.startsWith('backup-scheduled-') && f.endsWith('.db.tar.gz'))
 		.sort()
 		.reverse();
 

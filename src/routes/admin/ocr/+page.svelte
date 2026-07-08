@@ -99,15 +99,15 @@
 			{#if totalPages > 1}
 				<div class="flex items-center gap-3 pt-1 text-sm">
 					{#if data.failedPage > 1}
-						<a href="?failedPage={data.failedPage - 1}" class="underline">Previous</a>
-					{:else}
-						<span class="text-gray-400">Previous</span>
+						<a href="?failedPage={data.failedPage - 1}" class="underline"><Button variant="outline" size="sm">Previous</Button></a>
+						{:else}
+						<span class="text-gray-400"><Button variant="outline" size="sm">Previous</Button></span>
 					{/if}
 					<span class="text-gray-600">Page {data.failedPage} of {totalPages} ({data.totalFailed} total)</span>
 					{#if data.failedPage < totalPages}
-						<a href="?failedPage={data.failedPage + 1}" class="underline">Next</a>
+						<a href="?failedPage={data.failedPage + 1}" class="underline"><Button variant="outline" size="sm">Next</Button></a>
 					{:else}
-						<span class="text-gray-400">Next</span>
+						<span class="text-gray-400"><Button variant="outline" size="sm">Next</Button></span>
 					{/if}
 				</div>
 			{/if}

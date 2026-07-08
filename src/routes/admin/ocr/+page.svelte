@@ -53,7 +53,7 @@
 
 	<section class="space-y-2">
 		<h2 class="text-lg font-semibold">Recent failures</h2>
-		{#if data.recentFailed.length === 0}
+		{#if data.recentFailed.length === 0 && data.failedPage === 1}
 			<p class="text-sm text-gray-500">No failed jobs.</p>
 		{:else}
 			<Table.Root>
@@ -95,6 +95,22 @@
 					{/each}
 				</Table.Body>
 			</Table.Root>
+			{@const totalPages = Math.ceil(data.totalFailed / data.failedPageSize)}
+			{#if totalPages > 1}
+				<div class="flex items-center gap-3 pt-1 text-sm">
+					{#if data.failedPage > 1}
+						<a href="?failedPage={data.failedPage - 1}" class="underline"><Button variant="outline" size="sm">Previous</Button></a>
+						{:else}
+						<span class="text-gray-400"><Button variant="outline" size="sm">Previous</Button></span>
+					{/if}
+					<span class="text-gray-600">Page {data.failedPage} of {totalPages} ({data.totalFailed} total)</span>
+					{#if data.failedPage < totalPages}
+						<a href="?failedPage={data.failedPage + 1}" class="underline"><Button variant="outline" size="sm">Next</Button></a>
+					{:else}
+						<span class="text-gray-400"><Button variant="outline" size="sm">Next</Button></span>
+					{/if}
+				</div>
+			{/if}
 		{/if}
 	</section>
 

@@ -27,7 +27,7 @@ test-results
 *.db
 *.db-shm
 *.db-wal
-*.gzip
+*.gz
 
 # Runtime PVC mount (E2E + local dev write here)
 /attachments

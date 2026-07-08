@@ -14,7 +14,9 @@ interface HaltState {
 	lastErrorClass: string | null;
 }
 
-export const load: PageServerLoad = async ({ locals }) => {
+const PAGE_SIZE = 25;
+
+export const load: PageServerLoad = async ({ locals, url }) => {
 	requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin');
 
 	const counts = db
@@ -24,6 +26,16 @@ export const load: PageServerLoad = async ({ locals }) => {
 		.all();
 
 	const halted = getSystemState<HaltState>(db, 'ocr.halted');
+
+	const failedPage = Math.max(1, parseInt(url.searchParams.get('failedPage') ?? '1', 10) || 1);
+
+	const totalFailed = (
+		db
+			.select({ n: sql<number>`count(*)` })
+			.from(schema.ocrJobs)
+			.where(sql`${schema.ocrJobs.status} IN ('failed','abandoned')`)
+			.get() as { n: number }
+	).n;
 
 	const recentFailed = db
 		.select({
@@ -38,10 +50,11 @@ export const load: PageServerLoad = async ({ locals }) => {
 		.from(schema.ocrJobs)
 		.where(sql`${schema.ocrJobs.status} IN ('failed','abandoned')`)
 		.orderBy(sql`${schema.ocrJobs.updatedAt} DESC`)
-		.limit(50)
+		.limit(PAGE_SIZE)
+		.offset((failedPage - 1) * PAGE_SIZE)
 		.all();
 
-	return { counts, halted, recentFailed };
+	return { counts, halted, recentFailed, failedPage, totalFailed, failedPageSize: PAGE_SIZE };
 };
 
 function csrfOk(formCsrf: FormDataEntryValue | null, cookieCsrf: string | undefined): boolean {

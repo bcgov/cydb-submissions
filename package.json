@@ -1,7 +1,7 @@
 {
 	"name": "cydb-submissions",
 	"private": true,
-	"version": "0.0.1",
+	"version": "1.1.0",
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
@@ -24,7 +24,6 @@
 		"update": "npm update --allow-git=none"
 	},
 	"devDependencies": {
-		"@better-auth/cli": "~1.4.21",
 		"@eslint/compat": "^2.0.4",
 		"@eslint/js": "^10.0.1",
 		"@fontsource-variable/inter": "^5.2.8",
@@ -65,7 +64,7 @@
 	},
 	"dependencies": {
 		"@sveltejs/adapter-node": "^5.5.4",
-		"better-auth": "~1.4.21",
+		"better-auth": "^1.6.23",
 		"better-sqlite3": "^12.8.0",
 		"drizzle-orm": "^0.45.2",
 		"nanoid": "^5.1.11",

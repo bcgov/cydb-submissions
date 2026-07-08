@@ -34,7 +34,15 @@ if (!migrationsFolder) {
 
 console.log(`migrate: applying migrations from ${migrationsFolder} to ${dbUrl}`);
 const sqlite = new Database(dbUrl);
-sqlite.pragma('foreign_keys = ON');
-migrate(drizzle(sqlite), { migrationsFolder });
-sqlite.close();
-console.log('migrate: done');
+sqlite.pragma('foreign_keys = OFF');
+try {
+	migrate(drizzle(sqlite), { migrationsFolder });
+	console.log('migrate: done');
+} catch (e) {
+	console.error('migrate: failed with error');
+	console.error(e);
+} finally {
+	sqlite.pragma('foreign_keys = ON')
+	sqlite.close();
+}
+

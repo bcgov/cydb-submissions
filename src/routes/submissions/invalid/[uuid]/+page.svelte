@@ -22,6 +22,9 @@
 			<a href={backHref} class="text-sm text-blue-700 underline">← Back to submissions</a>
 			<h1 class="mt-2 text-2xl font-semibold">Invalid Submission</h1>
 			<p class="mt-1 text-sm text-gray-500">{data.submission.uuid}</p>
+			{#if data.chefsLink}
+				<a href={data.chefsLink} target="_blank" rel="noreferrer noopener" class="text-sm text-blue-700 underline visited:text-purple-600">See this submission in CHEFS</a>
+			{/if}
 		</div>
 		<StatusBadge status={'invalid' as never} />
 	</header>

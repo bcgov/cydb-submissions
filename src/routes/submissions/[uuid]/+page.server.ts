@@ -2,6 +2,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { error, fail, redirect } from '@sveltejs/kit';
 import { eq, inArray } from 'drizzle-orm';
 import { db } from '$lib/server/db';
+import { env } from '$env/dynamic/private';
 import {
 	submissions,
 	submissionAttachments,
@@ -21,6 +22,7 @@ import { validateDecision, type DecisionOutcome } from '$lib/server/decision';
 import { recordDecision, resetDecision } from '$lib/server/decision-store';
 import { recomputeSubmissionStatus } from '$lib/server/ocr/status-transition';
 import { getCategoryMapping } from '$lib/server/ocr/keywords';
+import { getEffectiveConfig } from '$lib/server/chefs/config';
 
 function csrfOk(formCsrf: FormDataEntryValue | null, cookieCsrf: string | undefined): boolean {
 	return Boolean(cookieCsrf && formCsrf && formCsrf === cookieCsrf);
@@ -176,6 +178,14 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 		return { ...a, ocr };
 	});
 
+	const chefsUuid = submission.submissionUuid.match(/chefs_([0-9\-a-zA-Z]{36})/);
+	let chefsLink = undefined;
+
+	if (chefsUuid && chefsUuid.length > 1) {
+		const chefsConfig = getEffectiveConfig(db, env as Record<string, string | undefined>);
+		chefsLink = chefsConfig.baseUrl + '/app/form/view?s=' + chefsUuid[1];
+	}
+
 	auditLog(
 		'submission_viewed',
 		{
@@ -207,6 +217,7 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 		isCfdWorker: isCfdWorker && !isAdmin,
 		claim: claimRow ? { email: claimEmail } : null,
 		claimedByMe: claimRow?.userId === locals.user?.id,
+		chefsLink
 	};
 };
 

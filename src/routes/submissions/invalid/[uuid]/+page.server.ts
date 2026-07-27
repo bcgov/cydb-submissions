@@ -2,9 +2,11 @@ import type { PageServerLoad, Actions } from './$types';
 import { error, fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
+import { env } from '$env/dynamic/private';
 import { invalidSubmissions } from '$lib/server/db/schema';
 import { requireRole } from '$lib/server/roles';
 import { auditLog } from '$lib/server/audit';
+import { getEffectiveConfig } from '$lib/server/chefs/config';
 
 export const load: PageServerLoad = async ({ params, locals, url }) => {
 	requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker');
@@ -17,6 +19,14 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 
 	const submission = rows[0];
 	if (!submission) throw error(404, 'Invalid submission not found');
+
+	const chefsUuid = submission.submissionUuid.match(/chefs_([0-9\-a-zA-Z]{36})/);
+	let chefsLink = undefined;
+
+	if (chefsUuid && chefsUuid.length > 1) {
+		const chefsConfig = getEffectiveConfig(db, env as Record<string, string | undefined>);
+		chefsLink = chefsConfig.baseUrl + '/app/form/view?s=' + chefsUuid[1];
+	}
 
 	auditLog(
 		'invalid_submission_viewed',
@@ -48,7 +58,8 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 			resolvedAt: submission.resolvedAt,
 			resolvedBy: submission.resolvedBy,
 			resolvedNote: submission.resolvedNote
-		}
+		},
+		chefsLink
 	};
 };
 

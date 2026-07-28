@@ -23,9 +23,21 @@ import { recordDecision, resetDecision } from '$lib/server/decision-store';
 import { recomputeSubmissionStatus } from '$lib/server/ocr/status-transition';
 import { getCategoryMapping } from '$lib/server/ocr/keywords';
 import { getEffectiveConfig } from '$lib/server/chefs/config';
+import { listSubmissions, downloadFile } from '$lib/server/chefs/client';
+import { pickSubmissionUuid } from '$lib/server/chefs/mapper';
+import { reingestOne, REINGEST_ALLOWED_STATUSES } from '$lib/server/chefs/ingest';
+import type { ChefsSubmissionRaw } from '$lib/server/chefs/types';
 
 function csrfOk(formCsrf: FormDataEntryValue | null, cookieCsrf: string | undefined): boolean {
 	return Boolean(cookieCsrf && formCsrf && formCsrf === cookieCsrf);
+}
+
+// Preserves the `from` query param (the list view's filters/pagination) when
+// bouncing back to the main submissions page, mirroring the "Back to
+// submissions" link's behaviour on the client.
+function submissionsListUrl(url: URL): string {
+	const from = url.searchParams.get('from');
+	return from ? `/submissions${decodeURIComponent(from)}` : '/submissions';
 }
 
 export const load: PageServerLoad = async ({ params, locals, url }) => {
@@ -217,7 +229,11 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 		isCfdWorker: isCfdWorker && !isAdmin,
 		claim: claimRow ? { email: claimEmail } : null,
 		claimedByMe: claimRow?.userId === locals.user?.id,
-		chefsLink
+		chefsLink,
+		canReingest:
+			Boolean(chefsLink) &&
+			(locals.roles.has('admin') || locals.roles.has('cfd_worker') || locals.roles.has('validator')) &&
+			(REINGEST_ALLOWED_STATUSES as readonly string[]).includes(submission.status)
 	};
 };
 
@@ -488,7 +504,7 @@ export const actions: Actions = {
 			},
 			locals.logger
 		);
-		if (!locals.roles.has('admin')) redirect(303, '/submissions');
+		if (!locals.roles.has('admin')) redirect(303, submissionsListUrl(url));
 		return { action: 'readyForClinician', success: 'Submission marked as ready for clinician.' };
 	},
 
@@ -591,7 +607,7 @@ export const actions: Actions = {
 			},
 			locals.logger
 		);
-		if (!locals.roles.has('admin')) redirect(303, '/submissions');
+		if (!locals.roles.has('admin')) redirect(303, submissionsListUrl(url));
 		return { action: 'readyForValidator', success: 'Submission marked as ready for validator.' };
 	},
 
@@ -699,7 +715,7 @@ export const actions: Actions = {
 			},
 			locals.logger
 		);
-		if (!locals.roles.has('admin') && !locals.roles.has('cfd_worker')) redirect(303, '/submissions');
+		if (!locals.roles.has('admin') && !locals.roles.has('cfd_worker')) redirect(303, submissionsListUrl(url));
 		return { action: 'readyForPolicy', success: 'Submission marked as ready for policy.' };
 	},
 
@@ -754,7 +770,7 @@ export const actions: Actions = {
 			},
 			locals.logger
 		);
-		if (!locals.roles.has('admin') && !locals.roles.has('cfd_worker')) redirect(303, '/submissions');
+		if (!locals.roles.has('admin') && !locals.roles.has('cfd_worker')) redirect(303, submissionsListUrl(url));
 		return { action: 'provisionallyEligible', success: 'Submission marked as provisionally eligible.' };
 	},
 
@@ -795,7 +811,7 @@ export const actions: Actions = {
 			},
 			locals.logger
 		);
-		if (!locals.roles.has('admin') && !locals.roles.has('cfd_worker')) redirect(303, '/submissions');
+		if (!locals.roles.has('admin') && !locals.roles.has('cfd_worker')) redirect(303, submissionsListUrl(url));
 		return { action: 'markDuplicate', success: 'Submission marked as duplicate.' };
 	},
 
@@ -879,5 +895,114 @@ export const actions: Actions = {
 			.where(eq(submissions.id, sub.id));
 
 		return { action: 'saveNotes', success: 'Notes saved.' };
+	},
+
+	// Re-fetches a claimed CHEFS-sourced submission from CHEFS and replaces it
+	// entirely — old metadata, attachments, OCR results, keyword hits, decision,
+	// and claim are removed once the replacement data is confirmed available.
+	reingest: async ({ request, params, locals, url, cookies }) => {
+		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator');
+		const form = await request.formData();
+		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
+			return fail(403, { action: 'reingest', error: 'CSRF token mismatch' });
+
+		const sub = (
+			await db
+				.select({ id: submissions.id, submissionUuid: submissions.submissionUuid, status: submissions.status })
+				.from(submissions)
+				.where(eq(submissions.submissionUuid, params.uuid))
+				.limit(1)
+		)[0];
+		if (!sub) return fail(404, { action: 'reingest', error: 'Submission not found.' });
+		if (!(REINGEST_ALLOWED_STATUSES as readonly string[]).includes(sub.status))
+			return fail(400, {
+				action: 'reingest',
+				error: 'Submission cannot be reingested from its current status.'
+			});
+
+		const claim = (
+			await db
+				.select()
+				.from(submissionClaims)
+				.where(eq(submissionClaims.submissionId, sub.id))
+				.limit(1)
+		)[0];
+		if (!claim)
+			return fail(400, { action: 'reingest', error: 'Submission must be claimed before reingesting.' });
+
+		const cfg = getEffectiveConfig(db, env as Record<string, string | undefined>);
+
+		let rawList: unknown[];
+		try {
+			rawList = await listSubmissions(cfg, { fetch });
+		} catch (e) {
+			return fail(502, { action: 'reingest', error: `Failed to reach CHEFS: ${(e as Error).message}` });
+		}
+
+		const match = (rawList as ChefsSubmissionRaw[]).find((raw) => {
+			try {
+				return pickSubmissionUuid(raw) === sub.submissionUuid;
+			} catch {
+				return false;
+			}
+		});
+		if (!match)
+			return fail(404, {
+				action: 'reingest',
+				error: 'This submission could no longer be found in CHEFS.'
+			});
+
+		// reingestOne downloads the replacement attachments first and only
+		// deletes/replaces the existing submission once that succeeds, so a
+		// network failure here leaves the original submission untouched.
+		let result;
+		try {
+			result = await reingestOne(
+				db,
+				cfg,
+				match,
+				{
+					download: (fileId) => downloadFile(cfg, fileId, { fetch }, locals.logger),
+					attachmentsDir: env.ATTACHMENTS_DIR ?? './attachments',
+					logger: locals.logger
+				},
+				async () => {
+					await db.delete(submissions).where(eq(submissions.id, sub.id));
+				}
+			);
+		} catch (e) {
+			auditLog(
+				'submission_reingest_failed',
+				{
+					actorUserId: locals.user!.id,
+					actorRole: [...locals.roles][0],
+					submissionUuid: sub.submissionUuid,
+					route: url.pathname,
+					requestId: locals.requestId,
+					reason: (e as Error).message
+				},
+				locals.logger
+			);
+			return fail(500, {
+				action: 'reingest',
+				error: `Reingestion failed, original submission was not modified: ${(e as Error).message}`
+			});
+		}
+
+		auditLog(
+			'submission_reingested',
+			{
+				actorUserId: locals.user!.id,
+				actorRole: [...locals.roles][0],
+				submissionUuid: sub.submissionUuid,
+				route: url.pathname,
+				requestId: locals.requestId,
+				reason: `outcome=${result.outcome}`
+			},
+			locals.logger
+		);
+
+		// Land back on the main submissions list regardless of ingest outcome
+		redirect(303, submissionsListUrl(url));
 	}
 };

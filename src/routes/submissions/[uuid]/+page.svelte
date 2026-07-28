@@ -103,6 +103,9 @@
 	// Whether the reset-duplicate dialog is open
 	let resetDuplicateDialogOpen = $state(false);
 
+	// Whether the reingest confirmation dialog is open
+	let reingestDialogOpen = $state(false);
+
 	beforeNavigate(({cancel}) => {
 		if (notesDirty && !confirm('You have unsaved changes to your notes! Discard them?')) {
 			cancel(); // Stop navigation if the user cancels
@@ -198,11 +201,56 @@
 								</a>
 							{/snippet}
 						</DropdownMenuItem>
+						{#if data.canReingest && data.claim}
+							<DropdownMenuItem
+								variant="destructive"
+								onclick={() => (reingestDialogOpen = true)}
+							>
+								Reingest submission
+							</DropdownMenuItem>
+						{/if}
 					</DropdownMenuContent>
 				</DropdownMenu>
 			{/if}
 		</div>
 	</header>
+
+	{#if form?.action === 'reingest' && form?.error}
+		<p role="alert" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+			{form.error}
+		</p>
+	{/if}
+
+	<AlertDialog.Root
+		open={reingestDialogOpen}
+		onOpenChange={(open) => { if (!open) reingestDialogOpen = false; }}
+	>
+		<AlertDialog.Content>
+			<AlertDialog.Header>
+				<AlertDialog.Title>Reingest this submission?</AlertDialog.Title>
+				<AlertDialog.Description>
+					This will permanently delete this submission and all related data — attachments, OCR
+					results, keyword hits, decision, and notes — then re-fetch and re-process it fresh from
+					CHEFS. This cannot be undone.
+				</AlertDialog.Description>
+			</AlertDialog.Header>
+			<AlertDialog.Footer>
+				<AlertDialog.Cancel onclick={() => (reingestDialogOpen = false)}>Cancel</AlertDialog.Cancel>
+				<form
+					method="POST"
+					action="?/reingest"
+					use:enhance={() =>
+						async ({ update }) => {
+							await update();
+							reingestDialogOpen = false;
+						}}
+				>
+					<input type="hidden" name="csrf" value={page.data.csrfToken} />
+					<AlertDialog.Action type="submit">Reingest</AlertDialog.Action>
+				</form>
+			</AlertDialog.Footer>
+		</AlertDialog.Content>
+	</AlertDialog.Root>
 
 	<!-- Decision block: read only for decided statuses -->
 	{#if ['accepted', 'rejected'].includes(data.submission.status)}

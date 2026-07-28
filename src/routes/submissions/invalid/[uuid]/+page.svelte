@@ -3,7 +3,9 @@
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { formatDate } from '$lib/format-date';
 	import { page } from '$app/state';
+	import { enhance } from '$app/forms';
 	import { Button } from '$lib/components/ui/button';
+	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import {
 		DropdownMenu,
 		DropdownMenuContent,
@@ -15,6 +17,9 @@
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	let note = $state('');
+
+	// Whether the reingest confirmation dialog is open
+	let reingestDialogOpen = $state(false);
 
 	const backHref = $derived(
 		(() => {
@@ -50,11 +55,51 @@
 								</a>
 							{/snippet}
 						</DropdownMenuItem>
+						{#if data.canReingest}
+							<DropdownMenuItem variant="destructive" onclick={() => (reingestDialogOpen = true)}>
+								Reingest submission
+							</DropdownMenuItem>
+						{/if}
 					</DropdownMenuContent>
 				</DropdownMenu>
 			{/if}
 		</div>
 	</header>
+
+	{#if form?.action === 'reingest' && form?.error}
+		<p role="alert" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+			{form.error}
+		</p>
+	{/if}
+
+	<AlertDialog.Root
+		open={reingestDialogOpen}
+		onOpenChange={(open) => { if (!open) reingestDialogOpen = false; }}
+	>
+		<AlertDialog.Content>
+			<AlertDialog.Header>
+				<AlertDialog.Title>Reingest this submission?</AlertDialog.Title>
+				<AlertDialog.Description>
+					This will permanently delete this invalid-submission record and re-fetch and re-process
+					it fresh from CHEFS. This cannot be undone.
+				</AlertDialog.Description>
+			</AlertDialog.Header>
+			<AlertDialog.Footer>
+				<AlertDialog.Cancel onclick={() => (reingestDialogOpen = false)}>Cancel</AlertDialog.Cancel>
+				<form
+					method="POST"
+					action="?/reingest"
+					use:enhance={() =>
+						async ({ update }) => {
+							await update();
+							reingestDialogOpen = false;
+						}}
+				>
+					<AlertDialog.Action type="submit">Reingest</AlertDialog.Action>
+				</form>
+			</AlertDialog.Footer>
+		</AlertDialog.Content>
+	</AlertDialog.Root>
 
 	<section class="space-y-3 rounded border border-gray-200 bg-gray-50 px-5 py-4">
 		<h2 class="text-base font-semibold">Details</h2>
@@ -120,7 +165,7 @@
 						class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
 						placeholder="Describe why this submission is being marked as resolved..."
 					></textarea>
-					{#if form?.error}
+					{#if form?.action === 'resolve' && form?.error}
 						<p class="text-sm text-red-600">{form.error}</p>
 					{/if}
 				</div>

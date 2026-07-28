@@ -9,6 +9,13 @@
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
+	import {
+		DropdownMenu,
+		DropdownMenuContent,
+		DropdownMenuItem,
+		DropdownMenuTrigger
+	} from '$lib/components/ui/dropdown-menu';
+	import EllipsisVerticalIcon from '@lucide/svelte/icons/ellipsis-vertical';
 	import { formatDate } from '$lib/format-date';
 	import { beforeNavigate, goto } from '$app/navigation';
 
@@ -171,11 +178,30 @@
 		<div>
 			<a href={backHref} class="text-sm text-blue-700 underline">← Back to submissions</a>
 			<h1 class="mt-2 mb-2 text-2xl font-semibold">Submission {data.submission.submissionUuid}</h1>
+		</div>
+		<div class="flex items-center gap-2">
+			<StatusBadge status={data.submission.status as never} />
 			{#if data.chefsLink}
-				<a href={data.chefsLink} target="_blank" rel="noreferrer noopener" class="text-sm text-blue-700 underline visited:text-purple-600">See this submission in CHEFS</a>
+				<DropdownMenu>
+					<DropdownMenuTrigger>
+						{#snippet child({ props })}
+							<Button {...props} variant="ghost" size="icon" aria-label="More options">
+								<EllipsisVerticalIcon />
+							</Button>
+						{/snippet}
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end">
+						<DropdownMenuItem>
+							{#snippet child({ props })}
+								<a {...props} href={data.chefsLink} target="_blank" rel="noreferrer noopener">
+									See this submission in CHEFS
+								</a>
+							{/snippet}
+						</DropdownMenuItem>
+					</DropdownMenuContent>
+				</DropdownMenu>
 			{/if}
 		</div>
-		<StatusBadge status={data.submission.status as never} />
 	</header>
 
 	<!-- Decision block: read only for decided statuses -->

@@ -27,6 +27,20 @@ export interface IngestResult {
 	outcome: IngestOutcome;
 }
 
+// Statuses of a `submissions` row for which reingestion is permitted. 
+// Invalid-submission records (the `invalid_submissions` table) 
+// have no status column and are always eligible for reingestion.
+export const REINGEST_ALLOWED_STATUSES = [
+	'submitted',
+	'OCR queued',
+	'OCR Error',
+	'OCR processed',
+	'ready for review',
+	'ready for policy',
+	'opt-out',
+	'duplicate'
+] as const;
+
 function uuidExists(db: Db, submissionUuid: string): boolean {
 	const inSubs = db
 		.select({ id: schema.submissions.id })
@@ -117,5 +131,71 @@ export async function ingestOne(
 	});
 
 	deps.logger.info({ submissionUuid: mapped.submissionUuid }, 'chefs ingest: ingested');
+	return { submissionUuid: mapped.submissionUuid, outcome: 'ingested' };
+}
+
+/**
+ * Replaces an existing submission (valid or invalid) with freshly re-fetched
+ * CHEFS data.
+ *
+ * Unlike `ingestOne` (which skips when the uuid already exists), this
+ * intentionally targets a submission that is already in the database and
+ * bypasses the duplicate check. To avoid data loss if CHEFS is unreachable
+ * or a download fails, the risky network work (fetching attachments) happens
+ * BEFORE the existing row is deleted — `deleteExisting` is only invoked once
+ * we know we can write its replacement.
+ */
+export async function reingestOne(
+	db: Db,
+	cfg: ChefsConfig,
+	raw: ChefsSubmissionRaw,
+	deps: IngestDeps,
+	deleteExisting: () => Promise<void>
+): Promise<IngestResult> {
+	const mapped = mapChefsSubmission(raw, cfg);
+
+	if (mapped.validationErrors) {
+		deps.logger.warn(
+			{ submissionUuid: mapped.submissionUuid, errors: mapped.validationErrors },
+			'chefs reingest: validation failed'
+		);
+		await deleteExisting();
+		await writeInvalidSubmission(db, {
+			submissionUuid: mapped.submissionUuid,
+			rawPayload: mapped.rawPayloadJson,
+			validationErrors: mapped.validationErrors,
+			ipAddress: null,
+			userAgent: 'reingest'
+		});
+		return { submissionUuid: mapped.submissionUuid, outcome: 'invalid' };
+	}
+
+	// Download attachments before touching the existing row so a network
+	// failure here leaves the original submission untouched.
+	const saved = await downloadAndPersist(mapped.attachments, mapped.submissionUuid, deps);
+
+	await deleteExisting();
+
+	const metadata: SubmissionMetadata = {
+		ipAddress: null,
+		userAgent: 'reingest',
+		acceptLanguage: null,
+		referer: null,
+		requestMethod: 'POLL',
+		tlsVersion: null,
+		sessionId: null,
+		browserFingerprint: null,
+		csrfTokenEcho: null,
+		submissionTimestamp: new Date().toISOString()
+	};
+
+	await writeValidSubmission(db, {
+		submissionUuid: mapped.submissionUuid,
+		payload: mapped.payload,
+		metadata,
+		attachments: saved
+	});
+
+	deps.logger.info({ submissionUuid: mapped.submissionUuid }, 'chefs reingest: ingested');
 	return { submissionUuid: mapped.submissionUuid, outcome: 'ingested' };
 }

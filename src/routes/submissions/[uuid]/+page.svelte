@@ -106,6 +106,17 @@
 	// Whether the reingest confirmation dialog is open
 	let reingestDialogOpen = $state(false);
 
+	// Whether the "you must claim this submission first" warning dialog is open
+	let reingestNoClaimDialogOpen = $state(false);
+
+	function onReingestClick() {
+		if (data.claim) {
+			reingestDialogOpen = true;
+		} else {
+			reingestNoClaimDialogOpen = true;
+		}
+	}
+
 	beforeNavigate(({cancel}) => {
 		if (notesDirty && !confirm('You have unsaved changes to your notes! Discard them?')) {
 			cancel(); // Stop navigation if the user cancels
@@ -201,11 +212,8 @@
 								</a>
 							{/snippet}
 						</DropdownMenuItem>
-						{#if data.canReingest && data.claim}
-							<DropdownMenuItem
-								variant="destructive"
-								onclick={() => (reingestDialogOpen = true)}
-							>
+						{#if data.canReingest}
+							<DropdownMenuItem variant="destructive" onclick={onReingestClick}>
 								Reingest submission
 							</DropdownMenuItem>
 						{/if}
@@ -248,6 +256,23 @@
 					<input type="hidden" name="csrf" value={page.data.csrfToken} />
 					<AlertDialog.Action type="submit">Reingest</AlertDialog.Action>
 				</form>
+			</AlertDialog.Footer>
+		</AlertDialog.Content>
+	</AlertDialog.Root>
+
+	<AlertDialog.Root
+		open={reingestNoClaimDialogOpen}
+		onOpenChange={(open) => { if (!open) reingestNoClaimDialogOpen = false; }}
+	>
+		<AlertDialog.Content>
+			<AlertDialog.Header>
+				<AlertDialog.Title>Claim required</AlertDialog.Title>
+				<AlertDialog.Description>
+					You must claim this submission before you can reingest it.
+				</AlertDialog.Description>
+			</AlertDialog.Header>
+			<AlertDialog.Footer>
+				<AlertDialog.Action onclick={() => (reingestNoClaimDialogOpen = false)}>OK</AlertDialog.Action>
 			</AlertDialog.Footer>
 		</AlertDialog.Content>
 	</AlertDialog.Root>

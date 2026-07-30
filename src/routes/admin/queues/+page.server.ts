@@ -202,7 +202,8 @@ export const actions: Actions = {
 					jobId,
 					reason: 'bulk requeue from queue dashboard'
 				},
-				locals.logger
+				locals.logger,
+				db
 			);
 		}
 		return {

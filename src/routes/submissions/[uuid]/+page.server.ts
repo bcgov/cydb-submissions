@@ -408,7 +408,8 @@ export const actions: Actions = {
 				route: url.pathname,
 				requestId: locals.requestId
 			},
-			locals.logger
+			locals.logger,
+			db
 		);
 		return { action: 'decide', success: `Decision recorded: ${v.decision}.` };
 	},
@@ -451,7 +452,8 @@ export const actions: Actions = {
 				route: url.pathname,
 				requestId: locals.requestId
 			},
-			locals.logger
+			locals.logger,
+			db
 		);
 		return { action: 'reset', success: 'Decision reset — submission returned to review.' };
 	},
@@ -502,7 +504,8 @@ export const actions: Actions = {
 				route: url.pathname,
 				requestId: locals.requestId
 			},
-			locals.logger
+			locals.logger,
+			db
 		);
 		if (!locals.roles.has('admin')) redirect(303, submissionsListUrl(url));
 		return { action: 'readyForClinician', success: 'Submission marked as ready for clinician.' };
@@ -554,7 +557,8 @@ export const actions: Actions = {
 				route: url.pathname,
 				requestId: locals.requestId
 			},
-			locals.logger
+			locals.logger,
+			db
 		);
 		return { action: 'resetReadyForClinician', success: `Status reset to: ${newStatus}.` };
 	},
@@ -605,7 +609,8 @@ export const actions: Actions = {
 				route: url.pathname,
 				requestId: locals.requestId
 			},
-			locals.logger
+			locals.logger,
+			db
 		);
 		if (!locals.roles.has('admin')) redirect(303, submissionsListUrl(url));
 		return { action: 'readyForValidator', success: 'Submission marked as ready for validator.' };
@@ -657,7 +662,8 @@ export const actions: Actions = {
 				route: url.pathname,
 				requestId: locals.requestId
 			},
-			locals.logger
+			locals.logger,
+			db
 		);
 		return { action: 'resetReadyForValidator', success: `Status reset to: ${newStatus}.` };
 	},
@@ -713,7 +719,8 @@ export const actions: Actions = {
 				route: url.pathname,
 				requestId: locals.requestId
 			},
-			locals.logger
+			locals.logger,
+			db
 		);
 		if (!locals.roles.has('admin') && !locals.roles.has('cfd_worker')) redirect(303, submissionsListUrl(url));
 		return { action: 'readyForPolicy', success: 'Submission marked as ready for policy.' };
@@ -768,7 +775,8 @@ export const actions: Actions = {
 				route: url.pathname,
 				requestId: locals.requestId
 			},
-			locals.logger
+			locals.logger,
+			db
 		);
 		if (!locals.roles.has('admin') && !locals.roles.has('cfd_worker')) redirect(303, submissionsListUrl(url));
 		return { action: 'provisionallyEligible', success: 'Submission marked as provisionally eligible.' };
@@ -809,7 +817,8 @@ export const actions: Actions = {
 				route: url.pathname,
 				requestId: locals.requestId
 			},
-			locals.logger
+			locals.logger,
+			db
 		);
 		if (!locals.roles.has('admin') && !locals.roles.has('cfd_worker')) redirect(303, submissionsListUrl(url));
 		return { action: 'markDuplicate', success: 'Submission marked as duplicate.' };
@@ -855,7 +864,8 @@ export const actions: Actions = {
 				route: url.pathname,
 				requestId: locals.requestId
 			},
-			locals.logger
+			locals.logger,
+			db
 		);
 		return { action: 'resetDuplicate', success: `Status reset to: ${newStatus}.` };
 	},

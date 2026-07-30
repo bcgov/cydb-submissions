@@ -111,7 +111,8 @@ export const actions: Actions = {
 				requestId: locals.requestId,
 				route: url.pathname
 			},
-			locals.logger
+			locals.logger,
+			db
 		);
 	},
 

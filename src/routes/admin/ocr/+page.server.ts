@@ -114,7 +114,8 @@ export const actions: Actions = {
 				requestId: locals.requestId,
 				jobId
 			},
-			locals.logger
+			locals.logger,
+			db
 		);
 		return { action: 'requeue', success: `Job ${jobId} requeued.` };
 	},
@@ -147,7 +148,8 @@ export const actions: Actions = {
 				jobId,
 				reason: 'AbandonedByAdmin'
 			},
-			locals.logger
+			locals.logger,
+			db
 		);
 		return { action: 'abandon', success: `Job ${jobId} abandoned.` };
 	}

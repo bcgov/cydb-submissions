@@ -346,4 +346,39 @@ export const submissionClaims = sqliteTable('submission_claims', {
 		uniqByUserRole: uniqueIndex('submission_claims_unique').on(t.userId, t.submissionId),
 }));
 
+// Persistent record of audit events (see src/lib/server/audit.ts). submissionId is a
+// soft/optional link — set to NULL on delete rather than cascading — so audit history
+// survives the deletion of the submission it refers to.
+export const auditLogs = sqliteTable(
+	'audit_logs',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		event: text('event').notNull(),
+		submissionUuid: text('submission_uuid'),
+		submissionId: integer('submission_id'),
+		attachmentId: integer('attachment_id'),
+		decision: text('decision'),
+		reasonId: integer('reason_id'),
+		jobId: integer('job_id'),
+		actorUserId: text('actor_user_id'),
+		actorRole: text('actor_role'),
+		targetUserId: text('target_user_id'),
+		targetRole: text('target_role'),
+		route: text('route'),
+		requestId: text('request_id'),
+		reason: text('reason'),
+		errorClass: text('error_class'),
+		newStatus: text('new_status'),
+		createdAt: text('created_at')
+			.notNull()
+			.default(sql`CURRENT_TIMESTAMP`)
+	},
+	(t) => ({
+		bySubmission: index('audit_logs_submission_idx').on(t.submissionId),
+		byAttachment: index('audit_logs_attachment_idx').on(t.attachmentId),
+		byEvent: index('audit_logs_event_idx').on(t.event),
+		byCreated: index('audit_logs_created_idx').on(t.createdAt)
+	})
+);
+
 export * from './auth.schema';

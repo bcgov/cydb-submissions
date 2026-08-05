@@ -9,6 +9,13 @@
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
+	import {
+		DropdownMenu,
+		DropdownMenuContent,
+		DropdownMenuItem,
+		DropdownMenuTrigger
+	} from '$lib/components/ui/dropdown-menu';
+	import EllipsisVerticalIcon from '@lucide/svelte/icons/ellipsis-vertical';
 	import { formatDate } from '$lib/format-date';
 	import { beforeNavigate, goto } from '$app/navigation';
 
@@ -96,6 +103,20 @@
 	// Whether the reset-duplicate dialog is open
 	let resetDuplicateDialogOpen = $state(false);
 
+	// Whether the reingest confirmation dialog is open
+	let reingestDialogOpen = $state(false);
+
+	// Whether the "you must claim this submission first" warning dialog is open
+	let reingestNoClaimDialogOpen = $state(false);
+
+	function onReingestClick() {
+		if (data.claim) {
+			reingestDialogOpen = true;
+		} else {
+			reingestNoClaimDialogOpen = true;
+		}
+	}
+
 	beforeNavigate(({cancel}) => {
 		if (notesDirty && !confirm('You have unsaved changes to your notes! Discard them?')) {
 			cancel(); // Stop navigation if the user cancels
@@ -170,10 +191,91 @@
 	<header class="flex items-center justify-between">
 		<div>
 			<a href={backHref} class="text-sm text-blue-700 underline">← Back to submissions</a>
-			<h1 class="mt-2 text-2xl font-semibold">Submission {data.submission.submissionUuid}</h1>
+			<h1 class="mt-2 mb-2 text-2xl font-semibold">Submission {data.submission.submissionUuid}</h1>
 		</div>
-		<StatusBadge status={data.submission.status as never} />
+		<div class="flex items-center gap-2">
+			<StatusBadge status={data.submission.status as never} />
+			{#if data.chefsLink}
+				<DropdownMenu>
+					<DropdownMenuTrigger>
+						{#snippet child({ props })}
+							<Button {...props} variant="ghost" size="icon" aria-label="More options">
+								<EllipsisVerticalIcon />
+							</Button>
+						{/snippet}
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end">
+						<DropdownMenuItem>
+							{#snippet child({ props })}
+								<a {...props} href={data.chefsLink} target="_blank" rel="noreferrer noopener">
+									See this submission in CHEFS
+								</a>
+							{/snippet}
+						</DropdownMenuItem>
+						{#if data.canReingest}
+							<DropdownMenuItem variant="destructive" onclick={onReingestClick}>
+								Reingest submission
+							</DropdownMenuItem>
+						{/if}
+					</DropdownMenuContent>
+				</DropdownMenu>
+			{/if}
+		</div>
 	</header>
+
+	{#if form?.action === 'reingest' && form?.error}
+		<p role="alert" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+			{form.error}
+		</p>
+	{/if}
+
+	<AlertDialog.Root
+		open={reingestDialogOpen}
+		onOpenChange={(open) => { if (!open) reingestDialogOpen = false; }}
+	>
+		<AlertDialog.Content>
+			<AlertDialog.Header>
+				<AlertDialog.Title>Reingest this submission?</AlertDialog.Title>
+				<AlertDialog.Description>
+					This will permanently delete this submission and all related data — attachments, OCR
+					results, keyword hits, decision, and notes — then re-fetch and re-process it fresh from
+					CHEFS. This cannot be undone.
+				</AlertDialog.Description>
+			</AlertDialog.Header>
+			<AlertDialog.Footer>
+				<AlertDialog.Cancel onclick={() => (reingestDialogOpen = false)}>Cancel</AlertDialog.Cancel>
+				<form
+					method="POST"
+					action="?/reingest"
+					use:enhance={() =>
+						async ({ update }) => {
+							await update();
+							reingestDialogOpen = false;
+						}}
+				>
+					<input type="hidden" name="csrf" value={page.data.csrfToken} />
+					<AlertDialog.Action type="submit">Reingest</AlertDialog.Action>
+				</form>
+			</AlertDialog.Footer>
+		</AlertDialog.Content>
+	</AlertDialog.Root>
+
+	<AlertDialog.Root
+		open={reingestNoClaimDialogOpen}
+		onOpenChange={(open) => { if (!open) reingestNoClaimDialogOpen = false; }}
+	>
+		<AlertDialog.Content>
+			<AlertDialog.Header>
+				<AlertDialog.Title>Claim required</AlertDialog.Title>
+				<AlertDialog.Description>
+					You must claim this submission before you can reingest it.
+				</AlertDialog.Description>
+			</AlertDialog.Header>
+			<AlertDialog.Footer>
+				<AlertDialog.Action onclick={() => (reingestNoClaimDialogOpen = false)}>OK</AlertDialog.Action>
+			</AlertDialog.Footer>
+		</AlertDialog.Content>
+	</AlertDialog.Root>
 
 	<!-- Decision block: read only for decided statuses -->
 	{#if ['accepted', 'rejected'].includes(data.submission.status)}

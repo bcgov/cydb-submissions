@@ -59,6 +59,8 @@ export const AUDIT_EVENTS = [
 	'invalid_submissions_cleared',
 	'submission_marked_duplicate',
 	'submission_duplicate_reset',
+	'submission_reingested',
+	'submission_reingest_failed',
 	'db_backup_created',
 	'db_backup_deleted'
 ] as const;

@@ -9,7 +9,7 @@ export interface MapResult {
 	validationErrors: unknown[] | null;
 }
 
-function pickSubmissionUuid(raw: ChefsSubmissionRaw): string {
+export function pickSubmissionUuid(raw: ChefsSubmissionRaw): string {
 	const id = raw.form?.submissionId ?? raw.form?.confirmationId;
 	if (!id || typeof id !== 'string') {
 		throw new Error('CHEFS submission missing form.submissionId and form.confirmationId');

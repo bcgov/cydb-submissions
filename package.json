@@ -1,7 +1,7 @@
 {
 	"name": "cydb-submissions",
 	"private": true,
-	"version": "1.2.1",
+	"version": "1.2.2",
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
@@ -64,7 +64,7 @@
 	},
 	"dependencies": {
 		"@sveltejs/adapter-node": "^5.5.4",
-		"better-auth": "^1.6.23",
+		"better-auth": "~1.6.23",
 		"better-sqlite3": "^12.8.0",
 		"drizzle-orm": "^0.45.2",
 		"nanoid": "^5.1.11",

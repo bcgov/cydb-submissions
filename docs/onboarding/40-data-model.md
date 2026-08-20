@@ -265,7 +265,7 @@ Don't be precious about adding new keys here. If a new piece of cross-restart st
 - `session` — active session tokens. `token` (the cookie value, indexed for fast lookup), `expires_at`, `user_id`.
 - `verification` — used for email verification and password reset. We don't expose either feature, so this table is effectively empty.
 
-You'll touch these only via better-auth's API (`auth.api.signInEmail`, `auth.api.signOut`, `auth.api.signInWithOAuth2`). Don't write directly unless you're in a migration.
+You'll touch these only via better-auth's API (`auth.api.signInEmail`, `auth.api.signOut`, `auth.api.signInSocial`). Don't write directly unless you're in a migration.
 
 ## Migrations
 

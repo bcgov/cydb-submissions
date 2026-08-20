@@ -1,5 +1,5 @@
 import type { PageServerLoad } from './$types';
-import { sql, eq, desc, asc, ne, count, and, notInArray, isNull, SQL } from 'drizzle-orm';
+import { sql, eq, desc, asc, ne, count, isNull, SQL } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { submissions, invalidSubmissions } from '$lib/server/db/schema';
 import { parseSubmissionsQuery } from '$lib/server/sort';
@@ -9,7 +9,6 @@ import { getSearchClient } from '$lib/server/search/instance';
 import { runSearch, buildStatusFilter } from '$lib/server/search/query';
 import { SearchQueryError } from '$lib/server/search/types';
 import { getCategoryMapping } from '$lib/server/ocr/keywords';
-import { WORKER_BLOCKED_STATUSES } from '$lib/server/security/attachment-scope';
 
 export const load: PageServerLoad = async ({ url, locals }) => {
 	requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator', 'clinician');
@@ -42,12 +41,6 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 				sort: q.sort,
 				order: q.order
 			});
-			if (!isAdmin && !isValidator && !isClinicianOnly) {
-				result.rows = result.rows.filter(
-					(r) => !WORKER_BLOCKED_STATUSES.includes(r.status as never)
-				);
-				result.total = result.rows.length;
-			}
 			return {
 				rows: result.rows,
 				invalidRows: [] as {
@@ -101,15 +94,6 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 								: q.statusFilter === 'provisionally_eligible'
 									? eq(submissions.status, 'provisionally eligible')
 									: eq(submissions.status, q.statusFilter);
-
-	const workerRestriction = !isAdmin && !isValidator && !isClinicianOnly
-		? notInArray(submissions.status, WORKER_BLOCKED_STATUSES)
-		: undefined;
-
-	const effectiveFilter =
-		workerRestriction && filterClause
-			? and(filterClause, workerRestriction)
-			: workerRestriction ?? filterClause;
 
 	// "submissions"."id" MUST be a quoted literal here, not ${submissions.id}.
 	// Drizzle renders the column-ref form as an unqualified "id" inside this subquery,
@@ -180,9 +164,9 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		})
 		.from(submissions);
 
-	const rowsQuery = effectiveFilter
+	const rowsQuery = filterClause
 		? baseRows
-				.where(effectiveFilter)
+				.where(filterClause)
 				.orderBy(orderExpr)
 				.limit(q.size)
 				.offset((q.page - 1) * q.size)
@@ -191,8 +175,8 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 				.limit(q.size)
 				.offset((q.page - 1) * q.size);
 
-	const totalQuery = effectiveFilter
-		? db.select({ n: count() }).from(submissions).where(effectiveFilter)
+	const totalQuery = filterClause
+		? db.select({ n: count() }).from(submissions).where(filterClause)
 		: db.select({ n: count() }).from(submissions);
 
 	const shouldIncludeInvalidTable =

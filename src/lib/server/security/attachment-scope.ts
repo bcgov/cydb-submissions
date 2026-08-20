@@ -14,13 +14,12 @@ export const CFD_WORKER_STATUSES = new Set<SubmissionStatus>([
 	'accepted',
 	'rejected',
 	'invalid',
-	'duplicate'
+	'duplicate',
+	'opt-out'
 ]);
 
 const CLINICIAN_STATUSES = new Set<SubmissionStatus>(['ready for clinician']);
 export const VALIDATOR_STATUSES = new Set<SubmissionStatus>(['ready for review']);
-
-export const WORKER_BLOCKED_STATUSES: SubmissionStatus[] = ['reviewed'];
 
 export function canAccessAttachmentByStatus(roles: Set<Role>, status: SubmissionStatus): boolean {
 	if (roles.has('admin')) return true;

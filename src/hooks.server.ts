@@ -54,6 +54,8 @@ const rl = createRateLimiter({
 	windowMs: Number(env.RATE_LIMIT_WINDOW_MS ?? 900_000)
 });
 
+let accountsUpdated = false;
+
 let workerHandle: WorkerHandle | null = null;
 let workerStarted = false;
 
@@ -67,40 +69,43 @@ let backupHandle: SchedulerHandle | null = null;
 let backupStarted = false;
 
 async function maybePopulateAccountIssuer() {
-	try {
-		const keycloakResults = await db.update(account)
-			.set({issuer: env.SSO_ISSUER_URL})
-			.where(
-				and(
-					eq(account.issuer, ''), 
-					eq(account.providerId, 'keycloak')
-				)
-		);
-		const localResults = await db.update(account)
-			.set({issuer: 'local:credential'})
-			.where(
-				and(
-					eq(account.issuer, ''), 
-					eq(account.providerId, 'credential')
-				)
-		);
-		if (keycloakResults.changes > 0 || localResults.changes > 0) {
-			logger.info(
-				{ event: 'issuer_update_changed' },
-				`issuer column updated for ${localResults.changes} local and ` + 
-				`${keycloakResults.changes} sso accounts`
+	if (!accountsUpdated) {
+		try {
+			const keycloakResults = await db.update(account)
+				.set({issuer: env.SSO_ISSUER_URL})
+				.where(
+					and(
+						eq(account.issuer, ''), 
+						eq(account.providerId, 'keycloak')
+					)
 			);
-		} else {
-			logger.info(
-				{ event: 'issuer_update_no_change' },
-				`issuer account column had no required updates`
+			const localResults = await db.update(account)
+				.set({issuer: 'local:credential'})
+				.where(
+					and(
+						eq(account.issuer, ''), 
+						eq(account.providerId, 'credential')
+					)
+			);
+			if (keycloakResults.changes > 0 || localResults.changes > 0) {
+				logger.info(
+					{ event: 'issuer_update_changed' },
+					`issuer column updated for ${localResults.changes} local and ` + 
+					`${keycloakResults.changes} sso accounts`
+				);
+			} else {
+				logger.info(
+					{ event: 'issuer_update_no_change' },
+					`issuer account column had no required updates`
+				);
+			}
+		} catch (e) {
+			logger.error(
+				{ event: 'issuer_update_failed', errorClass: (e as Error).name, message: (e as Error).message },
+				'failed to update issuer account column'
 			);
 		}
-	} catch (e) {
-		logger.error(
-			{ event: 'issuer_update_failed', errorClass: (e as Error).name, message: (e as Error).message },
-			'failed to update issuer account column'
-		);
+		accountsUpdated = true;
 	}
 }
 

@@ -46,7 +46,7 @@ export const account = sqliteTable(
     accountId: text("account_id").notNull(),
     providerId: text("provider_id").notNull(),
     // Trusted-issuer namespace paired with accountId (better-auth 1.7 account-identity model).
-    issuer: text("issuer").notNull(),
+    issuer: text("issuer").notNull().default(''),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),

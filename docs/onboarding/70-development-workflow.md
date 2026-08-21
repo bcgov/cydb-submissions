@@ -283,7 +283,7 @@ If it's set but the worker still doesn't run, hit any URL (`/`, `/admin`, etc.) 
 
 ### When SSO doesn't work in dev
 
-It can't. The IdPs (`dev.loginproxy.gov.bc.ca`) only allow redirect URIs registered with the BC Gov SSO team, and `http://localhost:5173/api/auth/oauth2/callback/keycloak` isn't one of them.
+It can't. The IdPs (`dev.loginproxy.gov.bc.ca`) only allow redirect URIs registered with the BC Gov SSO team, and `http://localhost:5173/api/auth/callback/keycloak` isn't one of them.
 
 Use `DEV_AUTH_BYPASS` for local dev. SSO works in deployed environments (dev/test/prod clusters) only.
 

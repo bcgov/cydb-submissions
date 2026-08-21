@@ -269,7 +269,7 @@ Update the Secret. Restart the pod. The check is at module-load — a hot reload
 
 **Fix:**
 1. Confirm the three SSO env vars match `SSO/CYDB Submissions-installation-<env>.json` for this cluster (in the operator's possession; not in this repo).
-2. Confirm the redirect URI `https://<route-host>/api/auth/oauth2/callback/keycloak` is registered with the BC Gov SSO CSS app for this client.
+2. Confirm the redirect URI `https://<route-host>/api/auth/callback/keycloak` is registered with the BC Gov SSO CSS app for this client.
 3. If the IdP host is unreachable, escalate to the BC Gov Platform team (the egress allowlist may have changed).
 
 Mitigation while the SSO team responds: if you have local email/password fallback users (e.g. the bootstrap admin), they can still sign in via the "Sign in with a clinician password instead" disclosure on `/login`.

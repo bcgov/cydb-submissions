@@ -133,7 +133,7 @@ Staff authenticate against the BC Gov Common Hosted Single Sign-On service. The 
 **Operator setup, per environment:**
 
 1. Open `SSO/CYDB Submissions-installation-<env>.json`. Copy `resource` → `SSO_CLIENT_ID`, `credentials.secret` → `SSO_CLIENT_SECRET` into `cydb-submissions-secrets`. Construct `SSO_ISSUER_URL` as `${auth-server-url}/realms/${realm}` and put it in the env-matching ConfigMap (the three `configmap-*.yaml` files already have this set).
-2. Register the OAuth callback URI with the BC Gov SSO team via the CSS app: `https://<your-route-host>/api/auth/oauth2/callback/keycloak` (the `keycloak` segment is the provider id better-auth's helper sets; do **not** rename it).
+2. Register the OAuth callback URI with the BC Gov SSO team via the CSS app: `https://<your-route-host>/api/auth/callback/keycloak` (the `keycloak` segment is the provider id better-auth's helper sets; do **not** rename it).
 3. In the CSS app, under the integration's Role Management, create the three roles `admin`, `cfd_worker`, `clinician` and assign IDIR users to them. The app's role guard checks the local `userRoles` table, which is upserted on every sign-in from the access token's `client_roles` claim. Users without a recognised role will sign in successfully but be blocked from all role-gated routes.
 4. Audience check (per the CSS docs): the standard realm is shared across teams, so only roles for `aud=cydb-submissions-6444` count. The app reads `resource_access.${SSO_CLIENT_ID}.roles` as a defensive fallback to `client_roles`.
 

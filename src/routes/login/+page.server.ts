@@ -131,17 +131,11 @@ export const actions: Actions = {
 		const safeNext = safeNextUrl(rawNext, url.origin, '/');
 		const callbackURL = new URL(safeNext, url.origin).toString();
 		try {
-			// The genericOAuth plugin is registered at runtime but is not reflected in
-			// the statically-inferred `Auth` type (plugins are spread in dynamically),
-			// so we describe just the one endpoint we call here.
-			const oauthApi = auth.api as typeof auth.api & {
-				signInWithOAuth2(input: {
-					body: { providerId: string; callbackURL: string; disableRedirect?: boolean };
-					headers: Headers;
-				}): Promise<{ url?: string; redirect?: boolean } | null>;
-			};
-			const result = await oauthApi.signInWithOAuth2({
-				body: { providerId: 'keycloak', callbackURL, disableRedirect: true },
+			// better-auth 1.7 folded the genericOAuth plugin into the standard
+			// social sign-in path: `signInWithOAuth2` was replaced by `signInSocial`,
+			// and `providerId` by `provider`.
+			const result = await auth.api.signInSocial({
+				body: { provider: 'keycloak', callbackURL, disableRedirect: true },
 				headers: request.headers
 			});
 			if (!result?.url) {

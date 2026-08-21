@@ -122,7 +122,7 @@ genericOAuth({
 
 `keycloak()` is a better-auth helper that fills in OIDC discovery URLs (`${issuer}/.well-known/openid-configuration`), scopes (`openid profile email`), and the userinfo endpoint (`${issuer}/protocol/openid-connect/userinfo`). We **spread it and override `pkce: true`** because the default helper leaves PKCE off. PKCE protects against authorization-code interception in case of a misconfigured browser proxy.
 
-The provider ID better-auth uses internally is `keycloak`. The OAuth callback URI is `https://<route-host>/api/auth/oauth2/callback/keycloak` — this string must be registered with the BC Gov SSO team via the CSS app for each environment. The path component `keycloak` is not under your control; don't try to rename it.
+The provider ID better-auth uses internally is `keycloak`. The OAuth callback URI is `https://<route-host>/api/auth/callback/keycloak` — this string must be registered with the BC Gov SSO team via the CSS app for each environment. The path component `keycloak` is not under your control; don't try to rename it. (better-auth 1.7 moved this path from `/api/auth/oauth2/callback/:id` to `/api/auth/callback/:id`; environments upgrading from 1.6 must re-register the new URI with the BC Gov SSO team before cutting over.)
 
 ### The login flow
 
@@ -133,7 +133,7 @@ POST /login?/sso  (named form action)
    ↓
 src/routes/login/+page.server.ts:sso
    - validates ?next=... against safeNextUrl (open-redirect defence)
-   - calls auth.api.signInWithOAuth2({ providerId: 'keycloak', callbackURL, disableRedirect: true })
+   - calls auth.api.signInSocial({ body: { provider: 'keycloak', callbackURL, disableRedirect: true } })
    - better-auth returns { url: '<keycloak authorize URL with PKCE challenge>' }
    - throw redirect(303, url)
    ↓
@@ -141,7 +141,7 @@ Browser redirected to https://<env>.loginproxy.gov.bc.ca/auth/realms/standard/pr
    ↓
 User authenticates at the IdP (IDIR, BCeID, etc.)
    ↓
-IdP redirects to https://<route-host>/api/auth/oauth2/callback/keycloak?code=...&state=...
+IdP redirects to https://<route-host>/api/auth/callback/keycloak?code=...&state=...
    ↓
 better-auth catches /api/auth/* via handleBetterAuth in our hook chain
    - exchanges the code for tokens (PKCE verifier check)

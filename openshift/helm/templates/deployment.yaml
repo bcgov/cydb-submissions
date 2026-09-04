@@ -70,10 +70,9 @@ spec:
           resources:
             requests:
               cpu: 100m
-              memory: 256Mi
+              memory: 2Gi
             limits:
-              cpu: 1000m
-              memory: 1Gi
+              memory: 2Gi
         - name: manticore
           # OpenShift-hardened wrapper (build from openshift/manticore/Containerfile)
           # — makes Manticore's writable dirs group-0-writable so it runs under the
@@ -99,9 +98,8 @@ spec:
           resources:
             requests:
               cpu: 100m
-              memory: 256Mi
+              memory: 1Gi
             limits:
-              cpu: "1"
               memory: 1Gi
       volumes:
         - name: db

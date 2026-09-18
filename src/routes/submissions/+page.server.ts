@@ -210,7 +210,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 					: invalidSubmissions.receivedAt;
 	const invalidOrderExpr = q.order === 'asc' ? asc(invalidSortColumn) : desc(invalidSortColumn);
 
-	const [rows, totalRow, invalidRows] = await Promise.all([
+	const [rows, totalRow, invalidRows, invalidTotalRow] = await Promise.all([
 		rowsQuery,
 		totalQuery,
 		shouldIncludeInvalidTable
@@ -229,10 +229,18 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 					.from(invalidSubmissions)
 					.where(isNull(invalidSubmissions.resolvedAt))
 					.orderBy(invalidOrderExpr)
-			: Promise.resolve([])
+					// Unbounded here previously loaded every unresolved invalid submission on every
+					// page view; that scales linearly with table size and was the OOM root cause.
+					.limit(q.size)
+					.offset((q.page - 1) * q.size)
+			: Promise.resolve([]),
+		shouldIncludeInvalidTable
+			? db.select({ n: count() }).from(invalidSubmissions).where(isNull(invalidSubmissions.resolvedAt))
+			: Promise.resolve([{ n: 0 }])
 	]);
 	const regularTotal = totalRow[0]?.n ?? 0;
-	const total = regularTotal + invalidRows.length;
+	const invalidTotal = invalidTotalRow[0]?.n ?? 0;
+	const total = regularTotal + invalidTotal;
 
 	auditLog(
 		'submission_listed',
@@ -250,7 +258,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		invalidRows,
 		total,
 		query: q,
-		totalPages: Math.max(1, Math.ceil(regularTotal / q.size)),
+		totalPages: Math.max(1, Math.ceil(regularTotal / q.size), Math.ceil(invalidTotal / q.size)),
 		searchError: null as string | null,
 		categoryMap,
 		showStatusFilter: !isValidator && !isClinicianOnly

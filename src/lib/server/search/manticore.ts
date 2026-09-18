@@ -102,11 +102,12 @@ export class ManticoreClient implements SearchClient {
 		const mustNot: unknown[] = [];
 		if (input.statusEquals) must.push({ equals: { status: input.statusEquals } });
 		if (input.statusNotEquals) mustNot.push({ equals: { status: input.statusNotEquals } });
+		if (input.ids) must.push({ in: { id: input.ids } });
 
 		const body: Record<string, unknown> = {
 			index,
 			query: { bool: { must, ...(mustNot.length ? { must_not: mustNot } : {}) } },
-			highlight: { fields: highlightFields, limit: 1 },
+			...(input.highlight === false ? {} : { highlight: { fields: highlightFields, limit: 1 } }),
 			limit: input.limit,
 			offset: input.offset
 		};

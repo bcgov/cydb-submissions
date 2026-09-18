@@ -71,6 +71,50 @@ export interface RunSearchResult {
 	total: number;
 }
 
+// "submissions"."id" MUST be a quoted literal here, not ${schema.submissions.id}.
+// Drizzle renders the column-ref form as an unqualified "id" inside this subquery,
+// which SQLite mis-resolves to submission_attachments, yielding wrong counts.
+const attachmentCountExpr = sql<number>`(
+	SELECT count(*) FROM submission_attachments WHERE submission_id = "submissions"."id"
+)`;
+
+function categoryExpr(n: number) {
+	const col = sql.raw(`category${n}`);
+	return sql<number>`(
+		SELECT COALESCE(SUM("keyword_hits"."count"), 0)
+		FROM keyword_hits WHERE keyword_hits.submission_id = "submissions"."id"
+		AND ${col} >= 1)`;
+}
+
+const totalExpr = sql<number>`(
+	SELECT COALESCE(SUM(
+		(CASE WHEN category1  >= 1 THEN "count" ELSE 0 END) +
+		(CASE WHEN category2  >= 1 THEN "count" ELSE 0 END) +
+		(CASE WHEN category3  >= 1 THEN "count" ELSE 0 END) +
+		(CASE WHEN category4  >= 1 THEN "count" ELSE 0 END) +
+		(CASE WHEN category5  >= 1 THEN "count" ELSE 0 END) +
+		(CASE WHEN category6  >= 1 THEN "count" ELSE 0 END) +
+		(CASE WHEN category7  >= 1 THEN "count" ELSE 0 END) +
+		(CASE WHEN category8  >= 1 THEN "count" ELSE 0 END) +
+		(CASE WHEN category9  >= 1 THEN "count" ELSE 0 END) +
+		(CASE WHEN category10 >= 1 THEN "count" ELSE 0 END) +
+		(CASE WHEN category11 >= 1 THEN "count" ELSE 0 END) +
+		(CASE WHEN category12 >= 1 THEN "count" ELSE 0 END) +
+		(CASE WHEN category13 >= 1 THEN "count" ELSE 0 END)
+	), 0)
+	FROM keyword_hits WHERE keyword_hits.submission_id = "submissions"."id"
+)`;
+
+/** The one correlated-subquery expression needed to order by `sort`, or null for a plain column sort. */
+function heavySortExpr(sort: SortColumn) {
+	if (sort === 'attachments') return attachmentCountExpr;
+	if (sort === 'total') return totalExpr;
+	if (sort.startsWith('category')) return categoryExpr(Number(sort.slice('category'.length)));
+	return null;
+}
+
+type TaggedHit = { id: number; weight: number; snippet: string; source: 'regular' | 'invalid' };
+
 /**
  * Run a search against the engine, then hydrate the matching rows from SQLite
  * (the source of truth) preserving relevance order. Throws SearchQueryError on
@@ -100,7 +144,12 @@ export async function runSearch(
 		limit: candidateCount,
 		offset: 0,
 		fuzzy: opts.fuzzy,
-		fuzzyDistance: opts.fuzzyDistance
+		fuzzyDistance: opts.fuzzyDistance,
+		// Sorted candidate fetches can cover thousands of docs just to determine
+		// order; the engine's highlight computation over the full stored text of
+		// all of them is a real memory/CPU cost on the Manticore side. Skip it
+		// here and fetch snippets separately for only the final page below.
+		highlight: !isSorted
 	};
 
 	const [regularResult, invalidResult] = await Promise.all([
@@ -109,7 +158,6 @@ export async function runSearch(
 	]);
 
 	// Merge hits from both indexes, tagging source, then sort by weight desc.
-	type TaggedHit = { id: number; weight: number; snippet: string; source: 'regular' | 'invalid' };
 	const combined: TaggedHit[] = [
 		...regularResult.hits.map((h) => ({ ...h, source: 'regular' as const })),
 		...invalidResult.hits.map((h) => ({ ...h, source: 'invalid' as const }))
@@ -117,48 +165,21 @@ export async function runSearch(
 
 	const total = regularResult.total + invalidResult.total;
 
-	// Hydrate all candidates; for relevance order paginate before hydration,
-	// for column sort paginate after sorting.
-	const hitsToHydrate = isSorted ? combined : combined.slice(opts.offset, opts.offset + opts.limit);
+	// Only the final page needs full detail (13 category subqueries + an
+	// attachment count each). Previously every candidate (up to ~10000 across
+	// both indexes) was fully hydrated before sorting, so memory scaled with
+	// the candidate count as the submissions table grew. Now we fetch one
+	// cheap sort key per candidate, sort/slice on that, and fully hydrate only
+	// the resulting page-sized slice.
+	const finalHits =
+		isSorted && opts.sort
+			? await pickSortedPage(db, combined, opts.sort, opts.order ?? 'desc', opts.offset, opts.limit)
+			: combined.slice(opts.offset, opts.offset + opts.limit);
 
-	if (hitsToHydrate.length === 0) return { rows: [], total };
+	if (finalHits.length === 0) return { rows: [], total };
 
-	const regularHits = hitsToHydrate.filter((h) => h.source === 'regular');
-	const invalidHits = hitsToHydrate.filter((h) => h.source === 'invalid');
-
-	// "submissions"."id" MUST be a quoted literal here, not ${schema.submissions.id}.
-	// Drizzle renders the column-ref form as an unqualified "id" inside this subquery,
-	// which SQLite mis-resolves to submission_attachments, yielding wrong counts.
-	const attachmentCountExpr = sql<number>`(
-		SELECT count(*) FROM submission_attachments WHERE submission_id = "submissions"."id"
-	)`;
-
-	function categoryExpr(n: number) {
-		const col = sql.raw(`category${n}`);
-		return sql<number>`(
-			SELECT COALESCE(SUM("keyword_hits"."count"), 0)
-			FROM keyword_hits WHERE keyword_hits.submission_id = "submissions"."id"
-			AND ${col} >= 1)`;
-	}
-
-	const totalExpr = sql<number>`(
-		SELECT COALESCE(SUM(
-			(CASE WHEN category1  >= 1 THEN "count" ELSE 0 END) +
-			(CASE WHEN category2  >= 1 THEN "count" ELSE 0 END) +
-			(CASE WHEN category3  >= 1 THEN "count" ELSE 0 END) +
-			(CASE WHEN category4  >= 1 THEN "count" ELSE 0 END) +
-			(CASE WHEN category5  >= 1 THEN "count" ELSE 0 END) +
-			(CASE WHEN category6  >= 1 THEN "count" ELSE 0 END) +
-			(CASE WHEN category7  >= 1 THEN "count" ELSE 0 END) +
-			(CASE WHEN category8  >= 1 THEN "count" ELSE 0 END) +
-			(CASE WHEN category9  >= 1 THEN "count" ELSE 0 END) +
-			(CASE WHEN category10 >= 1 THEN "count" ELSE 0 END) +
-			(CASE WHEN category11 >= 1 THEN "count" ELSE 0 END) +
-			(CASE WHEN category12 >= 1 THEN "count" ELSE 0 END) +
-			(CASE WHEN category13 >= 1 THEN "count" ELSE 0 END)
-		), 0)
-		FROM keyword_hits WHERE keyword_hits.submission_id = "submissions"."id"
-	)`;
+	const regularHits = finalHits.filter((h) => h.source === 'regular');
+	const invalidHits = finalHits.filter((h) => h.source === 'invalid');
 
 	const [fetchedRegular, fetchedInvalid] = await Promise.all([
 		regularHits.length
@@ -213,10 +234,14 @@ export async function runSearch(
 
 	const regularById = new Map(fetchedRegular.map((r) => [r.id, r]));
 	const invalidById = new Map(fetchedInvalid.map((r) => [r.id, r]));
-	const snippetById = new Map(hitsToHydrate.map((h) => [`${h.source}:${h.id}`, h.snippet]));
+	// Sorted candidates were fetched without highlighting (see searchOpts above),
+	// so their snippet field is empty — fetch snippets for just this page instead.
+	const snippetById = isSorted
+		? await fetchSnippets(client, opts, finalHits)
+		: new Map(finalHits.map((h) => [`${h.source}:${h.id}`, h.snippet]));
 
 	const rows: SearchRow[] = [];
-	for (const hit of hitsToHydrate) {
+	for (const hit of finalHits) {
 		const snippet = snippetById.get(`${hit.source}:${hit.id}`) ?? '';
 		if (hit.source === 'regular') {
 			const r = regularById.get(hit.id);
@@ -276,47 +301,145 @@ export async function runSearch(
 			});
 		}
 	}
-	if (isSorted && opts.sort) {
-		sortRows(rows, opts.sort, opts.order ?? 'desc');
-		return { rows: rows.slice(opts.offset, opts.offset + opts.limit), total };
-	}
+	// finalHits is already in final order (relevance slice, or the sort-key
+	// order picked by pickSortedPage) — no re-sort needed.
 	return { rows, total };
 }
 
-function sortRows(rows: SearchRow[], sort: SortColumn, order: SortOrder): void {
-	const dir = order === 'asc' ? 1 : -1;
-	rows.sort((a, b) => {
-		let av: string | number | null | undefined;
-		let bv: string | number | null | undefined;
-		switch (sort) {
-			case 'date':      av = a.submittedAt;    bv = b.submittedAt;    break;
-			case 'surname':   av = (a.surname ?? '').toLowerCase(); bv = (b.surname ?? '').toLowerCase(); break;
-			case 'screening': av = (a.screening ?? '').toLowerCase(); bv = (b.screening ?? '').toLowerCase(); break;
-			case 'assessments':
-				av = a.isInvalidSubmission
-					? (typeof a.attachmentCount === 'number' ? a.attachmentCount : -1)
-					: (a.assessments?.length ?? 0);
-				bv = b.isInvalidSubmission
-					? (typeof b.attachmentCount === 'number' ? b.attachmentCount : -1)
-					: (b.assessments?.length ?? 0);
-				break;
-			case 'status':    av = a.status;         bv = b.status;         break;
-			case 'attachments': av = typeof a.attachmentCount === 'number' ? a.attachmentCount : -1;
-			                    bv = typeof b.attachmentCount === 'number' ? b.attachmentCount : -1; break;
-			case 'total':     av = typeof a.total === 'number' ? a.total : -1;
-			                  bv = typeof b.total === 'number' ? b.total : -1; break;
-			default:
-				if (sort.startsWith('category')) {
-					const key = sort as keyof SearchRow;
-					av = typeof a[key] === 'number' ? (a[key] as number) : -1;
-					bv = typeof b[key] === 'number' ? (b[key] as number) : -1;
-				} else {
-					av = a.submittedAt; bv = b.submittedAt;
+/** Fetch engine snippets for exactly these ids, scoped by source index. */
+async function fetchSnippets(
+	client: SearchClient,
+	opts: RunSearchOptions,
+	hits: TaggedHit[]
+): Promise<Map<string, string>> {
+	const regularIds = hits.filter((h) => h.source === 'regular').map((h) => h.id);
+	const invalidIds = hits.filter((h) => h.source === 'invalid').map((h) => h.id);
+
+	const [regularResult, invalidResult] = await Promise.all([
+		regularIds.length
+			? client.search({
+					match: opts.query,
+					statusEquals: opts.statusEquals,
+					statusNotEquals: opts.statusNotEquals,
+					ids: regularIds,
+					limit: regularIds.length,
+					offset: 0,
+					fuzzy: opts.fuzzy,
+					fuzzyDistance: opts.fuzzyDistance,
+					highlight: true
+				})
+			: Promise.resolve({ hits: [], total: 0 }),
+		invalidIds.length
+			? client.searchInvalid({
+					match: opts.query,
+					ids: invalidIds,
+					limit: invalidIds.length,
+					offset: 0,
+					fuzzy: opts.fuzzy,
+					fuzzyDistance: opts.fuzzyDistance,
+					highlight: true
+				})
+			: Promise.resolve({ hits: [], total: 0 })
+	]);
+
+	const snippetById = new Map<string, string>();
+	for (const h of regularResult.hits) snippetById.set(`regular:${h.id}`, h.snippet);
+	for (const h of invalidResult.hits) snippetById.set(`invalid:${h.id}`, h.snippet);
+	return snippetById;
+}
+
+/**
+ * Order and slice candidates using one cheap sort key per hit (a plain column,
+ * or — for attachments/total/categoryN — the single relevant correlated
+ * subquery) instead of fully hydrating every candidate just to sort them.
+ */
+async function pickSortedPage(
+	db: Db,
+	hits: TaggedHit[],
+	sort: SortColumn,
+	order: SortOrder,
+	offset: number,
+	limit: number
+): Promise<TaggedHit[]> {
+	const regularIds = hits.filter((h) => h.source === 'regular').map((h) => h.id);
+	const invalidIds = hits.filter((h) => h.source === 'invalid').map((h) => h.id);
+	const heavyExpr = heavySortExpr(sort);
+
+	const [regularKeys, invalidKeys] = await Promise.all([
+		regularIds.length
+			? db
+					.select({
+						id: schema.submissions.id,
+						surname: schema.submissions.submitterSurname,
+						screening: schema.submissions.screening,
+						status: schema.submissions.status,
+						assessments: schema.submissions.assessments,
+						...(heavyExpr ? { sortValue: heavyExpr } : {})
+					})
+					.from(schema.submissions)
+					.where(inArray(schema.submissions.id, regularIds))
+					.all()
+			: Promise.resolve([]),
+		invalidIds.length
+			? db
+					.select({
+						id: schema.invalidSubmissions.id,
+						surname: sql<string | null>`json_extract(${schema.invalidSubmissions.rawPayload}, '$.agreementSignatorysLegalLastName')`,
+						screening: sql<string | null>`json_extract(${schema.invalidSubmissions.rawPayload}, '$.screening')`,
+						assessmentsJson: sql<string | null>`json_extract(${schema.invalidSubmissions.rawPayload}, '$.editGrid')`
+					})
+					.from(schema.invalidSubmissions)
+					.where(inArray(schema.invalidSubmissions.id, invalidIds))
+					.all()
+			: Promise.resolve([])
+	]);
+
+	const regularKeyById = new Map(regularKeys.map((r) => [r.id, r]));
+	const invalidKeyById = new Map(invalidKeys.map((r) => [r.id, r]));
+
+	function keyFor(hit: TaggedHit): string | number | null {
+		if (hit.source === 'regular') {
+			const r = regularKeyById.get(hit.id);
+			if (!r) return null;
+			switch (sort) {
+				case 'surname': return (r.surname ?? '').toLowerCase();
+				case 'screening': return (r.screening ?? '').toLowerCase();
+				case 'status': return r.status;
+				case 'assessments': return r.assessments?.length ?? 0;
+				default: {
+					const v = (r as { sortValue?: unknown }).sortValue;
+					return typeof v === 'number' ? v : -1;
 				}
+			}
 		}
-		if (av === bv) return 0;
-		if (av == null) return dir;
-		if (bv == null) return -dir;
-		return av < bv ? -dir : dir;
+		const r = invalidKeyById.get(hit.id);
+		if (!r) return null;
+		switch (sort) {
+			case 'surname': return (r.surname ?? '').toLowerCase();
+			case 'screening': return (r.screening ?? '').toLowerCase();
+			case 'status': return 'invalid';
+			case 'assessments': {
+				try {
+					const arr = r.assessmentsJson ? JSON.parse(r.assessmentsJson) : null;
+					return Array.isArray(arr) && arr.length > 0 ? arr.length : -1;
+				} catch {
+					return -1;
+				}
+			}
+			// invalid submissions have no attachment/category/total data
+			default:
+				return -1;
+		}
+	}
+
+	const dir = order === 'asc' ? 1 : -1;
+	const keyed = hits.map((hit) => ({ hit, key: keyFor(hit) }));
+	keyed.sort((a, b) => {
+		if (a.key === b.key) return 0;
+		if (a.key == null) return dir;
+		if (b.key == null) return -dir;
+		return a.key < b.key ? -dir : dir;
 	});
+
+	return keyed.slice(offset, offset + limit).map((k) => k.hit);
 }

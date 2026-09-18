@@ -28,6 +28,10 @@ export interface SearchInput {
 	statusEquals?: string;
 	/** status != X (e.g. exclude_invalid), if any. */
 	statusNotEquals?: string;
+	/** Restrict the match to this exact set of document ids, if given. */
+	ids?: number[];
+	/** Skip the engine's highlight computation (expensive over large candidate sets); defaults to true. */
+	highlight?: boolean;
 	limit: number;
 	offset: number;
 	fuzzy: boolean;

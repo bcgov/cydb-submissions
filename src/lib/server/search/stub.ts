@@ -32,6 +32,7 @@ export class InMemorySearchClient implements SearchClient {
 	async search(input: SearchInput): Promise<SearchResult> {
 		const terms = input.match.toLowerCase().split(/\s+/).map((t) => t.replace(/[*"@/+-]/g, '')).filter(Boolean);
 		const matched = [...this.docs.values()].filter((d) => {
+			if (input.ids && !input.ids.includes(d.id)) return false;
 			if (input.statusEquals && d.status !== input.statusEquals) return false;
 			if (input.statusNotEquals && d.status === input.statusNotEquals) return false;
 			const hay = `${d.surname} ${d.structuredText} ${d.ocrText} ${d.metadataText}`.toLowerCase();
@@ -41,13 +42,18 @@ export class InMemorySearchClient implements SearchClient {
 		const page = matched.slice(input.offset, input.offset + input.limit);
 		return {
 			total: matched.length,
-			hits: page.map((d) => ({ id: d.id, weight: 1, snippet: snippetFor(`${d.ocrText} ${d.structuredText} ${d.surname}`, terms) }))
+			hits: page.map((d) => ({
+				id: d.id,
+				weight: 1,
+				snippet: input.highlight === false ? '' : snippetFor(`${d.ocrText} ${d.structuredText} ${d.surname}`, terms)
+			}))
 		};
 	}
 
 	async searchInvalid(input: SearchInput): Promise<SearchResult> {
 		const terms = input.match.toLowerCase().split(/\s+/).map((t) => t.replace(/[*"@/+-]/g, '')).filter(Boolean);
 		const matched = [...this.invalidDocs.values()].filter((d) => {
+			if (input.ids && !input.ids.includes(d.id)) return false;
 			const hay = `${d.payloadText} ${d.errorsText} ${d.metadataText}`.toLowerCase();
 			return terms.every((t) => hay.includes(t));
 		});
@@ -55,7 +61,11 @@ export class InMemorySearchClient implements SearchClient {
 		const page = matched.slice(input.offset, input.offset + input.limit);
 		return {
 			total: matched.length,
-			hits: page.map((d) => ({ id: d.id, weight: 1, snippet: snippetFor(`${d.payloadText} ${d.errorsText}`, terms) }))
+			hits: page.map((d) => ({
+				id: d.id,
+				weight: 1,
+				snippet: input.highlight === false ? '' : snippetFor(`${d.payloadText} ${d.errorsText}`, terms)
+			}))
 		};
 	}
 }

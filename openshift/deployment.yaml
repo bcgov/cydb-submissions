@@ -137,6 +137,15 @@ spec:
           ports:
             - containerPort: 9308
             - containerPort: 9306
+          # Instance-wide memory caches default to sizes meant for much larger
+          # datasets than ours; shrink them to fit the 1Gi container limit.
+          # (`searchd_<setting>` env vars map straight to manticore.conf's
+          # searchd{} section — see openshift/README.md memory-tuning notes.)
+          env:
+            - name: searchd_skiplist_cache_size
+              value: "16M"
+            - name: searchd_qcache_max_bytes
+              value: "0"
           volumeMounts:
             - name: search-index
               mountPath: /var/lib/manticore

@@ -90,6 +90,12 @@ spec:
           ports:
             - containerPort: 9308
             - containerPort: 9306
+          # See openshift/deployment.yaml for why these are set.
+          env:
+            - name: searchd_skiplist_cache_size
+              value: "16M"
+            - name: searchd_qcache_max_bytes
+              value: "0"
           volumeMounts:
             - name: search-index
               mountPath: /var/lib/manticore

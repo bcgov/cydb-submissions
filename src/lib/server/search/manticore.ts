@@ -43,8 +43,13 @@ export class ManticoreClient implements SearchClient {
 			`CREATE TABLE IF NOT EXISTS ${INDEX} (` +
 				`surname text, structured_text text, ocr_text text, metadata_text text, ` +
 				`submission_uuid string, status string, created_at timestamp` +
-				`) morphology='lemmatize_en_all' min_infix_len='2' index_exact_words='1'`
+				// rt_mem_limit caps the RAM chunk (default 128M/table would let the
+				// two tables combined use up to 256M before disk-chunk flush).
+				`) morphology='lemmatize_en_all' min_infix_len='2' index_exact_words='1' rt_mem_limit='32M'`
 		);
+		// CREATE TABLE IF NOT EXISTS won't touch a pre-existing table's settings,
+		// so re-apply rt_mem_limit on every boot to cover tables made before this.
+		await this.sql(`ALTER TABLE ${INDEX} rt_mem_limit='32M'`);
 	}
 
 	async ensureInvalidIndex(): Promise<void> {
@@ -52,8 +57,9 @@ export class ManticoreClient implements SearchClient {
 			`CREATE TABLE IF NOT EXISTS ${INVALID_INDEX} (` +
 				`payload_text text, errors_text text, metadata_text text, ` +
 				`submission_uuid string, received_at timestamp` +
-				`) morphology='lemmatize_en_all' min_infix_len='2' index_exact_words='1'`
+				`) morphology='lemmatize_en_all' min_infix_len='2' index_exact_words='1' rt_mem_limit='32M'`
 		);
+		await this.sql(`ALTER TABLE ${INVALID_INDEX} rt_mem_limit='32M'`);
 	}
 
 	async replaceDoc(doc: SearchDocument): Promise<void> {
@@ -111,7 +117,15 @@ export class ManticoreClient implements SearchClient {
 			limit: input.limit,
 			offset: input.offset
 		};
-		if (input.fuzzy) body.options = { fuzzy: 1, distance: input.fuzzyDistance };
+		// max_matches defaults to 1000 and silently caps results below it — set it to
+		// exactly what we asked for so a large `limit` (e.g. the sorted-search candidate
+		// fetch) isn't truncated, and so Manticore doesn't over-allocate beyond our need.
+		// expansion_limit bounds how many dictionary terms a fuzzy/wildcard term can expand
+		// to; the table's morphology + infix indexing produce a large dictionary, so an
+		// unbounded expansion here is a real per-query memory cost that grows with data size.
+		const options: Record<string, unknown> = { max_matches: Math.max(input.limit, 1), expansion_limit: 64 };
+		if (input.fuzzy) Object.assign(options, { fuzzy: 1, distance: input.fuzzyDistance });
+		body.options = options;
 
 		const res = await fetch(`${this.baseUrl}/search`, {
 			method: 'POST',

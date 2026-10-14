@@ -68,12 +68,7 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 20
           resources:
-            requests:
-              cpu: 300m
-              memory: 2Gi
-            limits:
-              cpu: '1'
-              memory: 2Gi
+            {{- toYaml .Values.resources.app | nindent 12 }}
         - name: manticore
           # OpenShift-hardened wrapper (build from openshift/manticore/Containerfile)
           # — makes Manticore's writable dirs group-0-writable so it runs under the
@@ -103,12 +98,7 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 20
           resources:
-            requests:
-              cpu: 100m
-              memory: 1Gi
-            limits:
-              cpu: "1"
-              memory: 1Gi
+            {{- toYaml .Values.resources.manticore | nindent 12 }}
       volumes:
         - name: db
           persistentVolumeClaim:

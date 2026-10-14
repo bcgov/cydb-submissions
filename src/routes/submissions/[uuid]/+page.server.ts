@@ -414,21 +414,27 @@ export const actions: Actions = {
 		return { action: 'decide', success: `Decision recorded: ${v.decision}.` };
 	},
 
-	resetDecision: async ({ request, params, locals, url, cookies }) => {
+	// Generic status reset: usable from any status except submitted, OCR queued, and
+	// duplicate (duplicate has its own admin+cfd_worker-gated resetDuplicate action below).
+	resetStatus: async ({ request, params, locals, url, cookies }) => {
 		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin');
 		const form = await request.formData();
 		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
-			return fail(403, { action: 'reset', error: 'CSRF token mismatch' });
+			return fail(403, { action: 'resetStatus', error: 'CSRF token mismatch' });
 
 		const sub = (
 			await db
-				.select({ id: submissions.id, decision: submissions.decision })
+				.select({ id: submissions.id, status: submissions.status, decision: submissions.decision })
 				.from(submissions)
 				.where(eq(submissions.submissionUuid, params.uuid))
 				.limit(1)
 		)[0];
-		if (!sub) return fail(404, { action: 'reset', error: 'Submission not found.' });
-		if (!sub.decision) return fail(400, { action: 'reset', error: 'No decision to reset.' });
+		if (!sub) return fail(404, { action: 'resetStatus', error: 'Submission not found.' });
+		if (sub.status === 'submitted' || sub.status === 'OCR queued' || sub.status === 'duplicate')
+			return fail(400, {
+				action: 'resetStatus',
+				error: 'Submission status cannot be reset from its current status.'
+			});
 
 		const claim = (
 			await db
@@ -438,24 +444,31 @@ export const actions: Actions = {
 				.limit(1)
 		)[0];
 		if (!claim || claim.userId !== locals.user!.id)
-			return fail(403, { action: 'reset', error: 'You must claim this submission before resetting a decision.' });
+			return fail(403, {
+				action: 'resetStatus',
+				error: 'You must claim this submission before resetting its status.'
+			});
 
-		await resetDecision(db, sub.id);
+		const hadDecision = sub.decision;
+		if (hadDecision) await resetDecision(db, sub.id);
+		const newStatus = recomputeSubmissionStatus(db, sub.id);
+
 		auditLog(
-			'submission_decision_reset',
+			'submission_status_reset',
 			{
 				actorUserId: locals.user!.id,
 				actorRole: [...locals.roles][0],
 				submissionUuid: params.uuid,
 				submissionId: sub.id,
-				decision: sub.decision as DecisionOutcome,
+				decision: (hadDecision as DecisionOutcome) ?? undefined,
+				newStatus,
 				route: url.pathname,
 				requestId: locals.requestId
 			},
 			locals.logger,
 			db
 		);
-		return { action: 'reset', success: 'Decision reset — submission returned to review.' };
+		return { action: 'resetStatus', success: `Status reset to: ${newStatus}.` };
 	},
 
 	readyForClinician: async ({ request, params, locals, url, cookies }) => {
@@ -511,58 +524,6 @@ export const actions: Actions = {
 		return { action: 'readyForClinician', success: 'Submission marked as ready for clinician.' };
 	},
 
-	resetReadyForClinician: async ({ request, params, locals, url, cookies }) => {
-		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin');
-		const form = await request.formData();
-		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
-			return fail(403, { action: 'resetReadyForClinician', error: 'CSRF token mismatch' });
-
-		const sub = (
-			await db
-				.select({ id: submissions.id, status: submissions.status })
-				.from(submissions)
-				.where(eq(submissions.submissionUuid, params.uuid))
-				.limit(1)
-		)[0];
-		if (!sub) return fail(404, { action: 'resetReadyForClinician', error: 'Submission not found.' });
-		if (sub.status !== 'ready for clinician')
-			return fail(400, {
-				action: 'resetReadyForClinician',
-				error: 'Submission is not in ready for clinician status.'
-			});
-
-		const claim = (
-			await db
-				.select()
-				.from(submissionClaims)
-				.where(eq(submissionClaims.submissionId, sub.id))
-				.limit(1)
-		)[0];
-		if (!claim || claim.userId !== locals.user!.id)
-			return fail(403, {
-				action: 'resetReadyForClinician',
-				error: 'You must claim this submission before resetting its status.'
-			});
-
-		const newStatus = recomputeSubmissionStatus(db, sub.id);
-
-		auditLog(
-			'submission_ready_for_clinician_reset',
-			{
-				actorUserId: locals.user!.id,
-				actorRole: [...locals.roles][0],
-				submissionUuid: params.uuid,
-				submissionId: sub.id,
-				newStatus,
-				route: url.pathname,
-				requestId: locals.requestId
-			},
-			locals.logger,
-			db
-		);
-		return { action: 'resetReadyForClinician', success: `Status reset to: ${newStatus}.` };
-	},
-
 	readyForValidator: async ({ request, params, locals, url, cookies }) => {
 		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker');
 		const form = await request.formData();
@@ -614,58 +575,6 @@ export const actions: Actions = {
 		);
 		if (!locals.roles.has('admin')) redirect(303, submissionsListUrl(url));
 		return { action: 'readyForValidator', success: 'Submission marked as ready for validator.' };
-	},
-
-	resetReadyForValidator: async ({ request, params, locals, url, cookies }) => {
-		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin');
-		const form = await request.formData();
-		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
-			return fail(403, { action: 'resetReadyForValidator', error: 'CSRF token mismatch' });
-
-		const sub = (
-			await db
-				.select({ id: submissions.id, status: submissions.status })
-				.from(submissions)
-				.where(eq(submissions.submissionUuid, params.uuid))
-				.limit(1)
-		)[0];
-		if (!sub) return fail(404, { action: 'resetReadyForValidator', error: 'Submission not found.' });
-		if (sub.status !== 'ready for review')
-			return fail(400, {
-				action: 'resetReadyForValidator',
-				error: 'Submission is not in ready for review status.'
-			});
-
-		const claim = (
-			await db
-				.select()
-				.from(submissionClaims)
-				.where(eq(submissionClaims.submissionId, sub.id))
-				.limit(1)
-		)[0];
-		if (!claim || claim.userId !== locals.user!.id)
-			return fail(403, {
-				action: 'resetReadyForValidator',
-				error: 'You must claim this submission before resetting its status.'
-			});
-
-		const newStatus = recomputeSubmissionStatus(db, sub.id);
-
-		auditLog(
-			'submission_ready_for_validator_reset',
-			{
-				actorUserId: locals.user!.id,
-				actorRole: [...locals.roles][0],
-				submissionUuid: params.uuid,
-				submissionId: sub.id,
-				newStatus,
-				route: url.pathname,
-				requestId: locals.requestId
-			},
-			locals.logger,
-			db
-		);
-		return { action: 'resetReadyForValidator', success: `Status reset to: ${newStatus}.` };
 	},
 
 	readyForPolicy: async ({ request, params, locals, url, cookies }) => {

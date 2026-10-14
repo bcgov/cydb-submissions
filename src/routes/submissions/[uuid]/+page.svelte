@@ -36,9 +36,6 @@
 	// Whether the decide dialog is open
 	let decideDialogOpen = $state(false);
 
-	// Whether the reset dialog is open
-	let resetDialogOpen = $state(false);
-
 	// True when a different user holds the claim — editing is locked for us
 	const lockedByOther = $derived(data.claim !== null && !data.claimedByMe);
 
@@ -75,6 +72,9 @@
 	// In 'ready for policy' status, only reject is allowed
 	const onlyReject = $derived(data.submission.status === 'ready for policy');
 
+	// Statuses that already render their own dedicated status-reset section below
+	const RESET_STATUS_DEDICATED_SECTIONS = ['ready for clinician', 'ready for review', 'accepted', 'rejected', 'duplicate'];
+
 	// Whether the ready-for-clinician dialog is open
 	let readyForClinicianDialogOpen = $state(false);
 	// True after the ready-for-clinician action succeeds
@@ -82,14 +82,11 @@
 		// True after the ready-for-validator action succeeds
 	let readyForValidatorSuccess = $state(false);
 
-	// Whether the reset-ready-for-clinician dialog is open
-	let resetReadyForClinicianDialogOpen = $state(false);
-
 	// Whether the ready-for-validator dialog is open
 	let readyForValidatorDialogOpen = $state(false);
 
-	// Whether the reset-ready-for-validator dialog is open
-	let resetReadyForValidatorDialogOpen = $state(false);
+	// Whether the generic reset-status confirm dialog is open
+	let resetStatusDialogOpen = $state(false);
 
 	// Whether the ready-for-policy dialog is open
 	let readyForPolicyDialogOpen = $state(false);
@@ -306,6 +303,22 @@
 						{/each}
 					</ul>
 				</div>
+			{/if}
+
+			{#if data.isAdmin && data.claimedByMe}
+				{#if form?.action === 'resetStatus' && form?.success}
+					<p role="status" class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+						{form.success}
+					</p>
+				{/if}
+				{#if form?.action === 'resetStatus' && form?.error}
+					<p role="alert" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+						{form.error}
+					</p>
+				{/if}
+				<Button variant="outline" size="sm" onclick={() => (resetStatusDialogOpen = true)}>
+					Reset status
+				</Button>
 			{/if}
 		</section>
 	{/if}
@@ -622,43 +635,9 @@
 					{/if}
 
 					{#if data.isAdmin && data.claimedByMe}
-						<Button variant="outline" size="sm" onclick={() => (resetDialogOpen = true)}>
-							Reset decision
+						<Button variant="outline" size="sm" onclick={() => (resetStatusDialogOpen = true)}>
+							Reset status
 						</Button>
-
-						<!-- Reset confirm dialog -->
-						<AlertDialog.Root
-							open={resetDialogOpen}
-							onOpenChange={(open) => {
-								if (!open) resetDialogOpen = false;
-							}}
-						>
-							<AlertDialog.Content>
-								<AlertDialog.Header>
-									<AlertDialog.Title>Reset decision?</AlertDialog.Title>
-									<AlertDialog.Description>
-										This discards the decision and returns the submission to review.
-									</AlertDialog.Description>
-								</AlertDialog.Header>
-								<AlertDialog.Footer>
-									<AlertDialog.Cancel onclick={() => (resetDialogOpen = false)}>
-										Cancel
-									</AlertDialog.Cancel>
-									<form
-										method="POST"
-										action="?/resetDecision"
-										use:enhance={() =>
-											async ({ update }) => {
-												await update();
-												resetDialogOpen = false;
-											}}
-									>
-										<input type="hidden" name="csrf" value={page.data.csrfToken} />
-										<AlertDialog.Action type="submit">Reset</AlertDialog.Action>
-									</form>
-								</AlertDialog.Footer>
-							</AlertDialog.Content>
-						</AlertDialog.Root>
 					{/if}
 				</div>
 			{:else if lockedByOther}
@@ -825,66 +804,32 @@
 		</section>
 	{/if}
 
-	<!-- Admin: reset ready-for-clinician -->
+	<!-- Admin: generic status reset -->
 	{#if data.isAdmin && data.claimedByMe && data.submission.status === 'ready for clinician'}
 		<section class="space-y-4 rounded border border-gray-200 bg-gray-50 px-5 py-4">
 			<h2 class="text-base font-semibold">Ready for Clinician</h2>
 
-			{#if form?.action === 'resetReadyForClinician' && form?.success}
+			{#if form?.action === 'resetStatus' && form?.success}
 				<p role="status" class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
 					{form.success}
 				</p>
 			{/if}
-			{#if form?.action === 'resetReadyForClinician' && form?.error}
+			{#if form?.action === 'resetStatus' && form?.error}
 				<p role="alert" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
 					{form.error}
 				</p>
 			{/if}
 
 			<p class="text-sm text-gray-600">This submission is currently awaiting clinician review.</p>
-			<Button variant="outline" size="sm" onclick={() => (resetReadyForClinicianDialogOpen = true)}>
+			<Button variant="outline" size="sm" onclick={() => (resetStatusDialogOpen = true)}>
 				Reset status
 			</Button>
-
-			<AlertDialog.Root
-				open={resetReadyForClinicianDialogOpen}
-				onOpenChange={(open) => {
-					if (!open) resetReadyForClinicianDialogOpen = false;
-				}}
-			>
-				<AlertDialog.Content>
-					<AlertDialog.Header>
-						<AlertDialog.Title>Reset clinician status?</AlertDialog.Title>
-						<AlertDialog.Description>
-							This will return the submission to the appropriate review status based on its OCR
-							processing state.
-						</AlertDialog.Description>
-					</AlertDialog.Header>
-					<AlertDialog.Footer>
-						<AlertDialog.Cancel onclick={() => (resetReadyForClinicianDialogOpen = false)}>
-							Cancel
-						</AlertDialog.Cancel>
-						<form
-							method="POST"
-							action="?/resetReadyForClinician"
-							use:enhance={() =>
-								async ({ update }) => {
-									await update();
-									resetReadyForClinicianDialogOpen = false;
-								}}
-						>
-							<input type="hidden" name="csrf" value={page.data.csrfToken} />
-							<AlertDialog.Action type="submit">Reset</AlertDialog.Action>
-						</form>
-					</AlertDialog.Footer>
-				</AlertDialog.Content>
-			</AlertDialog.Root>
 		</section>
 	{:else if data.isAdmin && data.claimedByMe && data.submission.status === 'ready for review'}
 		<section class="space-y-4 rounded border border-gray-200 bg-gray-50 px-5 py-4">
 			<h2 class="text-base font-semibold">Ready for Validator</h2>
 
-			{#if form?.action === 'resetReadyForValidator' && form?.success}
+			{#if form?.action === 'resetStatus' && form?.success}
 				<p
 					role="status"
 					class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800"
@@ -892,7 +837,7 @@
 					{form.success}
 				</p>
 			{/if}
-			{#if form?.action === 'resetReadyForValidator' && form?.error}
+			{#if form?.action === 'resetStatus' && form?.error}
 				<p
 					role="alert"
 					class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
@@ -902,45 +847,68 @@
 			{/if}
 
 			<p class="text-sm text-gray-600">This submission is currently awaiting validator review.</p>
-			<Button variant="outline" size="sm" onclick={() => (resetReadyForValidatorDialogOpen = true)}>
+			<Button variant="outline" size="sm" onclick={() => (resetStatusDialogOpen = true)}>
 				Reset status
 			</Button>
+		</section>
+	{:else if data.isAdmin && data.claimedByMe && data.submission.status !== 'submitted' && data.submission.status !== 'OCR queued' && !RESET_STATUS_DEDICATED_SECTIONS.includes(data.submission.status)}
+		<section class="space-y-4 rounded border border-gray-200 bg-gray-50 px-5 py-4">
+			<h2 class="text-base font-semibold">Status</h2>
 
-			<AlertDialog.Root
-				open={resetReadyForValidatorDialogOpen}
-				onOpenChange={(open) => {
-					if (!open) resetReadyForValidatorDialogOpen = false;
-				}}
-			>
-				<AlertDialog.Content>
-					<AlertDialog.Header>
-						<AlertDialog.Title>Reset validator status?</AlertDialog.Title>
-						<AlertDialog.Description>
-							This will return the submission to the appropriate review status based on its OCR
-							processing state.
-						</AlertDialog.Description>
-					</AlertDialog.Header>
-					<AlertDialog.Footer>
-						<AlertDialog.Cancel onclick={() => (resetReadyForValidatorDialogOpen = false)}>
-							Cancel
-						</AlertDialog.Cancel>
-						<form
-							method="POST"
-							action="?/resetReadyForValidator"
-							use:enhance={() =>
-								async ({ update }) => {
-									await update();
-									resetReadyForValidatorDialogOpen = false;
-								}}
-						>
-							<input type="hidden" name="csrf" value={page.data.csrfToken} />
-							<AlertDialog.Action type="submit">Reset</AlertDialog.Action>
-						</form>
-					</AlertDialog.Footer>
-				</AlertDialog.Content>
-			</AlertDialog.Root>
+			{#if form?.action === 'resetStatus' && form?.success}
+				<p role="status" class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+					{form.success}
+				</p>
+			{/if}
+			{#if form?.action === 'resetStatus' && form?.error}
+				<p role="alert" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+					{form.error}
+				</p>
+			{/if}
+
+			<p class="text-sm text-gray-600">
+				Reset this submission to the appropriate status based on its OCR processing state.
+			</p>
+			<Button variant="outline" size="sm" onclick={() => (resetStatusDialogOpen = true)}>
+				Reset status
+			</Button>
 		</section>
 	{/if}
+
+	<!-- Generic reset-status confirm dialog, shared by every "Reset status" button above -->
+	<AlertDialog.Root
+		open={resetStatusDialogOpen}
+		onOpenChange={(open) => {
+			if (!open) resetStatusDialogOpen = false;
+		}}
+	>
+		<AlertDialog.Content>
+			<AlertDialog.Header>
+				<AlertDialog.Title>Reset status?</AlertDialog.Title>
+				<AlertDialog.Description>
+					This clears any recorded decision and returns the submission to the appropriate status
+					based on its OCR processing state.
+				</AlertDialog.Description>
+			</AlertDialog.Header>
+			<AlertDialog.Footer>
+				<AlertDialog.Cancel onclick={() => (resetStatusDialogOpen = false)}>
+					Cancel
+				</AlertDialog.Cancel>
+				<form
+					method="POST"
+					action="?/resetStatus"
+					use:enhance={() =>
+						async ({ update }) => {
+							await update();
+							resetStatusDialogOpen = false;
+						}}
+				>
+					<input type="hidden" name="csrf" value={page.data.csrfToken} />
+					<AlertDialog.Action type="submit">Reset</AlertDialog.Action>
+				</form>
+			</AlertDialog.Footer>
+		</AlertDialog.Content>
+	</AlertDialog.Root>
 
 	<!-- Success dialogs after redirect-less transitions -->
 	<AlertDialog.Root

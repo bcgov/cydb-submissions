@@ -20,7 +20,8 @@ const PERSISTED_EVENTS = new Set<AuditEvent>([
 	'submission_ready_for_policy',
 	'submission_provisionally_eligible',
 	'submission_marked_duplicate',
-	'submission_duplicate_reset'
+	'submission_duplicate_reset',
+	'submission_status_reset'
 ]);
 
 type AuditDb = BetterSQLite3Database<typeof schema>;

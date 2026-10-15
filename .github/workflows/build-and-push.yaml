@@ -74,7 +74,15 @@ jobs:
           changes: |
             {
               "image.tag": "${{ github.ref_name }}",
-              "aps.namespace": "${{ secrets.APS_NAMESPACE }}"
+              "aps.namespace": "${{ secrets.APS_NAMESPACE }}",
+              "resources.app.requests.cpu": "${{ vars.APP_CPU_REQUEST }}",
+              "resources.app.requests.memory": "${{ vars.APP_MEMORY_REQUEST }}",
+              "resources.app.limits.cpu": "${{ vars.APP_CPU_LIMIT }}",
+              "resources.app.limits.memory": "${{ vars.APP_MEMORY_LIMIT }}",
+              "resources.manticore.requests.cpu": "${{ vars.MANTICORE_CPU_REQUEST }}",
+              "resources.manticore.requests.memory": "${{ vars.MANTICORE_MEMORY_REQUEST }}",
+              "resources.manticore.limits.cpu": "${{ vars.MANTICORE_CPU_LIMIT }}",
+              "resources.manticore.limits.memory": "${{ vars.MANTICORE_MEMORY_LIMIT }}"
             }
           commitChange: false
 

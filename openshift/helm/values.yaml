@@ -6,3 +6,19 @@ image:
 
 aps:
   namespace: '<set by CI/CD>'
+
+resources:
+  app:
+    requests:
+      cpu: 300m
+      memory: 2Gi
+    limits:
+      cpu: '1'
+      memory: 2Gi
+  manticore:
+    requests:
+      cpu: 100m
+      memory: 1Gi
+    limits:
+      cpu: '1'
+      memory: 1Gi

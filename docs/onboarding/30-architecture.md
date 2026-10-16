@@ -261,7 +261,7 @@ Each tick: `selectDirty(db)` finds rows where `submissions.search_indexed_at IS 
 
 ## Search (Manticore)
 
-Full-text search on `/submissions` is backed by a **Manticore Search sidecar container** (`manticoresearch/manticore:25.0.0`) running in the same Pod as the app. It is reached over `localhost:9308` using plain HTTP JSON DSL (`/search`) and `/sql` — no Kubernetes Service or Route; it is never reachable from outside the Pod. See `80-deployment.md` for the Pod spec and sidecar configuration.
+Full-text search on `/submissions` is backed by a **Manticore Search sidecar container** (`manticoresearch/manticore:29.9.0`) running in the same Pod as the app. It is reached over `localhost:9308` using plain HTTP JSON DSL (`/search`) and `/sql` — no Kubernetes Service or Route; it is never reachable from outside the Pod. See `80-deployment.md` for the Pod spec and sidecar configuration.
 
 ### Request / hydrate / re-auth flow
 

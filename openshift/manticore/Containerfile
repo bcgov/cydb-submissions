@@ -20,7 +20,7 @@
 #   oc start-build cydb-manticore --from-dir=openshift/manticore --follow
 # Then reference image-registry…svc:5000/<ns>/cydb-manticore:latest in the
 # deployment's manticore container (deployment.dev.yaml already does).
-FROM manticoresearch/manticore:25.0.0
+FROM manticoresearch/manticore:29.9.0
 USER 0
 RUN set -eux; \
     mkdir -p /var/lib/manticore /var/log/manticore /run/manticore /run/mysqld; \

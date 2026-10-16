@@ -41,7 +41,7 @@ Notes:
 
 ## Search sidecar (Manticore)
 
-Full-text search on `/submissions` is served by a **Manticore Search** container that runs as a **sidecar in the app Pod** (image `manticoresearch/manticore:25.0.0`). It is **internal-only** — reached over `localhost:9308`, with **no Service and no Route** (Manticore has no built-in auth, so non-exposure is the access control). The app needs no extra runtime dependency; it speaks Manticore's HTTP `/search` (JSON) and `/sql` endpoints with `fetch`. SQLite stays the source of truth — search returns only document IDs, and the app re-reads the rows from `local.db` under the existing role/status authorisation.
+Full-text search on `/submissions` is served by a **Manticore Search** container that runs as a **sidecar in the app Pod** (image `manticoresearch/manticore:29.9.0`). It is **internal-only** — reached over `localhost:9308`, with **no Service and no Route** (Manticore has no built-in auth, so non-exposure is the access control). The app needs no extra runtime dependency; it speaks Manticore's HTTP `/search` (JSON) and `/sql` endpoints with `fetch`. SQLite stays the source of truth — search returns only document IDs, and the app re-reads the rows from `local.db` under the existing role/status authorisation.
 
 - **Storage:** `cydb-submissions-search` (2Gi, RWO) at `/var/lib/manticore`, declared in `openshift/pvc-search.yaml`. The index survives app-container restarts; if the volume is ever lost the reconciler rebuilds it from SQLite.
 - **Index lifecycle:** the app creates `submissions_idx` on boot (idempotent `CREATE TABLE IF NOT EXISTS`, with `morphology=lemmatize_en_all`, `min_infix_len=2` for wildcards) and keeps it fresh two ways — a real-time push when an OCR job completes, and a background **reconciler** that re-indexes any submission whose `search_indexed_at` is null or older than `updated_at` (covers new submissions, CHEFS ingests, status changes, and any missed push).
@@ -53,7 +53,7 @@ Full-text search on `/submissions` is served by a **Manticore Search** container
 | `SEARCH_RECONCILE_INTERVAL_MS` | Deployment env (optional) | Reconciler tick interval. Default `2000`. |
 | `SEARCH_RECONCILE_BATCH` | Deployment env (optional) | Dirty rows indexed per tick. Default `50`. |
 
-The `manticore` container requests `100m` CPU / `256Mi` memory (limits `1` CPU / `1Gi`), declared on the sidecar in `deployment.yaml` — so the Pod's total budget is the app container **plus** the sidecar. The image tag is pinned to `25.0.0`; it bundles Manticore Buddy, which the default-on fuzzy/typo search requires.
+The `manticore` container requests `100m` CPU / `256Mi` memory (limits `1` CPU / `1Gi`), declared on the sidecar in `deployment.yaml` — so the Pod's total budget is the app container **plus** the sidecar. The image tag is pinned to `29.9.0`; it bundles Manticore Buddy, which the default-on fuzzy/typo search requires.
 
 ## OCR environment variables
 

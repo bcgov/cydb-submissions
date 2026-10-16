@@ -21,7 +21,7 @@ openshift/
 
 Plus the `Containerfile` at the repo root, and `compose.search.yaml` (a local-dev Manticore for `podman/docker compose`, not used in OpenShift).
 
-> **Manticore sidecar:** `/submissions` full-text search is served by a **Manticore Search** container (`manticoresearch/manticore:25.0.0`) that runs as a **second container in the same Pod**, reached over `localhost:9308`. It is internal-only — there is no Service or Route in front of it. SQLite stays the source of truth; search returns document IDs and the app re-reads the rows under the existing role/status checks. See `openshift/README.md` → "Search sidecar (Manticore)" for the full picture.
+> **Manticore sidecar:** `/submissions` full-text search is served by a **Manticore Search** container (`manticoresearch/manticore:29.9.0`) that runs as a **second container in the same Pod**, reached over `localhost:9308`. It is internal-only — there is no Service or Route in front of it. SQLite stays the source of truth; search returns document IDs and the app re-reads the rows under the existing role/status checks. See `openshift/README.md` → "Search sidecar (Manticore)" for the full picture.
 
 ## How traffic gets in
 

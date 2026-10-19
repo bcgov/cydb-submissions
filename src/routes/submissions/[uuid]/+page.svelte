@@ -914,7 +914,7 @@
 	<AlertDialog.Root
 		open={readyForClinicianSuccess}
 		onOpenChange={(open) => {
-			if (!open) goto('/submissions');
+			if (!open) goto(backHref);
 		}}
 	>
 		<AlertDialog.Content>
@@ -925,7 +925,7 @@
 				</AlertDialog.Description>
 			</AlertDialog.Header>
 			<AlertDialog.Footer>
-				<AlertDialog.Action onclick={() => goto('/submissions')}>
+				<AlertDialog.Action onclick={() => goto(backHref)}>
 					Return to submissions
 				</AlertDialog.Action>
 			</AlertDialog.Footer>
@@ -935,7 +935,7 @@
 	<AlertDialog.Root
 		open={readyForValidatorSuccess}
 		onOpenChange={(open) => {
-			if (!open) goto('/submissions');
+			if (!open) goto(backHref);
 		}}
 	>
 		<AlertDialog.Content>
@@ -946,7 +946,7 @@
 				</AlertDialog.Description>
 			</AlertDialog.Header>
 			<AlertDialog.Footer>
-				<AlertDialog.Action onclick={() => goto('/submissions')}>
+				<AlertDialog.Action onclick={() => goto(backHref)}>
 					Return to submissions
 				</AlertDialog.Action>
 			</AlertDialog.Footer>

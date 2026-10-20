@@ -74,6 +74,7 @@ jobs:
           changes: |
             {
               "image.tag": "${{ github.ref_name }}",
+              "image.manticore_tag": "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-manticore:${{ github.ref_name }}",
               "aps.namespace": "${{ secrets.APS_NAMESPACE }}",
               "resources.app.requests.cpu": "${{ vars.APP_CPU_REQUEST }}",
               "resources.app.requests.memory": "${{ vars.APP_MEMORY_REQUEST }}",

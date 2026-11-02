@@ -283,7 +283,7 @@
 				</h2>
 				{#if data.submission.status === 'accepted' && data.decision.acceptTier}
 					<span class="rounded-full px-2.5 py-0.5 text-xs font-medium capitalize bg-green-100 text-green-800 border border-green-200">
-						{data.decision.acceptTier === 'tier one' ? 'Base Tier' : data.decision.acceptTier === 'tier two' ? 'Higher Tier' : data.decision.acceptTier}
+						{data.decision.acceptTier === 'tier one' ? 'Base Tier' : 'Higher Tier'}
 					</span>
 				{/if}
 			</div>

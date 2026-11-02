@@ -10,10 +10,15 @@ import { buildStatusFilter, runSearch } from '$lib/server/search/query';
 
 describe('buildStatusFilter', () => {
 	it('maps view filter values to engine filters', () => {
-		expect(buildStatusFilter('all')).toEqual({});
+		expect(buildStatusFilter('all')).toEqual({ includeInvalidIndex: true });
 		expect(buildStatusFilter('exclude_invalid')).toEqual({ statusNotEquals: 'invalid' });
 		expect(buildStatusFilter('submitted')).toEqual({ statusEquals: 'submitted' });
-		expect(buildStatusFilter('invalid')).toEqual({ statusEquals: 'invalid' });
+		expect(buildStatusFilter('invalid')).toEqual({ statusEquals: 'invalid', includeInvalidIndex: true });
+		expect(buildStatusFilter('ocr_processed')).toEqual({ statusEquals: 'OCR processed' });
+		expect(buildStatusFilter('ready_for_review')).toEqual({ statusEquals: 'ready for review' });
+		expect(buildStatusFilter('ready_for_clinician')).toEqual({ statusEquals: 'ready for clinician' });
+		expect(buildStatusFilter('ready_for_policy')).toEqual({ statusEquals: 'ready for policy' });
+		expect(buildStatusFilter('provisionally_eligible')).toEqual({ statusEquals: 'provisionally eligible' });
 	});
 });
 

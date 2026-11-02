@@ -18,7 +18,11 @@ export function buildStatusFilter(statusFilter: StatusFilter): StatusEngineFilte
 	if (statusFilter === 'all') return { includeInvalidIndex: true };
 	if (statusFilter === 'exclude_invalid') return { statusNotEquals: 'invalid' };
 	if (statusFilter === 'invalid') return { statusEquals: 'invalid', includeInvalidIndex: true };
-	if (statusFilter === 'ocr_processed') return { statusEquals: 'OCR processed'};
+	if (statusFilter === 'ocr_processed') return { statusEquals: 'OCR processed' };
+	if (statusFilter === 'ready_for_review') return { statusEquals: 'ready for review' };
+	if (statusFilter === 'ready_for_clinician') return { statusEquals: 'ready for clinician' };
+	if (statusFilter === 'ready_for_policy') return { statusEquals: 'ready for policy' };
+	if (statusFilter === 'provisionally_eligible') return { statusEquals: 'provisionally eligible' };
 	return { statusEquals: statusFilter };
 }
 

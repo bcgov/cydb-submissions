@@ -14,6 +14,10 @@ describe('buildStatusFilter', () => {
 		expect(buildStatusFilter('exclude_invalid')).toEqual({ statusNotEquals: 'invalid' });
 		expect(buildStatusFilter('submitted')).toEqual({ statusEquals: 'submitted' });
 		expect(buildStatusFilter('invalid')).toEqual({ statusEquals: 'invalid' });
+		expect(buildStatusFilter('ready_for_review')).toEqual({ statusEquals: 'ready for review' });
+		expect(buildStatusFilter('ready_for_clinician')).toEqual({ statusEquals: 'ready for clinician' });
+		expect(buildStatusFilter('ready_for_policy')).toEqual({ statusEquals: 'ready for policy' });
+		expect(buildStatusFilter('provisionally_eligible')).toEqual({ statusEquals: 'provisionally eligible' });
 	});
 });
 

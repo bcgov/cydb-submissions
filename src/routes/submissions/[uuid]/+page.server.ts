@@ -1,6 +1,6 @@
 import type { Actions, PageServerLoad } from './$types';
 import { error, fail, redirect } from '@sveltejs/kit';
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { env } from '$env/dynamic/private';
 import {
@@ -503,7 +503,7 @@ export const actions: Actions = {
 
 		await db
 			.update(submissions)
-			.set({ status: 'ready for clinician' })
+			.set({ status: 'ready for clinician', updatedAt: sql`CURRENT_TIMESTAMP` })
 			.where(eq(submissions.id, sub.id));
 		await db.delete(submissionClaims).where(eq(submissionClaims.submissionId, sub.id));
 
@@ -556,7 +556,7 @@ export const actions: Actions = {
 
 		await db
 			.update(submissions)
-			.set({ status: 'ready for review' })
+			.set({ status: 'ready for review', updatedAt: sql`CURRENT_TIMESTAMP` })
 			.where(eq(submissions.id, sub.id));
 		await db.delete(submissionClaims).where(eq(submissionClaims.submissionId, sub.id));
 
@@ -614,7 +614,7 @@ export const actions: Actions = {
 
 		await db
 			.update(submissions)
-			.set({ status: 'ready for policy' })
+			.set({ status: 'ready for policy', updatedAt: sql`CURRENT_TIMESTAMP` })
 			.where(eq(submissions.id, sub.id));
 		await db.delete(submissionClaims).where(eq(submissionClaims.submissionId, sub.id));
 
@@ -670,7 +670,7 @@ export const actions: Actions = {
 
 		await db
 			.update(submissions)
-			.set({ status: 'provisionally eligible' })
+			.set({ status: 'provisionally eligible', updatedAt: sql`CURRENT_TIMESTAMP` })
 			.where(eq(submissions.id, sub.id));
 		await db.delete(submissionClaims).where(eq(submissionClaims.submissionId, sub.id));
 
@@ -713,7 +713,10 @@ export const actions: Actions = {
 		if (!ALLOWED_STATUSES.includes(sub.status as never))
 			return fail(400, { action: 'markDuplicate', error: 'Submission cannot be marked as duplicate from its current status.' });
 
-		await db.update(submissions).set({ status: 'duplicate' }).where(eq(submissions.id, sub.id));
+		await db
+			.update(submissions)
+			.set({ status: 'duplicate', updatedAt: sql`CURRENT_TIMESTAMP` })
+			.where(eq(submissions.id, sub.id));
 		await db.delete(submissionClaims).where(eq(submissionClaims.submissionId, sub.id));
 
 		auditLog(

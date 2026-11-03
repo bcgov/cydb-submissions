@@ -84,7 +84,7 @@ spec:
         - name: manticore
           # OpenShift-hardened wrapper (build from openshift/manticore/Containerfile)
           # — makes Manticore's writable dirs group-0-writable so it runs under the
-          # restricted-v2 SCC. The stock manticoresearch/manticore:25.0.0 image
+          # restricted-v2 SCC. The stock manticoresearch/manticore:29.9.0 image
           # crash-loops here (arbitrary UID can't write /etc/ssl, /var/run, …).
           image: image-registry.openshift-image-registry.svc:5000/ea77d9-dev/cydb-manticore:latest
           ports:

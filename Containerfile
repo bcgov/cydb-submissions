@@ -2,7 +2,8 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+# better-sqlite3 ships prebuilt binaries; skipping scripts avoids an implicit node-gyp build (no python/g++ in alpine).
+RUN npm ci --ignore-scripts
 
 FROM node:22-alpine AS build
 WORKDIR /app

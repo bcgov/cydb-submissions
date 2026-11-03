@@ -281,7 +281,7 @@ When you're stuck, the patterns that exist in this codebase are mostly canonical
 
 ## 13. Manticore Search (full-text search sidecar)
 
-The `/submissions` admin view includes advanced full-text search across all fields in the current status-filtered set. The engine behind it is **Manticore Search** — not a Node library, but a separate process running as a **sidecar container in the same app Pod** (image `manticoresearch/manticore:25.0.0`, reachable at `localhost:9308`). The app talks to it with plain `fetch` calls over Manticore's HTTP API (`/search` for JSON DSL queries, `/sql` for ad-hoc SQL); there is no extra npm dependency and nothing leaves the cluster.
+The `/submissions` admin view includes advanced full-text search across all fields in the current status-filtered set. The engine behind it is **Manticore Search** — not a Node library, but a separate process running as a **sidecar container in the same app Pod** (image `manticoresearch/manticore:29.9.0`, reachable at `localhost:9308`). The app talks to it with plain `fetch` calls over Manticore's HTTP API (`/search` for JSON DSL queries, `/sql` for ad-hoc SQL); there is no extra npm dependency and nothing leaves the cluster.
 
 Why Manticore instead of SQLite FTS or an external cloud service: the requirement called for advanced search syntax — wildcards (`aut*`, `*ism*`), phrases (`"speech delay"`), field scoping (`@ocr_text vineland`), proximity (`NEAR/3`), quorum (`"a b c"/2`), exclusion (`-term`), true English lemmatisation, and fuzzy/typo tolerance on by default — all of which Manticore handles self-contained, with no external service to provision or pay for.
 

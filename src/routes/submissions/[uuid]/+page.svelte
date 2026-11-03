@@ -283,7 +283,7 @@
 				</h2>
 				{#if data.submission.status === 'accepted' && data.decision.acceptTier}
 					<span class="rounded-full px-2.5 py-0.5 text-xs font-medium capitalize bg-green-100 text-green-800 border border-green-200">
-						{data.decision.acceptTier}
+						{data.decision.acceptTier === 'tier one' ? 'Base Tier' : 'Higher Tier'}
 					</span>
 				{/if}
 			</div>
@@ -524,7 +524,7 @@
 										tierChoice = 'tier one';
 									}}
 								/>
-								Tier One
+								Base Tier
 							</label>
 							<label class="flex cursor-pointer items-center gap-2 text-sm">
 								<input
@@ -536,7 +536,7 @@
 										tierChoice = 'tier two';
 									}}
 								/>
-								Tier Two
+								Higher Tier
 							</label>
 						</div>
 						<div class="space-y-2">
@@ -914,7 +914,7 @@
 	<AlertDialog.Root
 		open={readyForClinicianSuccess}
 		onOpenChange={(open) => {
-			if (!open) goto('/submissions');
+			if (!open) goto(backHref);
 		}}
 	>
 		<AlertDialog.Content>
@@ -925,7 +925,7 @@
 				</AlertDialog.Description>
 			</AlertDialog.Header>
 			<AlertDialog.Footer>
-				<AlertDialog.Action onclick={() => goto('/submissions')}>
+				<AlertDialog.Action onclick={() => goto(backHref)}>
 					Return to submissions
 				</AlertDialog.Action>
 			</AlertDialog.Footer>
@@ -935,7 +935,7 @@
 	<AlertDialog.Root
 		open={readyForValidatorSuccess}
 		onOpenChange={(open) => {
-			if (!open) goto('/submissions');
+			if (!open) goto(backHref);
 		}}
 	>
 		<AlertDialog.Content>
@@ -946,7 +946,7 @@
 				</AlertDialog.Description>
 			</AlertDialog.Header>
 			<AlertDialog.Footer>
-				<AlertDialog.Action onclick={() => goto('/submissions')}>
+				<AlertDialog.Action onclick={() => goto(backHref)}>
 					Return to submissions
 				</AlertDialog.Action>
 			</AlertDialog.Footer>

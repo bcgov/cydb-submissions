@@ -25,8 +25,10 @@ import { startReconciler, type ReconcilerHandle } from '$lib/server/search/recon
 import { getEffectiveConfig } from '$lib/server/chefs/config';
 import { listSubmissions, downloadFile } from '$lib/server/chefs/client';
 import { startBackupScheduler, type SchedulerHandle } from '$lib/server/db/backup';
+import { submissions } from '$lib/server/db/schema';
 import { account } from '$lib/server/db/auth.schema';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
+import { getSystemState, setSystemState } from '$lib/server/ocr/system-state';
 
 // Surface crashes that would otherwise produce the bare
 // 'triggerUncaughtException' line with no stack. SvelteKit's adapter-node
@@ -197,6 +199,45 @@ function maybeStartChefsPoller() {
 	});
 }
 
+// One-off repair (2026-10-26): readyForClinician/readyForValidator/readyForPolicy/
+// provisionallyEligible/markDuplicate used to update `status` without bumping
+// `updatedAt`, so the reconciler's dirty-check (search_indexed_at < updated_at)
+// never saw the change and Manticore kept a stale status for affected rows.
+// Mark any row currently sitting in one of those statuses dirty so it gets
+// re-pushed with its current status. Gated by system_state so it runs once.
+const STALE_STATUS_REPAIR_KEY = 'search.repairedMissingUpdatedAtStatuses_v1';
+const STALE_STATUS_REPAIR_STATUSES = [
+	'ready for clinician',
+	'ready for review',
+	'ready for policy',
+	'provisionally eligible',
+	'duplicate'
+] as const;
+
+function repairStaleStatusIndex() {
+	if (getSystemState(db, STALE_STATUS_REPAIR_KEY)) return;
+	try {
+		const result = db
+			.update(submissions)
+			.set({ searchIndexedAt: null })
+			.where(inArray(submissions.status, STALE_STATUS_REPAIR_STATUSES))
+			.run();
+		setSystemState(db, STALE_STATUS_REPAIR_KEY, {
+			ranAt: new Date().toISOString(),
+			rowsMarkedDirty: result.changes
+		});
+		logger.info(
+			{ event: 'search_repair_stale_status', rowsMarkedDirty: result.changes },
+			'marked rows dirty to fix stale Manticore status from pre-fix status-transition actions'
+		);
+	} catch (e) {
+		logger.error(
+			{ event: 'search_repair_stale_status_failed', message: (e as Error).message },
+			'failed to mark stale-status rows dirty'
+		);
+	}
+}
+
 async function maybeStartSearch() {
 	if (searchStarted) return;
 	searchStarted = true;
@@ -207,6 +248,7 @@ async function maybeStartSearch() {
 	} catch (e) {
 		logger.error({ event: 'search_index_bootstrap_failed', message: (e as Error).message }, 'could not create search index');
 	}
+	repairStaleStatusIndex();
 	reconcilerHandle = startReconciler({
 		db,
 		client,

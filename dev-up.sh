@@ -5,7 +5,7 @@
 # Brings up, from scratch:
 #   • a Podman pod (cydb-dev) sharing one network namespace, so the app
 #     reaches Manticore on localhost:9308 exactly like the OpenShift sidecar
-#   • the Manticore search sidecar (manticoresearch/manticore:25.0.0)
+#   • the Manticore search sidecar (manticoresearch/manticore:29.9.0)
 #   • the app image (built from ./Containerfile); its entrypoint applies
 #     Drizzle migrations + seeds the bootstrap admin, then boots the server
 #   • (optional) mock submissions so search has something to index
@@ -29,7 +29,7 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 POD_NAME="${POD_NAME:-cydb-dev}"
 APP_IMAGE="${APP_IMAGE:-cydb-submissions:dev}"
-MANTICORE_IMAGE="${MANTICORE_IMAGE:-manticoresearch/manticore:25.0.0}"
+MANTICORE_IMAGE="${MANTICORE_IMAGE:-manticoresearch/manticore:29.9.0}"
 
 APP_PORT="${APP_PORT:-3000}"            # http://localhost:$APP_PORT
 MANTICORE_PORT="${MANTICORE_PORT:-9308}" # published so you can run the integration tests from the host

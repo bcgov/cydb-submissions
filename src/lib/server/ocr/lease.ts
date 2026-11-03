@@ -20,7 +20,10 @@ export function leaseNextJob(db: Db, workerId: string): LeasedJob | null {
 			})
 			.from(schema.ocrJobs)
 			.where(
-				and(eq(schema.ocrJobs.status, 'queued'), lte(schema.ocrJobs.nextAttemptAt, sql`CURRENT_TIMESTAMP`))
+				and(
+					eq(schema.ocrJobs.status, 'queued'),
+					lte(schema.ocrJobs.nextAttemptAt, sql`CURRENT_TIMESTAMP`)
+				)
 			)
 			.orderBy(asc(schema.ocrJobs.nextAttemptAt), asc(schema.ocrJobs.id))
 			.limit(1)
@@ -71,7 +74,10 @@ export function markTerminal(
 	db.update(schema.ocrJobs)
 		.set({
 			status,
-			attempts: status === 'succeeded' ? sql`${schema.ocrJobs.attempts}` : sql`${schema.ocrJobs.attempts} + 1`,
+			attempts:
+				status === 'succeeded'
+					? sql`${schema.ocrJobs.attempts}`
+					: sql`${schema.ocrJobs.attempts} + 1`,
 			lastError: errorClass ?? null,
 			leasedBy: null,
 			leasedAt: null,

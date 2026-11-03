@@ -6,7 +6,7 @@
 	import type { ActionData } from './$types';
 	import type { PageData } from './$types';
 
-	let { form, data }: { form: ActionData, data: PageData } = $props();
+	let { form, data }: { form: ActionData; data: PageData } = $props();
 
 	let seedOpen = $state(false);
 	let clearOpen = $state(false);
@@ -42,10 +42,13 @@
 		<div class="flex flex-wrap gap-3">
 			<Button variant="outline" onclick={() => (seedOpen = true)}>Seed mock submissions</Button>
 			{#if data?.canDelete}
-			<Button variant="destructive" onclick={() => (clearOpen = true)}>Clear all submissions</Button
-			>
+				<Button variant="destructive" onclick={() => (clearOpen = true)}
+					>Clear all submissions</Button
+				>
 			{/if}
-			<Button variant="destructive" onclick={() => (clearInvalidOpen = true)}>Clear invalid &amp; re-ingest</Button>
+			<Button variant="destructive" onclick={() => (clearInvalidOpen = true)}
+				>Clear invalid &amp; re-ingest</Button
+			>
 		</div>
 
 		<p class="text-xs text-gray-600">

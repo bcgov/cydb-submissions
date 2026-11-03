@@ -2,7 +2,16 @@ import type { Actions, PageServerLoad } from './$types';
 import { fail } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { requireRole } from '$lib/server/roles';
-import { listAllReasons, addReason, editReason, setReasonActive, addReasonAccept, editReasonAccept, listAllAcceptReasons, setReasonActiveAccept } from '$lib/server/reasons';
+import {
+	listAllReasons,
+	addReason,
+	editReason,
+	setReasonActive,
+	addReasonAccept,
+	editReasonAccept,
+	listAllAcceptReasons,
+	setReasonActiveAccept
+} from '$lib/server/reasons';
 import { auditLog } from '$lib/server/audit';
 
 function csrfOk(formCsrf: FormDataEntryValue | null, cookieCsrf: string | undefined): boolean {
@@ -25,7 +34,7 @@ export const actions: Actions = {
 		try {
 			await addReason(db, text);
 		} catch {
-			return fail(400, {  action: 'add', error: 'That reason already exists.' });
+			return fail(400, { action: 'add', error: 'That reason already exists.' });
 		}
 		auditLog(
 			'reason_added',
@@ -47,7 +56,8 @@ export const actions: Actions = {
 			return fail(403, { action: 'edit', error: 'CSRF token mismatch' });
 		const id = Number(form.get('id'));
 		const text = form.get('text')?.toString().trim();
-		if (!Number.isInteger(id) || id <= 0 || !text) return fail(400, { action: 'edit', error: 'Invalid edit.' });
+		if (!Number.isInteger(id) || id <= 0 || !text)
+			return fail(400, { action: 'edit', error: 'Invalid edit.' });
 		await editReason(db, id, text);
 		auditLog(
 			'reason_edited',
@@ -70,7 +80,8 @@ export const actions: Actions = {
 			return fail(403, { action: 'setActive', error: 'CSRF token mismatch' });
 		const id = Number(form.get('id'));
 		const active = form.get('active') === 'true';
-		if (!Number.isInteger(id) || id <= 0) return fail(400, { action: 'setActive', error: 'Invalid reason.' });
+		if (!Number.isInteger(id) || id <= 0)
+			return fail(400, { action: 'setActive', error: 'Invalid reason.' });
 		await setReasonActive(db, id, active);
 		auditLog(
 			active ? 'reason_reactivated' : 'reason_deactivated',
@@ -118,7 +129,8 @@ export const actions: Actions = {
 			return fail(403, { action: 'editAccept', error: 'CSRF token mismatch' });
 		const id = Number(form.get('id'));
 		const text = form.get('text')?.toString().trim();
-		if (!Number.isInteger(id) || id <= 0 || !text) return fail(400, { action: 'editAccept', error: 'Invalid edit.' });
+		if (!Number.isInteger(id) || id <= 0 || !text)
+			return fail(400, { action: 'editAccept', error: 'Invalid edit.' });
 		await editReasonAccept(db, id, text);
 		auditLog(
 			'reason_edited',
@@ -141,7 +153,8 @@ export const actions: Actions = {
 			return fail(403, { action: 'setActiveAccept', error: 'CSRF token mismatch' });
 		const id = Number(form.get('id'));
 		const active = form.get('active') === 'true';
-		if (!Number.isInteger(id) || id <= 0) return fail(400, { action: 'setActiveAccept', error: 'Invalid reason.' });
+		if (!Number.isInteger(id) || id <= 0)
+			return fail(400, { action: 'setActiveAccept', error: 'Invalid reason.' });
 		await setReasonActiveAccept(db, id, active);
 		auditLog(
 			active ? 'reason_reactivated' : 'reason_deactivated',
@@ -154,6 +167,9 @@ export const actions: Actions = {
 			},
 			locals.logger
 		);
-		return { action: 'setActiveAccept', success: active ? 'Reason reactivated.' : 'Reason deactivated.' };
+		return {
+			action: 'setActiveAccept',
+			success: active ? 'Reason reactivated.' : 'Reason deactivated.'
+		};
 	}
 };

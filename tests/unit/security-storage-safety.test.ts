@@ -26,7 +26,12 @@ describe('saveAttachments — defensive file-write hardening (6.10, 9.3, 9.4)', 
 		// outright by the extension check covered below.)
 		const f = file('../../../evil.pdf', 'application/pdf', PDF_MAGIC);
 		await saveAttachments(
-			{ baseDir: dir, submissionUuid: 'sub_a', maxBytes: 1024, allowedMime: new Set(['application/pdf']) },
+			{
+				baseDir: dir,
+				submissionUuid: 'sub_a',
+				maxBytes: 1024,
+				allowedMime: new Set(['application/pdf'])
+			},
 			[f]
 		);
 		const subDir = path.join(dir, 'sub_a');
@@ -45,7 +50,12 @@ describe('saveAttachments — defensive file-write hardening (6.10, 9.3, 9.4)', 
 		const f = file('evil.pdf', 'application/pdf', HTML_BYTES);
 		await expect(
 			saveAttachments(
-				{ baseDir: dir, submissionUuid: 'sub_b', maxBytes: 1024, allowedMime: new Set(['application/pdf']) },
+				{
+					baseDir: dir,
+					submissionUuid: 'sub_b',
+					maxBytes: 1024,
+					allowedMime: new Set(['application/pdf'])
+				},
 				[f]
 			)
 		).rejects.toThrow(/mime|magic|signature|content/i);
@@ -55,7 +65,12 @@ describe('saveAttachments — defensive file-write hardening (6.10, 9.3, 9.4)', 
 		const f = file('evil.pdf.exe', 'application/pdf', PDF_MAGIC);
 		await expect(
 			saveAttachments(
-				{ baseDir: dir, submissionUuid: 'sub_c', maxBytes: 1024, allowedMime: new Set(['application/pdf']) },
+				{
+					baseDir: dir,
+					submissionUuid: 'sub_c',
+					maxBytes: 1024,
+					allowedMime: new Set(['application/pdf'])
+				},
 				[f]
 			)
 		).rejects.toThrow(/extension|filename|reject/i);
@@ -65,7 +80,12 @@ describe('saveAttachments — defensive file-write hardening (6.10, 9.3, 9.4)', 
 		const big = file('big.pdf', 'application/pdf', new Uint8Array(2048));
 		await expect(
 			saveAttachments(
-				{ baseDir: dir, submissionUuid: 'sub_d', maxBytes: 1024, allowedMime: new Set(['application/pdf']) },
+				{
+					baseDir: dir,
+					submissionUuid: 'sub_d',
+					maxBytes: 1024,
+					allowedMime: new Set(['application/pdf'])
+				},
 				[big]
 			)
 		).rejects.toThrow(/too large|size/i);
@@ -73,7 +93,12 @@ describe('saveAttachments — defensive file-write hardening (6.10, 9.3, 9.4)', 
 		const wrongMime = file('foo.txt', 'text/plain', new TextEncoder().encode('hi'));
 		await expect(
 			saveAttachments(
-				{ baseDir: dir, submissionUuid: 'sub_e', maxBytes: 1024, allowedMime: new Set(['application/pdf']) },
+				{
+					baseDir: dir,
+					submissionUuid: 'sub_e',
+					maxBytes: 1024,
+					allowedMime: new Set(['application/pdf'])
+				},
 				[wrongMime]
 			)
 		).rejects.toThrow(/not allowed|mime/i);

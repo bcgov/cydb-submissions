@@ -20,9 +20,9 @@ describe('selectProvider', () => {
 	});
 
 	it('throws when BCGOV_DI_BASE_URL is missing', () => {
-		expect(() =>
-			selectProvider({ OCR_PROVIDER: 'bcgov-di', BCGOV_DI_API_KEY: 'abc' })
-		).toThrow(/BCGOV_DI_BASE_URL/);
+		expect(() => selectProvider({ OCR_PROVIDER: 'bcgov-di', BCGOV_DI_API_KEY: 'abc' })).toThrow(
+			/BCGOV_DI_BASE_URL/
+		);
 	});
 
 	it('throws when BCGOV_DI_API_KEY is missing', () => {

@@ -40,9 +40,9 @@ describe('safeNextUrl — open-redirect defence (6.7)', () => {
 	});
 
 	it('rejects suffix-spoof "https://cydb.example.gov.bc.ca.attacker.example/..."', () => {
-		expect(
-			safeNextUrl(`https://cydb.example.gov.bc.ca.attacker.example/x`, origin, fallback)
-		).toBe(fallback);
+		expect(safeNextUrl(`https://cydb.example.gov.bc.ca.attacker.example/x`, origin, fallback)).toBe(
+			fallback
+		);
 	});
 
 	it('rejects a path that does not start with /', () => {

@@ -17,7 +17,12 @@ describe('redactPII (phase 3 additions)', () => {
 
 	it('redacts authorization and apikey headers (case-insensitive)', () => {
 		const out = redactPII({
-			headers: { authorization: 'Bearer abc.def.ghi', Authorization: 'Bearer x', apikey: 'k123', ApiKey: 'k123' }
+			headers: {
+				authorization: 'Bearer abc.def.ghi',
+				Authorization: 'Bearer x',
+				apikey: 'k123',
+				ApiKey: 'k123'
+			}
 		}) as { headers: Record<string, string> };
 		expect(out.headers.authorization).toBe('[REDACTED]');
 		expect(out.headers.Authorization).toBe('[REDACTED]');

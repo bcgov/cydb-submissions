@@ -4,29 +4,30 @@ When the system misbehaves, work this file from the top down. Each section is a 
 
 ## Quick reference
 
-| You see | Look at | Section |
-|---|---|---|
-| Halt alert email about OCR | Workers running, breaker tripped | [OCR queue halted](#ocr-queue-halted) |
-| Halt alert email about CHEFS | Workers running, breaker tripped | [CHEFS poller halted](#chefs-poller-halted) |
-| `/readyz` returning 503, `checks.search: false` | Manticore sidecar unreachable | [Search down — `/readyz` 503](#search-down----readyz-503) |
-| `/readyz` returning 503 | One of: db, attachments, auth missing | [Readiness failing](#readiness-failing) |
-| Submission missing or stale in search | Not yet indexed by reconciler | [Submission not appearing in search](#submission-not-appearing-in-search) |
-| Need to rebuild search index (schema change) | Drop and recreate `submissions_idx` | [Rebuilding the search index](#rebuilding-the-search-index) |
-| Sign-in failing with "auth not configured" | `BETTER_AUTH_SECRET` missing or short | [Auth unavailable](#auth-unavailable) |
-| Sign-in failing with "SSO unavailable" | SSO env missing or IdP unreachable | [SSO unavailable](#sso-unavailable) |
-| Login form rejecting valid credentials | Login throttle tripped, or wrong password | [Login throttled / wrong creds](#login-throttled--wrong-credentials) |
-| User has signed in but can't see anything | Missing role row in `user_roles` | [User has no roles](#user-has-no-roles) |
-| 413 Payload Too Large on upload | `BODY_SIZE_LIMIT` not set | [Upload too large](#upload-too-large) |
-| Submissions stuck in `OCR queued` | Worker not running or halted | [OCR queue not progressing](#ocr-queue-not-progressing) |
-| `submissions.status='OCR Error'` | Per-job failure exhausted retries | [OCR job failed terminally](#ocr-job-failed-terminally) |
-| Pod CrashLoopBackoff | migrate or seed-admin failing on boot | [Pod won't start](#pod-wont-start) |
-| Tests passing locally but failing in CI | Env or DB state difference | [CI/local test divergence](#cilocal-test-divergence) |
-| `oc logs` shows `Failed to run background task:` | Worker exception not caught | [Background task error](#background-task-error) |
-| Disk full | PVC fills (attachments or DB+WAL) | [PVC full](#pvc-full) |
+| You see                                          | Look at                                   | Section                                                                   |
+| ------------------------------------------------ | ----------------------------------------- | ------------------------------------------------------------------------- |
+| Halt alert email about OCR                       | Workers running, breaker tripped          | [OCR queue halted](#ocr-queue-halted)                                     |
+| Halt alert email about CHEFS                     | Workers running, breaker tripped          | [CHEFS poller halted](#chefs-poller-halted)                               |
+| `/readyz` returning 503, `checks.search: false`  | Manticore sidecar unreachable             | [Search down — `/readyz` 503](#search-down----readyz-503)                 |
+| `/readyz` returning 503                          | One of: db, attachments, auth missing     | [Readiness failing](#readiness-failing)                                   |
+| Submission missing or stale in search            | Not yet indexed by reconciler             | [Submission not appearing in search](#submission-not-appearing-in-search) |
+| Need to rebuild search index (schema change)     | Drop and recreate `submissions_idx`       | [Rebuilding the search index](#rebuilding-the-search-index)               |
+| Sign-in failing with "auth not configured"       | `BETTER_AUTH_SECRET` missing or short     | [Auth unavailable](#auth-unavailable)                                     |
+| Sign-in failing with "SSO unavailable"           | SSO env missing or IdP unreachable        | [SSO unavailable](#sso-unavailable)                                       |
+| Login form rejecting valid credentials           | Login throttle tripped, or wrong password | [Login throttled / wrong creds](#login-throttled--wrong-credentials)      |
+| User has signed in but can't see anything        | Missing role row in `user_roles`          | [User has no roles](#user-has-no-roles)                                   |
+| 413 Payload Too Large on upload                  | `BODY_SIZE_LIMIT` not set                 | [Upload too large](#upload-too-large)                                     |
+| Submissions stuck in `OCR queued`                | Worker not running or halted              | [OCR queue not progressing](#ocr-queue-not-progressing)                   |
+| `submissions.status='OCR Error'`                 | Per-job failure exhausted retries         | [OCR job failed terminally](#ocr-job-failed-terminally)                   |
+| Pod CrashLoopBackoff                             | migrate or seed-admin failing on boot     | [Pod won't start](#pod-wont-start)                                        |
+| Tests passing locally but failing in CI          | Env or DB state difference                | [CI/local test divergence](#cilocal-test-divergence)                      |
+| `oc logs` shows `Failed to run background task:` | Worker exception not caught               | [Background task error](#background-task-error)                           |
+| Disk full                                        | PVC fills (attachments or DB+WAL)         | [PVC full](#pvc-full)                                                     |
 
 ## OCR queue halted
 
 **Symptoms:**
+
 - Halt alert email with subject "OCR queue halted" (if MAIL_TRANSPORT=ches and recipients are set)
 - `/admin/queues` shows OCR queue status = "halted"
 - New submissions sit at `OCR queued` indefinitely
@@ -54,6 +55,7 @@ oc exec deployment/cydb-submissions -- sqlite3 /data/db/local.db "
 ```
 
 `last_error` will usually point at the underlying cause:
+
 - `Error: BC Gov DI upload failed: 401 ...` → `BCGOV_DI_API_KEY` is wrong, expired, or revoked
 - `Error: BC Gov DI upload failed: 504 ...` → backend is down or overloaded; wait
 - `fetch failed: ETIMEDOUT` → network issue between the pod and the backend; check `BCGOV_DI_BASE_URL` is reachable
@@ -78,6 +80,7 @@ EOF
 ## CHEFS poller halted
 
 **Symptoms:**
+
 - Halt alert email with subject "CHEFS poller halted"
 - `/admin/queues` shows CHEFS sync status = "halted"
 - New submissions in CHEFS aren't appearing in our DB
@@ -100,6 +103,7 @@ oc exec deployment/cydb-submissions -- sqlite3 /data/db/local.db "
 ```
 
 Common errors:
+
 - `CHEFS API 401 / 403` — `CHEFS_API_TOKEN` is wrong, expired, or revoked
 - `CHEFS API 404` — `CHEFS_FORM_ID` is wrong, or the form was deleted
 - `CHEFS API timeout` — temporary network issue; the breaker may have tripped on a brief outage
@@ -122,11 +126,13 @@ EOF
 ## Readiness failing
 
 **Symptoms:**
+
 - `/readyz` returns 503
 - OpenShift reports the pod as not ready, traffic isn't being routed to it
 
 **Cause:**
 One of the three readiness checks failed:
+
 - `db` — can't open or query the SQLite file
 - `attachments` — can't list or write to `/data/attachments`
 - `auth` — `BETTER_AUTH_SECRET` missing or shorter than 32 chars
@@ -156,6 +162,7 @@ Note: `checks.search: false` means the Manticore sidecar is unreachable. This **
 ## Search down — `/readyz` 503
 
 **Symptoms:**
+
 - `/readyz` returns 503 with `"checks": { "search": false }`
 - OpenShift marks the pod not-ready; it drops out of rotation
 
@@ -183,6 +190,7 @@ See also: `80-deployment.md` (Search sidecar section) and `30-architecture.md`.
 ## Submission not appearing in search
 
 **Symptoms:**
+
 - A submission exists in the DB (`submissions` table) but doesn't appear in search results
 - Search results look stale — a recently-updated submission still shows old values
 
@@ -215,6 +223,7 @@ This is safe to run at any time. The index is a derived, rebuildable projection 
 ## Rebuilding the search index
 
 **When you need this:**
+
 - You changed the Manticore index schema (field list, morphology settings, etc.) and need to apply it
 - The `submissions_idx` table is corrupt or inconsistent
 
@@ -242,6 +251,7 @@ The reconciler fills the new index within a few minutes for typical dataset size
 ## Auth unavailable
 
 **Symptoms:**
+
 - `/login` shows "Auth is not configured on the server. Set BETTER_AUTH_SECRET (32+ chars) and redeploy."
 - Logs contain `auth: BETTER_AUTH_SECRET is not set`
 
@@ -254,20 +264,22 @@ Update the Secret. Restart the pod. The check is at module-load — a hot reload
 ## SSO unavailable
 
 **Symptoms:**
+
 - Clicking "Sign in with BC Gov SSO" returns 503 with "SSO is currently unavailable."
 - Logs contain `sso_login_failed` events
 
 **Cause matrix:**
 
-| `oc logs` shows | Cause |
-|---|---|
-| `discovery URL ... 404` | `SSO_ISSUER_URL` is wrong for this environment |
-| `discovery URL ... ENOTFOUND` | Network can't reach the IdP host (DNS or egress) |
-| `400 / invalid_client` | `SSO_CLIENT_ID` or `SSO_CLIENT_SECRET` is wrong |
-| `400 / invalid_redirect_uri` | The callback URL isn't registered with the BC Gov SSO team for this client |
-| `getAuth returns null` | `BETTER_AUTH_SECRET` is missing — see [Auth unavailable](#auth-unavailable) |
+| `oc logs` shows               | Cause                                                                       |
+| ----------------------------- | --------------------------------------------------------------------------- |
+| `discovery URL ... 404`       | `SSO_ISSUER_URL` is wrong for this environment                              |
+| `discovery URL ... ENOTFOUND` | Network can't reach the IdP host (DNS or egress)                            |
+| `400 / invalid_client`        | `SSO_CLIENT_ID` or `SSO_CLIENT_SECRET` is wrong                             |
+| `400 / invalid_redirect_uri`  | The callback URL isn't registered with the BC Gov SSO team for this client  |
+| `getAuth returns null`        | `BETTER_AUTH_SECRET` is missing — see [Auth unavailable](#auth-unavailable) |
 
 **Fix:**
+
 1. Confirm the three SSO env vars match `SSO/CYDB Submissions-installation-<env>.json` for this cluster (in the operator's possession; not in this repo).
 2. Confirm the redirect URI `https://<route-host>/api/auth/callback/keycloak` is registered with the BC Gov SSO CSS app for this client.
 3. If the IdP host is unreachable, escalate to the BC Gov Platform team (the egress allowlist may have changed).
@@ -277,6 +289,7 @@ Mitigation while the SSO team responds: if you have local email/password fallbac
 ## Login throttled / wrong credentials
 
 **Symptoms:**
+
 - Password sign-in returns 401 "Invalid credentials" or 429 "Too many failed attempts."
 
 **Cause:**
@@ -285,6 +298,7 @@ Mitigation while the SSO team responds: if you have local email/password fallbac
 - **429** means the login throttle tripped. Either 5 failures for that `(ip, email)` pair within 15 minutes, or 20 failures for that IP across any email.
 
 **Fix for 401:**
+
 - Confirm the user has an `account` row with `provider_id='credential'`:
   ```sql
   SELECT u.email, a.provider_id FROM user u JOIN account a ON a.user_id=u.id WHERE u.email='<addr>';
@@ -293,6 +307,7 @@ Mitigation while the SSO team responds: if you have local email/password fallbac
 - If no row at all: the user doesn't exist. (They'd need to sign in via SSO to create their `user` row, or you need to seed them manually.)
 
 **Fix for 429:**
+
 - Wait 15 minutes; the throttle clears automatically.
 - Or restart the pod — the throttle state is in-process memory, not the DB.
 - Don't add the user to an IP-exclusion list; we don't have one (and probably shouldn't).
@@ -300,10 +315,12 @@ Mitigation while the SSO team responds: if you have local email/password fallbac
 ## User has no roles
 
 **Symptoms:**
+
 - User signs in via SSO and lands on `/` (the staff landing) but can't reach `/admin`, `/submissions`, or `/clinician`. Every link returns 403 or redirects back to `/login`.
 
 **Cause:**
 SSO sign-in succeeded — the `user` row exists — but `user_roles` has no rows for this user. Either:
+
 - The user isn't assigned a role in the BC Gov SSO CSS app
 - The CSS-app role names don't match our allowlist (`admin`, `cfd_worker`, `clinician`)
 - The `client_roles` token mapper isn't enabled on this client (unusual)
@@ -318,12 +335,13 @@ oc exec deployment/cydb-submissions -- sqlite3 /data/db/local.db "
 If `role` is NULL, no role was inserted. Look at the audit logs for an `sso_role_sync_failed` event with `reason: 'no_roles_in_token'`. That confirms the access token didn't carry recognised roles.
 
 **Fix:**
+
 1. Go to the BC Gov SSO CSS app for this environment's client.
 2. Under "Role Management", confirm the three roles exist with EXACTLY the names `admin`, `cfd_worker`, `clinician`.
 3. Under "Assign Users to Roles", assign the user to the role(s) they need.
 4. Have the user sign out and sign in again. The `databaseHooks.account.update.after` hook on the next sign-in syncs the new roles into `user_roles`.
 
-If the CSS app is unavailable and you need to grant the role *immediately*, you can insert directly:
+If the CSS app is unavailable and you need to grant the role _immediately_, you can insert directly:
 
 ```sql
 INSERT INTO user_roles (user_id, role)
@@ -335,6 +353,7 @@ This works but the role will be **wiped on the next SSO sign-in** if the IdP doe
 ## Upload too large
 
 **Symptoms:**
+
 - Upload form rejects files larger than ~512 KB with HTTP 413
 - `oc logs` contains `request body size exceeded BODY_SIZE_LIMIT of <n>`
 
@@ -354,6 +373,7 @@ Or update the ConfigMap properly and reapply.
 ## OCR queue not progressing
 
 **Symptoms:**
+
 - Submissions land with `status='submitted'` (from CHEFS) but never transition to `OCR queued` or beyond.
 - OR submissions show `OCR queued` for hours.
 
@@ -380,12 +400,12 @@ oc exec deployment/cydb-submissions -- sqlite3 /data/db/local.db "
 
 **Causes and fixes:**
 
-| Diagnosis | Cause | Fix |
-|---|---|---|
-| `OCR_WORKER_ENABLED is not set` | Worker disabled in ConfigMap | Set `OCR_WORKER_ENABLED=1`, restart |
-| `ocr.halted` row exists | Breaker tripped | See [OCR queue halted](#ocr-queue-halted) |
-| `leased` count > 0 and not changing | A long-running OCR call hung | Restart the pod (will release the lease) |
-| `queued` count > 0 but no `leased` | Worker isn't ticking | Check logs for exceptions; restart |
+| Diagnosis                           | Cause                        | Fix                                       |
+| ----------------------------------- | ---------------------------- | ----------------------------------------- |
+| `OCR_WORKER_ENABLED is not set`     | Worker disabled in ConfigMap | Set `OCR_WORKER_ENABLED=1`, restart       |
+| `ocr.halted` row exists             | Breaker tripped              | See [OCR queue halted](#ocr-queue-halted) |
+| `leased` count > 0 and not changing | A long-running OCR call hung | Restart the pod (will release the lease)  |
+| `queued` count > 0 but no `leased`  | Worker isn't ticking         | Check logs for exceptions; restart        |
 
 To unstick leases that survived a crash:
 
@@ -399,6 +419,7 @@ WHERE status='processing'
 ## OCR job failed terminally
 
 **Symptoms:**
+
 - A specific submission shows `status='OCR Error'`
 - Its `ocr_jobs` rows show `status='failed'` with `attempts=3` (or whatever `OCR_MAX_ATTEMPTS` is)
 
@@ -413,12 +434,14 @@ FROM ocr_jobs WHERE attachment_id=<id>;
 ```
 
 The `last_error` is the last exception message. Common patterns:
+
 - `Filename extension does not match claimed mime ...` — the attachment failed the storage-time validation (this shouldn't actually reach OCR; if it does, something is wrong upstream)
 - `unsupported file type` — the OCR provider can't handle this MIME (rare for PDF/image/DOCX)
 - `unprocessable: ...` — the document is corrupt or password-protected
 - `quota exceeded` — the BC Gov DI quota is exhausted; rate is the upstream issue
 
 **Fix:**
+
 - If the document is broken (password-protected PDF, etc.), there's no fix; the submission needs to be flagged for manual review.
 - If the failure was transient (quota, brief outage), click "Requeue" in `/admin/ocr`. This sets `status='queued'`, resets `attempts=0`, increments `requeue_count`.
 - If the failure pattern is systematic across multiple submissions, the breaker should have tripped — see [OCR queue halted](#ocr-queue-halted).
@@ -426,6 +449,7 @@ The `last_error` is the last exception message. Common patterns:
 ## Pod won't start
 
 **Symptoms:**
+
 - `oc get pods` shows `CrashLoopBackoff` or `Error`
 - `oc logs <pod>` shows an error before "Listening on port 3000"
 
@@ -438,15 +462,15 @@ The Containerfile CMD is `node scripts/migrate.mjs && node scripts/seed-admin.mj
 oc logs deployment/cydb-submissions --previous | head -30
 ```
 
-| Message | Cause |
-|---|---|
-| `migrate: DATABASE_URL is not set; skipping migrations.` | DATABASE_URL not set — should be in ConfigMap |
-| `Error: SQLITE_*` during migrate | DB file corrupt or PVC mount failed |
-| `Cannot find module './migrations/...'` | The migrations directory wasn't copied into the image (Containerfile error) |
-| `seed-admin: env not configured; skipping.` | Normal when bootstrap env not set; not a real failure |
-| `seed-admin: ... error: user creation did not persist` | better-auth signUpEmail returned silently; check DB+auth schema |
-| `Error: BETTER_AUTH_SECRET ...` | Missing or short secret |
-| `EACCES: permission denied, open '/data/db/local.db'` | PVC mount permissions; check fsGroup |
+| Message                                                  | Cause                                                                       |
+| -------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `migrate: DATABASE_URL is not set; skipping migrations.` | DATABASE_URL not set — should be in ConfigMap                               |
+| `Error: SQLITE_*` during migrate                         | DB file corrupt or PVC mount failed                                         |
+| `Cannot find module './migrations/...'`                  | The migrations directory wasn't copied into the image (Containerfile error) |
+| `seed-admin: env not configured; skipping.`              | Normal when bootstrap env not set; not a real failure                       |
+| `seed-admin: ... error: user creation did not persist`   | better-auth signUpEmail returned silently; check DB+auth schema             |
+| `Error: BETTER_AUTH_SECRET ...`                          | Missing or short secret                                                     |
+| `EACCES: permission denied, open '/data/db/local.db'`    | PVC mount permissions; check fsGroup                                        |
 
 **Fix per cause:**
 
@@ -457,6 +481,7 @@ oc logs deployment/cydb-submissions --previous | head -30
 ## CI/local test divergence
 
 **Symptoms:**
+
 - `./node_modules/.bin/vitest run` passes locally
 - The same command in CI fails
 
@@ -479,6 +504,7 @@ oc logs deployment/cydb-submissions --previous | head -30
 ## Background task error
 
 **Symptoms:**
+
 - Logs contain `Failed to run background task:` followed by an error
 - The OCR worker or CHEFS poller stops ticking (or never starts)
 
@@ -487,6 +513,7 @@ An unhandled exception in a worker tick or in the lazy-start path. The hook's `r
 
 **Diagnosis:**
 Read the error message. It'll be one of the underlying causes already covered above. Common ones:
+
 - A missing env var that the worker constructor required at startup
 - A network error during the first lease attempt (transient — the worker will retry next tick)
 - A schema mismatch (you forgot to apply migrations after pulling the latest code)
@@ -497,6 +524,7 @@ Address the root cause; restart the pod. The worker boots on the first request a
 ## PVC full
 
 **Symptoms:**
+
 - Writes to DB or attachments fail with `SQLITE_FULL` or `ENOSPC`
 - `/readyz` may flip to 503 on the `db` or `attachments` check
 
@@ -512,19 +540,20 @@ oc exec deployment/cydb-submissions -- df -h /data/db /data/attachments
 - For the DB PVC: same — bump `storage:` in `pvc-db.yaml`. SQLite + WAL doesn't grow fast, so a 1Gi default is plenty for years.
 
 If you're at quota and can't expand:
+
 - Old attachments could be archived to a separate bucket (manual project)
 - WAL can be checkpointed: `PRAGMA wal_checkpoint(TRUNCATE);` reclaims space if the WAL grew large
 
 ## Secret rotation cheatsheet
 
-| Credential | When | How | Effect |
-|---|---|---|---|
-| `BETTER_AUTH_SECRET` | Compromised, or scheduled | Replace, restart pod | All sessions invalidated |
-| `SSO_CLIENT_SECRET` | BC Gov SSO team rotates, or compromised | Get new secret from CSS app, replace, restart | New sign-ins use new secret; existing sessions stay |
-| `CHES_CLIENT_SECRET` | Compromised, or scheduled | Replace, restart | Next CHES token fetch uses new secret |
-| `BCGOV_DI_API_KEY` | AI Adoption team rotates | Replace, restart | Next OCR job uses new key |
-| `CHEFS_API_TOKEN` | Scheduled (every 90 days) | Either /admin/chefs ?/rotateToken or update Secret + restart | Next CHEFS sync uses new token |
-| `ADMIN_BOOTSTRAP_PASSWORD` | After first sign-in | Sign in, change password via the UI (when it exists) or directly via auth.api | The env var is ignored after first run anyway |
+| Credential                 | When                                    | How                                                                           | Effect                                              |
+| -------------------------- | --------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------- |
+| `BETTER_AUTH_SECRET`       | Compromised, or scheduled               | Replace, restart pod                                                          | All sessions invalidated                            |
+| `SSO_CLIENT_SECRET`        | BC Gov SSO team rotates, or compromised | Get new secret from CSS app, replace, restart                                 | New sign-ins use new secret; existing sessions stay |
+| `CHES_CLIENT_SECRET`       | Compromised, or scheduled               | Replace, restart                                                              | Next CHES token fetch uses new secret               |
+| `BCGOV_DI_API_KEY`         | AI Adoption team rotates                | Replace, restart                                                              | Next OCR job uses new key                           |
+| `CHEFS_API_TOKEN`          | Scheduled (every 90 days)               | Either /admin/chefs ?/rotateToken or update Secret + restart                  | Next CHEFS sync uses new token                      |
+| `ADMIN_BOOTSTRAP_PASSWORD` | After first sign-in                     | Sign in, change password via the UI (when it exists) or directly via auth.api | The env var is ignored after first run anyway       |
 
 ## When all else fails
 

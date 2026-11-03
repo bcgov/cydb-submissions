@@ -74,14 +74,16 @@
 
 	<AlertDialog.Root
 		open={reingestDialogOpen}
-		onOpenChange={(open) => { if (!open) reingestDialogOpen = false; }}
+		onOpenChange={(open) => {
+			if (!open) reingestDialogOpen = false;
+		}}
 	>
 		<AlertDialog.Content>
 			<AlertDialog.Header>
 				<AlertDialog.Title>Reingest this submission?</AlertDialog.Title>
 				<AlertDialog.Description>
-					This will permanently delete this invalid-submission record and re-fetch and re-process
-					it fresh from CHEFS. This cannot be undone.
+					This will permanently delete this invalid-submission record and re-fetch and re-process it
+					fresh from CHEFS. This cannot be undone.
 				</AlertDialog.Description>
 			</AlertDialog.Header>
 			<AlertDialog.Footer>
@@ -119,12 +121,16 @@
 		<h2 class="text-base font-semibold text-red-800">Validation Errors</h2>
 		{#if Array.isArray(data.submission.validationErrors) && data.submission.validationErrors.length > 0}
 			<ul class="ml-4 list-disc space-y-1 text-sm text-red-700">
-				{#each data.submission.validationErrors as err}
+				{#each data.submission.validationErrors as err, i (i)}
 					<li>
 						{#if typeof err === 'string'}
 							{err}
 						{:else if typeof err === 'object' && err !== null}
-							<pre class="inline whitespace-pre-wrap font-mono text-xs">{JSON.stringify(err, null, 2)}</pre>
+							<pre class="inline font-mono text-xs whitespace-pre-wrap">{JSON.stringify(
+									err,
+									null,
+									2
+								)}</pre>
 						{:else}
 							{String(err)}
 						{/if}
@@ -132,13 +138,23 @@
 				{/each}
 			</ul>
 		{:else}
-			<pre class="whitespace-pre-wrap rounded bg-white p-3 font-mono text-xs text-red-700">{JSON.stringify(data.submission.validationErrors, null, 2)}</pre>
+			<pre
+				class="rounded bg-white p-3 font-mono text-xs whitespace-pre-wrap text-red-700">{JSON.stringify(
+					data.submission.validationErrors,
+					null,
+					2
+				)}</pre>
 		{/if}
 	</section>
 
 	<section class="space-y-3 rounded border border-gray-200 px-5 py-4">
 		<h2 class="text-base font-semibold">Raw Payload</h2>
-		<pre class="max-h-96 overflow-auto whitespace-pre-wrap rounded bg-gray-100 p-3 font-mono text-xs">{JSON.stringify(data.submission.rawPayload, null, 2)}</pre>
+		<pre
+			class="max-h-96 overflow-auto rounded bg-gray-100 p-3 font-mono text-xs whitespace-pre-wrap">{JSON.stringify(
+				data.submission.rawPayload,
+				null,
+				2
+			)}</pre>
 	</section>
 
 	<section class="space-y-3 rounded border border-gray-200 px-5 py-4">
@@ -149,13 +165,18 @@
 				on {formatDate(data.submission.resolvedAt)}.
 			</p>
 			{#if data.submission.resolvedNote}
-				<p class="text-sm text-gray-700"><span class="font-medium">Note:</span> {data.submission.resolvedNote}</p>
+				<p class="text-sm text-gray-700">
+					<span class="font-medium">Note:</span>
+					{data.submission.resolvedNote}
+				</p>
 			{/if}
 		{:else}
 			<p class="text-sm text-gray-500">This submission has not been resolved.</p>
 			<form method="POST" action="?/resolve" class="space-y-3">
 				<div class="space-y-1">
-					<label for="note" class="block text-sm font-medium text-gray-700">Resolution note <span class="text-red-600">*</span></label>
+					<label for="note" class="block text-sm font-medium text-gray-700"
+						>Resolution note <span class="text-red-600">*</span></label
+					>
 					<textarea
 						id="note"
 						name="note"
@@ -163,8 +184,7 @@
 						required
 						rows="3"
 						class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
-						placeholder="Describe why this submission is being marked as resolved..."
-					></textarea>
+						placeholder="Describe why this submission is being marked as resolved..."></textarea>
 					{#if form?.action === 'resolve' && form?.error}
 						<p class="text-sm text-red-600">{form.error}</p>
 					{/if}

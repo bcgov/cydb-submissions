@@ -12,7 +12,7 @@ import { runOneSync } from '$lib/server/chefs/sync';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin');
-	return { canDelete: env.ALLOW_ADMIN_SUBMISSION_DELETION !== '1' ? false : true};
+	return { canDelete: env.ALLOW_ADMIN_SUBMISSION_DELETION !== '1' ? false : true };
 };
 
 function csrfOk(formCsrf: FormDataEntryValue | null, cookieCsrf: string | undefined): boolean {
@@ -79,7 +79,9 @@ export const actions: Actions = {
 		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf'))) {
 			return fail(403, { action: 'clearInvalidAndSync', error: 'CSRF token mismatch' });
 		}
-		await db.run(sql`DELETE FROM invalid_submissions WHERE resolved_at IS NULL AND resolved_by IS NULL AND resolved_note IS NULL`);
+		await db.run(
+			sql`DELETE FROM invalid_submissions WHERE resolved_at IS NULL AND resolved_by IS NULL AND resolved_note IS NULL`
+		);
 		auditLog(
 			'invalid_submissions_cleared',
 			{
@@ -104,7 +106,10 @@ export const actions: Actions = {
 				success: `Invalid submissions cleared and re-synced: ingested=${res.ingested}, invalid=${res.invalid}, skipped=${res.skippedDuplicate}.`
 			};
 		} catch (e) {
-			return fail(500, { action: 'clearInvalidAndSync', error: `Cleared invalid submissions but sync failed: ${(e as Error).message}` });
+			return fail(500, {
+				action: 'clearInvalidAndSync',
+				error: `Cleared invalid submissions but sync failed: ${(e as Error).message}`
+			});
 		}
 	}
 };

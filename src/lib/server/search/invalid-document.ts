@@ -6,7 +6,10 @@ function flattenJson(v: unknown): string {
 	if (typeof v === 'string') return v;
 	if (typeof v === 'number' || typeof v === 'boolean') return String(v);
 	if (Array.isArray(v)) return v.map(flattenJson).join(' ');
-	if (v && typeof v === 'object') return Object.values(v as Record<string, unknown>).map(flattenJson).join(' ');
+	if (v && typeof v === 'object')
+		return Object.values(v as Record<string, unknown>)
+			.map(flattenJson)
+			.join(' ');
 	return '';
 }
 
@@ -20,17 +23,19 @@ export interface InvalidSubmissionRowForIndex {
 	receivedAt: string;
 }
 
-export function buildInvalidSearchDocument(row: InvalidSubmissionRowForIndex): InvalidSearchDocument {
+export function buildInvalidSearchDocument(
+	row: InvalidSubmissionRowForIndex
+): InvalidSearchDocument {
 	let parsedPayload: unknown = row.rawPayload;
 	try {
 		parsedPayload = JSON.parse(row.rawPayload);
 	} catch (e) {
 		logger.error(
-			{ 
-				event: 	'invalid_submission_json_parse_failed', 
-			  	message: (e as Error).message 
-			}, 
-				'raw payload for invalid submission could not be parsed'
+			{
+				event: 'invalid_submission_json_parse_failed',
+				message: (e as Error).message
+			},
+			'raw payload for invalid submission could not be parsed'
 		);
 	}
 

@@ -6,7 +6,10 @@ export interface OcrAnalysis {
 }
 
 export class OcrError extends Error {
-	constructor(public readonly errorClass: string, message?: string) {
+	constructor(
+		public readonly errorClass: string,
+		message?: string
+	) {
 		super(message ?? errorClass);
 		this.name = 'OcrError';
 	}
@@ -27,5 +30,11 @@ export class OcrProviderError extends OcrError {
 export interface OcrProvider {
 	readonly modelId: string;
 	readonly apiVersion: string;
-	analyze(buf: Buffer, mimeType: string, fileName: string, submissionId?: number, assessmentIndex?: number | null): Promise<OcrAnalysis>;
+	analyze(
+		buf: Buffer,
+		mimeType: string,
+		fileName: string,
+		submissionId?: number,
+		assessmentIndex?: number | null
+	): Promise<OcrAnalysis>;
 }

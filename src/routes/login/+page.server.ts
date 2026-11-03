@@ -197,7 +197,8 @@ export const actions: Actions = {
 				'login attempted but BETTER_AUTH_SECRET is not set'
 			);
 			return fail(503, {
-				error: 'Auth is not configured on the server. Set BETTER_AUTH_SECRET (32+ chars) and redeploy.'
+				error:
+					'Auth is not configured on the server. Set BETTER_AUTH_SECRET (32+ chars) and redeploy.'
 			});
 		}
 

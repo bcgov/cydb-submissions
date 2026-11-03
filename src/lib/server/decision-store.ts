@@ -6,7 +6,13 @@ import type { DecisionOutcome } from './decision';
 /** Write-once: only sets the decision when none exists yet (atomic via the WHERE). */
 export async function recordDecision(
 	db: DrizzleDb,
-	args: { submissionId: number; decision: DecisionOutcome; reasons: string[]; tierChoice: string | null; decidedBy: string }
+	args: {
+		submissionId: number;
+		decision: DecisionOutcome;
+		reasons: string[];
+		tierChoice: string | null;
+		decidedBy: string;
+	}
 ): Promise<'ok' | 'already_decided'> {
 	const res = await db
 		.update(submissions)
@@ -28,13 +34,10 @@ export async function resetDecision(db: DrizzleDb, submissionId: number): Promis
 	const rows = db
 		.select({ status: ocrJobs.status })
 		.from(ocrJobs)
-		.innerJoin(
-			submissionAttachments,
-			eq(submissionAttachments.id, ocrJobs.attachmentId)
-		)
+		.innerJoin(submissionAttachments, eq(submissionAttachments.id, ocrJobs.attachmentId))
 		.where(eq(submissionAttachments.submissionId, submissionId))
 		.all();
-	
+
 	let next: SubmissionStatus;
 	if (rows.length === 0) next = 'submitted';
 	else if (rows.some((r) => r.status === 'failed' || r.status === 'abandoned')) next = 'OCR Error';

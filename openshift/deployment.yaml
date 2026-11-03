@@ -40,7 +40,7 @@ spec:
             - name: HOST
               value: 0.0.0.0
             - name: PORT
-              value: "3000"
+              value: '3000'
             - name: DATABASE_URL
               value: /data/db/local.db
             - name: ATTACHMENTS_DIR
@@ -52,29 +52,29 @@ spec:
             #   "bcgov-di"   — BC Gov AI Adoption DI backend (x-api-key, workflow-driven)
             # See secret.example.yaml for the credentials each provider needs.
             - name: OCR_WORKER_ENABLED
-              value: "0"
+              value: '0'
             - name: OCR_PROVIDER
-              value: "stub"
+              value: 'stub'
             - name: OCR_MAX_CONCURRENCY
-              value: "1"
+              value: '1'
             - name: OCR_MAX_ATTEMPTS
-              value: "3"
+              value: '3'
             - name: OCR_FAILURE_BREAKER
-              value: "4"
+              value: '4'
             - name: OCR_POLL_INTERVAL_MS
-              value: "1000"
+              value: '1000'
             - name: OCR_MODEL_ID
-              value: "prebuilt-read"
+              value: 'prebuilt-read'
             - name: AZURE_DI_API_VERSION
-              value: "2024-11-30"
+              value: '2024-11-30'
             - name: KONG_BASE_URL
-              value: "https://api.gov.bc.ca/document-intelligence"
+              value: 'https://api.gov.bc.ca/document-intelligence'
             # BC Gov DI backend — non-secret base URL + workflow live here;
             # BCGOV_DI_API_KEY comes from cydb-submissions-secrets.
             - name: BCGOV_DI_BASE_URL
-              value: "https://bcgov-di-test-backend-fd34fb-test.apps.silver.devops.gov.bc.ca"
+              value: 'https://bcgov-di-test-backend-fd34fb-test.apps.silver.devops.gov.bc.ca'
             - name: BCGOV_DI_WORKFLOW_SLUG
-              value: "ocr-only-minimal"
+              value: 'ocr-only-minimal'
             # Halted-queue alerts.
             # MAIL_TRANSPORT:
             #   "log"  — default, writes alerts to pino (no mail sent)
@@ -83,31 +83,31 @@ spec:
             # Switch to "ches" once CHES_CLIENT_ID / CHES_CLIENT_SECRET
             # are in cydb-submissions-secrets.
             - name: MAIL_TRANSPORT
-              value: "log"
+              value: 'log'
             - name: OCR_ALERT_FROM
-              value: "cydb-noreply@gov.bc.ca"
+              value: 'cydb-noreply@gov.bc.ca'
             # CHES non-secret config. The Keycloak token URL is realm-
             # scoped; the BC Gov SSO loginproxy host is correct for most
             # gov workloads — override per environment as needed.
             - name: CHES_BASE_URL
-              value: "https://ches.api.gov.bc.ca/api/v1"
+              value: 'https://ches.api.gov.bc.ca/api/v1'
             - name: CHES_TOKEN_URL
-              value: "https://loginproxy.gov.bc.ca/auth/realms/comsvcauth/protocol/openid-connect/token"
+              value: 'https://loginproxy.gov.bc.ca/auth/realms/comsvcauth/protocol/openid-connect/token'
             # BC Gov SSO (Keycloak OIDC) — non-secret issuer URL. The
             # client id + secret come from cydb-submissions-secrets.
             # Set per environment via the configmap-*.yaml overlays
             # (loginproxy host changes between dev/test/prod).
             - name: SSO_ISSUER_URL
-              value: "https://loginproxy.gov.bc.ca/auth/realms/standard"
+              value: 'https://loginproxy.gov.bc.ca/auth/realms/standard'
             # adapter-node's default body-size limit is 512K, which truncates
             # any upload above that long before the in-app MAX_UPLOAD_BYTES
             # check runs. Sized to the form's 25 MiB cap with headroom for
             # form fields. Lower this for stricter intake or to protect
             # against memory pressure under load.
             - name: BODY_SIZE_LIMIT
-              value: "27000000"
+              value: '27000000'
             - name: MANTICORE_URL
-              value: "http://localhost:9308"
+              value: 'http://localhost:9308'
           volumeMounts:
             - name: db
               mountPath: /data/db
@@ -143,9 +143,9 @@ spec:
           # searchd{} section — see openshift/README.md memory-tuning notes.)
           env:
             - name: searchd_skiplist_cache_size
-              value: "16M"
+              value: '16M'
             - name: searchd_qcache_max_bytes
-              value: "0"
+              value: '0'
           volumeMounts:
             - name: search-index
               mountPath: /var/lib/manticore
@@ -164,7 +164,7 @@ spec:
               cpu: 100m
               memory: 256Mi
             limits:
-              cpu: "1"
+              cpu: '1'
               memory: 1Gi
       volumes:
         - name: db

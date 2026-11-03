@@ -1,7 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { BcgovDiProvider } from '$lib/server/ocr/provider-bcgov-di';
 
-function okResponse(body: unknown, init: { status?: number; headers?: Record<string, string> } = {}) {
+function okResponse(
+	body: unknown,
+	init: { status?: number; headers?: Record<string, string> } = {}
+) {
 	return {
 		ok: (init.status ?? 200) >= 200 && (init.status ?? 200) < 300,
 		status: init.status ?? 200,
@@ -123,7 +126,9 @@ describe('BcgovDiProvider', () => {
 	});
 
 	it('throws OcrProviderError when upload response is missing document.id', async () => {
-		const fakeFetch = vi.fn().mockResolvedValueOnce(okResponse({ document: { status: 'ongoing_ocr' } }));
+		const fakeFetch = vi
+			.fn()
+			.mockResolvedValueOnce(okResponse({ document: { status: 'ongoing_ocr' } }));
 		const p = new BcgovDiProvider({
 			baseUrl: 'https://di.test',
 			apiKey: 'k',

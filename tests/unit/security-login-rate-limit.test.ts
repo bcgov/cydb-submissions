@@ -1,8 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import {
-	createLoginThrottle,
-	type LoginThrottle
-} from '$lib/server/security/login-throttle';
+import { createLoginThrottle, type LoginThrottle } from '$lib/server/security/login-throttle';
 
 describe('createLoginThrottle — login brute-force defence (3.3)', () => {
 	let throttle: LoginThrottle;

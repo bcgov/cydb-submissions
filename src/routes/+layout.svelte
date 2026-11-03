@@ -8,7 +8,7 @@
 
 <div class="min-h-screen bg-background text-foreground">
 	<header class="border-b">
-		<div class="max-w-3xl mx-auto p-4 flex items-center justify-between">
+		<div class="mx-auto flex max-w-3xl items-center justify-between p-4">
 			<div>
 				<h1 class="text-xl font-semibold">Children &amp; Youth Disability Benefit</h1>
 				<p class="text-sm text-muted-foreground">Application form</p>
@@ -18,14 +18,14 @@
 					<span class="text-sm text-muted-foreground">{data.user.email}</span>
 					{#if data.bypassActive}
 						<span
-							class="text-xs px-1.5 py-0.5 rounded border border-yellow-500/60 bg-yellow-50 text-yellow-900 dark:bg-yellow-950/30 dark:text-yellow-200"
+							class="rounded border border-yellow-500/60 bg-yellow-50 px-1.5 py-0.5 text-xs text-yellow-900 dark:bg-yellow-950/30 dark:text-yellow-200"
 							title="Signed in via DEV_AUTH_BYPASS"
 						>
 							dev
 						</span>
 						<a
 							href="/login?switch=1"
-							class="text-xs underline text-muted-foreground hover:text-foreground"
+							class="text-xs text-muted-foreground underline hover:text-foreground"
 						>
 							Switch
 						</a>

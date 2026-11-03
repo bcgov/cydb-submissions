@@ -43,7 +43,11 @@ export function selectDirtyInvalid(db: Db, batchSize: number): number[] {
 }
 
 /** Index one batch of dirty rows. Returns how many were indexed. */
-export async function reconcileOnce(db: Db, client: SearchClient, batchSize: number): Promise<number> {
+export async function reconcileOnce(
+	db: Db,
+	client: SearchClient,
+	batchSize: number
+): Promise<number> {
 	const ids = selectDirty(db, batchSize);
 	const invalidIds = selectDirtyInvalid(db, batchSize);
 	let n = 0;
@@ -81,14 +85,30 @@ export function startReconciler(opts: ReconcilerOpts): ReconcilerHandle {
 		busy = true;
 		try {
 			const n = await reconcileOnce(opts.db, opts.client, batchSize);
-			if (n > 0) opts.logger.info({ event: 'search_reconciled', count: n, workerId }, 'search index reconciled');
+			if (n > 0)
+				opts.logger.info(
+					{ event: 'search_reconciled', count: n, workerId },
+					'search index reconciled'
+				);
 		} catch (e) {
-			opts.logger.error({ event: 'search_reconcile_failed', workerId, message: (e as Error).message }, 'search reconcile failed');
+			opts.logger.error(
+				{ event: 'search_reconcile_failed', workerId, message: (e as Error).message },
+				'search reconcile failed'
+			);
 		} finally {
 			busy = false;
 		}
 	}, intervalMs);
 
-	opts.logger.info({ event: 'search_reconciler_started', workerId, intervalMs, batchSize }, 'search reconciler started');
-	return { workerId, stop: () => { running = false; clearInterval(handle); } };
+	opts.logger.info(
+		{ event: 'search_reconciler_started', workerId, intervalMs, batchSize },
+		'search reconciler started'
+	);
+	return {
+		workerId,
+		stop: () => {
+			running = false;
+			clearInterval(handle);
+		}
+	};
 }

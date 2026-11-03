@@ -27,8 +27,8 @@ export interface IngestResult {
 	outcome: IngestOutcome;
 }
 
-// Statuses of a `submissions` row for which reingestion is permitted. 
-// Invalid-submission records (the `invalid_submissions` table) 
+// Statuses of a `submissions` row for which reingestion is permitted.
+// Invalid-submission records (the `invalid_submissions` table)
 // have no status column and are always eligible for reingestion.
 export const REINGEST_ALLOWED_STATUSES = [
 	'submitted',
@@ -89,7 +89,10 @@ export async function ingestOne(
 	const mapped = mapChefsSubmission(raw, cfg);
 
 	if (uuidExists(db, mapped.submissionUuid)) {
-		deps.logger.trace({ submissionUuid: mapped.submissionUuid }, 'chefs ingest: skipping duplicate');
+		deps.logger.trace(
+			{ submissionUuid: mapped.submissionUuid },
+			'chefs ingest: skipping duplicate'
+		);
 		return { submissionUuid: mapped.submissionUuid, outcome: 'skipped' };
 	}
 

@@ -11,14 +11,19 @@
 	let resumeOpen = $state(false);
 </script>
 
-<div class="p-6 max-w-5xl mx-auto space-y-8">
+<div class="mx-auto max-w-5xl space-y-8 p-6">
 	<div>
-		<h1 class="text-2xl font-semibold mb-2">OCR Queue</h1>
-		<p class="text-gray-700">Phase 3 admin tooling: monitor and operate the document-reading queue.</p>
+		<h1 class="mb-2 text-2xl font-semibold">OCR Queue</h1>
+		<p class="text-gray-700">
+			Phase 3 admin tooling: monitor and operate the document-reading queue.
+		</p>
 	</div>
 
 	{#if form?.success}
-		<p role="status" class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+		<p
+			role="status"
+			class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800"
+		>
 			{form.success}
 		</p>
 	{/if}
@@ -31,7 +36,9 @@
 	{#if data.halted}
 		<section class="rounded border-l-4 border-red-500 bg-red-50 p-4">
 			<div class="font-semibold text-red-900">Queue halted at {data.halted.trippedAt}</div>
-			<div class="text-sm mt-1">Last error class: <code>{data.halted.lastErrorClass ?? 'unknown'}</code></div>
+			<div class="mt-1 text-sm">
+				Last error class: <code>{data.halted.lastErrorClass ?? 'unknown'}</code>
+			</div>
 			<div class="text-sm">Failing job IDs: {data.halted.jobIds.join(', ')}</div>
 			<div class="mt-3">
 				<Button onclick={() => (resumeOpen = true)}>Resume queue</Button>
@@ -79,7 +86,7 @@
 							<Table.Cell>{j.requeueCount}</Table.Cell>
 							<Table.Cell><code class="text-xs">{j.lastError ?? ''}</code></Table.Cell>
 							<Table.Cell class="text-xs">{j.updatedAt}</Table.Cell>
-							<Table.Cell class="text-right space-x-2">
+							<Table.Cell class="space-x-2 text-right">
 								<form method="POST" action="?/requeue" use:enhance class="inline">
 									<input type="hidden" name="csrf" value={page.data.csrfToken} />
 									<input type="hidden" name="jobId" value={j.id} />
@@ -99,13 +106,19 @@
 			{#if totalPages > 1}
 				<div class="flex items-center gap-3 pt-1 text-sm">
 					{#if data.failedPage > 1}
-						<a href="?failedPage={data.failedPage - 1}" class="underline"><Button variant="outline" size="sm">Previous</Button></a>
-						{:else}
+						<a href="?failedPage={data.failedPage - 1}" class="underline"
+							><Button variant="outline" size="sm">Previous</Button></a
+						>
+					{:else}
 						<span class="text-gray-400"><Button variant="outline" size="sm">Previous</Button></span>
 					{/if}
-					<span class="text-gray-600">Page {data.failedPage} of {totalPages} ({data.totalFailed} total)</span>
+					<span class="text-gray-600"
+						>Page {data.failedPage} of {totalPages} ({data.totalFailed} total)</span
+					>
 					{#if data.failedPage < totalPages}
-						<a href="?failedPage={data.failedPage + 1}" class="underline"><Button variant="outline" size="sm">Next</Button></a>
+						<a href="?failedPage={data.failedPage + 1}" class="underline"
+							><Button variant="outline" size="sm">Next</Button></a
+						>
 					{:else}
 						<span class="text-gray-400"><Button variant="outline" size="sm">Next</Button></span>
 					{/if}
@@ -128,10 +141,11 @@
 				<form
 					method="POST"
 					action="?/resume"
-					use:enhance={() => async ({ update }) => {
-						await update();
-						resumeOpen = false;
-					}}
+					use:enhance={() =>
+						async ({ update }) => {
+							await update();
+							resumeOpen = false;
+						}}
 				>
 					<input type="hidden" name="csrf" value={page.data.csrfToken} />
 					<AlertDialog.Action type="submit">Resume queue</AlertDialog.Action>

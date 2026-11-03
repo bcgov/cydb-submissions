@@ -49,7 +49,9 @@ export function selectProvider(env: ProviderEnv): OcrProvider {
 		const clientSecret = env.KONG_CLIENT_SECRET;
 		if (!baseUrl) throw new Error('KONG_BASE_URL is required for OCR_PROVIDER=kong-ms-di');
 		if (!tokenUrl || !clientId || !clientSecret) {
-			throw new Error('KONG_TOKEN_URL, KONG_CLIENT_ID, KONG_CLIENT_SECRET are required for OCR_PROVIDER=kong-ms-di');
+			throw new Error(
+				'KONG_TOKEN_URL, KONG_CLIENT_ID, KONG_CLIENT_SECRET are required for OCR_PROVIDER=kong-ms-di'
+			);
 		}
 		const tokenCache = new KongTokenCache({ tokenUrl, clientId, clientSecret });
 		return new KongMsDiProvider({

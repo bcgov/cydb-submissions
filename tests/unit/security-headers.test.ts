@@ -14,9 +14,12 @@ describe('buildSecurityHeaders — response-header bundle (10.1, 10.2, 10.5, 10.
 
 	it('returns Referrer-Policy same-origin or stricter', () => {
 		const h = buildSecurityHeaders({ pathname: '/', isProduction: true });
-		expect(['same-origin', 'no-referrer', 'strict-origin', 'strict-origin-when-cross-origin']).toContain(
-			h['referrer-policy']
-		);
+		expect([
+			'same-origin',
+			'no-referrer',
+			'strict-origin',
+			'strict-origin-when-cross-origin'
+		]).toContain(h['referrer-policy']);
 	});
 
 	it('does not emit content-security-policy (owned by kit.csp in svelte.config.js)', () => {
@@ -43,7 +46,7 @@ describe('buildSecurityHeaders — response-header bundle (10.1, 10.2, 10.5, 10.
 		expect(h['strict-transport-security']).toBeUndefined();
 	});
 
-	it("sets Cache-Control no-store for staff routes (3.6)", () => {
+	it('sets Cache-Control no-store for staff routes (3.6)', () => {
 		for (const p of ['/admin', '/admin/queues', '/submissions', '/submissions/abc', '/clinician']) {
 			const h = buildSecurityHeaders({ pathname: p, isProduction: true });
 			expect(h['cache-control']).toMatch(/no-store/);

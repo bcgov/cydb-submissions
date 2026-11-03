@@ -16,7 +16,7 @@ export interface ProcessOpts {
 	db: Db;
 	jobId: number;
 	provider: OcrProvider;
-	keywords: Map<string, Map<string, string | string []>>;
+	keywords: Map<string, Map<string, string | string[]>>;
 	logger: Logger;
 	/** Optional: push the submission to the search index after a successful OCR commit. */
 	onIndexed?: (submissionId: number) => Promise<void>;
@@ -46,7 +46,12 @@ export async function processOneJob(opts: ProcessOpts): Promise<ProcessResult> {
 		buf = await fs.readFile(attachment.storedPath);
 	} catch {
 		logger.error(
-			{ event: 'ocr_attempt_failed', jobId, attachmentId: attachment.id, errorClass: 'AttachmentReadError' },
+			{
+				event: 'ocr_attempt_failed',
+				jobId,
+				attachmentId: attachment.id,
+				errorClass: 'AttachmentReadError'
+			},
 			'cannot read attachment'
 		);
 		return finishFailure(opts, 'AttachmentReadError', job.attempts, attachment.submissionId);
@@ -58,7 +63,13 @@ export async function processOneJob(opts: ProcessOpts): Promise<ProcessResult> {
 	);
 
 	try {
-		const analysis = await provider.analyze(buf, attachment.mimeType, attachment.originalFilename, attachment.submissionId, attachment.assessmentIndex);
+		const analysis = await provider.analyze(
+			buf,
+			attachment.mimeType,
+			attachment.originalFilename,
+			attachment.submissionId,
+			attachment.assessmentIndex
+		);
 		db.transaction((tx) => {
 			tx.insert(schema.ocrResults)
 				.values({
@@ -75,15 +86,19 @@ export async function processOneJob(opts: ProcessOpts): Promise<ProcessResult> {
 			for (const [category, info] of hits) {
 				for (const [keyword, count] of info) {
 					tx.insert(schema.keywordHits)
-						.values({ 
-							submissionId: attachment.submissionId, 
-							attachmentId: attachment.id, 
-							keyword, 
-							count: count, 
+						.values({
+							submissionId: attachment.submissionId,
+							attachmentId: attachment.id,
+							keyword,
+							count: count,
 							[category]: 1
-						}) 
+						})
 						.onConflictDoUpdate({
-							target: [schema.keywordHits.submissionId, schema.keywordHits.keyword, schema.keywordHits.attachmentId], 
+							target: [
+								schema.keywordHits.submissionId,
+								schema.keywordHits.keyword,
+								schema.keywordHits.attachmentId
+							],
 							set: { count: count, computedAt: sql`CURRENT_TIMESTAMP` }
 						})
 						.run();
@@ -102,14 +117,19 @@ export async function processOneJob(opts: ProcessOpts): Promise<ProcessResult> {
 				await opts.onIndexed(attachment.submissionId);
 			} catch (e) {
 				logger.error(
-					{ event: 'search_index_failed', submissionId: attachment.submissionId, message: (e as Error).message },
+					{
+						event: 'search_index_failed',
+						submissionId: attachment.submissionId,
+						message: (e as Error).message
+					},
 					'search index push failed; reconciler will retry'
 				);
 			}
 		}
 		return { outcome: 'succeeded' };
 	} catch (e) {
-		const errorClass = e instanceof OcrError ? e.errorClass : (e as Error)?.message ?? 'UnexpectedError';
+		const errorClass =
+			e instanceof OcrError ? e.errorClass : ((e as Error)?.message ?? 'UnexpectedError');
 		return finishFailure(opts, errorClass, job.attempts, attachment.submissionId);
 	}
 }

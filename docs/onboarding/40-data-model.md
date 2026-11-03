@@ -7,6 +7,7 @@ The persistent state of this application lives in **one SQLite file** (`/data/db
 11 tables, in two groups:
 
 **App tables** (`src/lib/server/db/schema.ts`):
+
 - `submissions` — one row per accepted submission, every leaf field has its own column
 - `submission_metadata` — IP, user agent, etc. (one row per submission)
 - `submission_attachments` — one row per uploaded file
@@ -18,6 +19,7 @@ The persistent state of this application lives in **one SQLite file** (`/data/db
 - `system_state` — key/value store for cross-process state (halt sentinels, last-sync, breaker counts)
 
 **better-auth tables** (`src/lib/server/db/auth.schema.ts`):
+
 - `user`, `session`, `account`, `verification` — the standard better-auth schema. We don't define these ourselves; better-auth requires them.
 
 ## Column-naming conventions
@@ -70,6 +72,7 @@ CHECK  status IN (one of SUBMISSION_STATUSES)
 ```
 
 **Why every leaf field gets its own column instead of just JSON?** Two reasons:
+
 1. Indexable / queryable status, dates, and surname.
 2. It matches a product requirement that every form field must have a column in the database.
 
@@ -244,15 +247,15 @@ updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 
 The whatever-you-want-to-persist table. Read via `getSystemState<T>(db, key)` and write via `setSystemState(db, key, value)`. Keys in use today:
 
-| Key | Payload | Purpose |
-|---|---|---|
-| `ocr.halted` | `{ trippedAt, threshold, lastErrorClass }` | OCR breaker tripped; worker skips all ticks |
-| `ocr.failureCount` | `number` | Consecutive terminal failures for the OCR breaker |
-| `chefs.halted` | `{ trippedAt, threshold, lastErrorClass }` | CHEFS poller breaker tripped |
-| `chefs.failureCount` | `number` | Consecutive failures for the CHEFS poller breaker |
-| `chefs.lastSync` | `SyncResult` | What the last CHEFS sync did (visible in /admin/queues) |
-| `chefs.config` | `{ formId, version, baseUrl, fileComponents, apiParams, pollerEnabled, pollIntervalMs }` | DB-stored CHEFS configuration (env vars override at read time) |
-| `chefs.apiToken` | `string` | The CHEFS API token (sensitive — only ever stored encrypted-at-rest by SQLite-on-PVC; never logged) |
+| Key                  | Payload                                                                                  | Purpose                                                                                             |
+| -------------------- | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `ocr.halted`         | `{ trippedAt, threshold, lastErrorClass }`                                               | OCR breaker tripped; worker skips all ticks                                                         |
+| `ocr.failureCount`   | `number`                                                                                 | Consecutive terminal failures for the OCR breaker                                                   |
+| `chefs.halted`       | `{ trippedAt, threshold, lastErrorClass }`                                               | CHEFS poller breaker tripped                                                                        |
+| `chefs.failureCount` | `number`                                                                                 | Consecutive failures for the CHEFS poller breaker                                                   |
+| `chefs.lastSync`     | `SyncResult`                                                                             | What the last CHEFS sync did (visible in /admin/queues)                                             |
+| `chefs.config`       | `{ formId, version, baseUrl, fileComponents, apiParams, pollerEnabled, pollIntervalMs }` | DB-stored CHEFS configuration (env vars override at read time)                                      |
+| `chefs.apiToken`     | `string`                                                                                 | The CHEFS API token (sensitive — only ever stored encrypted-at-rest by SQLite-on-PVC; never logged) |
 
 Don't be precious about adding new keys here. If a new piece of cross-restart state shows up, this table is where it goes.
 
@@ -300,6 +303,7 @@ meta/                         # Drizzle bookkeeping (don't edit by hand)
 `scripts/migrate.mjs` runs on container start (the Containerfile entrypoint calls it before invoking `node build/`). So migrations apply once per pod restart. With `replicas: 1` and `strategy: Recreate`, there's no race between two pods migrating simultaneously.
 
 If you need a long migration, do it in two deploys:
+
 1. Add the new column / table as nullable; deploy. Both old and new code work.
 2. Backfill data + add NOT NULL constraint; deploy.
 
@@ -331,15 +335,15 @@ PVC backups are the BC Gov Platform team's job; we don't have an in-app backup. 
 
 ## Where to look when something looks wrong
 
-| Symptom | Likely table |
-|---|---|
-| "Submission shows as 'OCR Error'" | `ocr_jobs` (look for the failed row with `last_error`) |
-| "Submissions list shows 0 rows but I just submitted" | `invalid_submissions` (zod might have rejected it) |
-| "Admin sees no submissions even though they exist" | `user_roles` (do they actually have `admin`?) |
-| "OCR queue won't start" | `system_state.ocr.halted`  — check `value`, then `/admin/queues` Resume |
-| "CHEFS sync says it ran but no new submissions" | `system_state.chefs.lastSync` (`{ added: 0 }` means CHEFS returned nothing new) |
-| "Attachment download returns 410" | The file is missing from the PVC; the DB row is still there |
-| "Search returns no results / stale results" | `submissions.search_indexed_at` — rows with NULL or old values haven't been pushed to Manticore yet; check the reconciler logs |
+| Symptom                                              | Likely table                                                                                                                   |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| "Submission shows as 'OCR Error'"                    | `ocr_jobs` (look for the failed row with `last_error`)                                                                         |
+| "Submissions list shows 0 rows but I just submitted" | `invalid_submissions` (zod might have rejected it)                                                                             |
+| "Admin sees no submissions even though they exist"   | `user_roles` (do they actually have `admin`?)                                                                                  |
+| "OCR queue won't start"                              | `system_state.ocr.halted` — check `value`, then `/admin/queues` Resume                                                         |
+| "CHEFS sync says it ran but no new submissions"      | `system_state.chefs.lastSync` (`{ added: 0 }` means CHEFS returned nothing new)                                                |
+| "Attachment download returns 410"                    | The file is missing from the PVC; the DB row is still there                                                                    |
+| "Search returns no results / stale results"          | `submissions.search_indexed_at` — rows with NULL or old values haven't been pushed to Manticore yet; check the reconciler logs |
 
 ## SQL escape hatch
 

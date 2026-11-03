@@ -28,8 +28,14 @@ describe('KongTokenCache', () => {
 
 	it('refreshes once the cached token nears expiry', async () => {
 		fakeFetch
-			.mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'a1', expires_in: 1 }) })
-			.mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'a2', expires_in: 3600 }) });
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({ access_token: 'a1', expires_in: 1 })
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({ access_token: 'a2', expires_in: 3600 })
+			});
 		const cache = new KongTokenCache({
 			tokenUrl: 'https://t.test/token',
 			clientId: 'i',

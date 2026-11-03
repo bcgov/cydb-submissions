@@ -37,8 +37,20 @@ export default defineConfig(
 		}
 	},
 	{
-		// Override or add rule settings here, such as:
-		// 'svelte/button-has-type': 'error'
-		rules: {}
+		rules: {
+			'@typescript-eslint/no-unused-vars': [
+				'error',
+				{ argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }
+			],
+			// App uses plain root-relative hrefs with no base path configured.
+			'svelte/no-navigation-without-resolve': 'off'
+		}
+	},
+	{
+		files: ['tests/**', '**/*.cjs'],
+		rules: {
+			'@typescript-eslint/no-explicit-any': 'off',
+			'@typescript-eslint/no-require-imports': 'off'
+		}
 	}
 );

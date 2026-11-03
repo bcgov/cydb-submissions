@@ -75,6 +75,7 @@ spec:
           # restricted-v2 SCC. The stock manticoresearch/manticore:29.9.0 image
           # crash-loops here (arbitrary UID can't write /etc/ssl, /var/run, …).
           image: "{{ .Values.image.manticore_tag }}"
+          imagePullPolicy: Always
           ports:
             - containerPort: 9308
             - containerPort: 9306

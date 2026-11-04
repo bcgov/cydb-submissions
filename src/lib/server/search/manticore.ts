@@ -123,7 +123,10 @@ export class ManticoreClient implements SearchClient {
 		// expansion_limit bounds how many dictionary terms a fuzzy/wildcard term can expand
 		// to; the table's morphology + infix indexing produce a large dictionary, so an
 		// unbounded expansion here is a real per-query memory cost that grows with data size.
-		const options: Record<string, unknown> = { max_matches: Math.max(input.limit, 1), expansion_limit: 64 };
+		const options: Record<string, unknown> = {
+			max_matches: Math.max(input.limit, 1),
+			expansion_limit: 64
+		};
 		if (input.fuzzy) Object.assign(options, { fuzzy: 1, distance: input.fuzzyDistance });
 		body.options = options;
 

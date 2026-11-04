@@ -66,55 +66,55 @@ rejects form POSTs (e.g. `/login`) with a 403 cross-site error. Two patterns:
 
 ## Environment
 
-| Var | Purpose |
-|-----|---------|
-| `DATABASE_URL` | SQLite file path (relative paths resolve to the process CWD) |
-| `ORIGIN` | Public origin used by SvelteKit's CSRF check (set to the deployed URL in production) |
-| `ATTACHMENTS_DIR` | PVC mount path for uploaded files |
-| `MAX_UPLOAD_BYTES` | Per-file size cap (default 25 MiB) |
-| `ALLOWED_UPLOAD_MIME` | Comma-separated mime allowlist |
-| `RATE_LIMIT_PER_IP` | Anonymous submissions per window per IP (default 3) |
-| `RATE_LIMIT_WINDOW_MS` | Rate-limit window in milliseconds (default 900000 = 15 min) |
-| `LOG_LEVEL` | pino log level (default info) |
-| `BETTER_AUTH_SECRET` | **Required (Phase 2+).** 32+ characters. Auth is disabled when missing — the app boots but `/login` returns 503. |
-| `DEV_AUTH_BYPASS` | Dev/CI shim. Format: `email:role[+role][,email:role…]`. Refused when `NODE_ENV=production`. |
-| `ADMIN_BOOTSTRAP_EMAIL` | First-deploy admin email (only seeded when no users exist). |
-| `ADMIN_BOOTSTRAP_PASSWORD` | First-deploy admin password (min 12 chars). Rotate immediately after first login. |
-| `OCR_WORKER_ENABLED` | Phase 3. Set to `1` to start the in-process OCR worker. Default off. |
-| `OCR_PROVIDER` | `stub` (default) \| `stub-fail` \| `stub-flaky` \| `kong-ms-di` \| `bcgov-di`. Use a stub mode in dev/CI. |
-| `OCR_MAX_CONCURRENCY` | In-flight requests (1–4, default 1). |
-| `OCR_MAX_ATTEMPTS` | Per-job retry budget (default 3). |
-| `OCR_FAILURE_BREAKER` | Consecutive terminal failures before the queue halts (default 4). |
-| `OCR_POLL_INTERVAL_MS` | Worker tick interval (default 1000). |
-| `OCR_STUB_FIXTURES` | Path to fixture .txt files used by the stub provider (default `tests/fixtures/ocr`). |
-| `OCR_STUB_FLAKY_FAILURES` | How many times the `stub-flaky` mode fails before it succeeds (default 1). |
-| `OCR_MODEL_ID` | MS DI model id (default `prebuilt-read`). |
-| `AZURE_DI_API_VERSION` | MS DI API version (default `2024-11-30`). |
-| `KONG_BASE_URL` | Required when `OCR_PROVIDER=kong-ms-di`. e.g. `https://api.gov.bc.ca/document-intelligence` |
-| `KONG_TOKEN_URL` | OAuth client-credentials token endpoint. |
-| `KONG_CLIENT_ID` / `KONG_CLIENT_SECRET` | OAuth credentials provisioned by the BC Gov API platform team. |
-| `BCGOV_DI_BASE_URL` | Required when `OCR_PROVIDER=bcgov-di`. Test backend: `https://bcgov-di-test-backend-fd34fb-test.apps.silver.devops.gov.bc.ca`. |
-| `BCGOV_DI_API_KEY` | Required when `OCR_PROVIDER=bcgov-di`. Group-scoped key issued by the AI Adoption team. Never logged. |
-| `BCGOV_DI_WORKFLOW_SLUG` | Workflow id on the BC Gov DI backend (default `ocr-only-minimal`). |
-| `MAIL_TRANSPORT` | `log` (default) \| `ches` \| `smtp`. `ches` posts halt alerts to the BC Gov Common Hosted Email Service; `smtp` is a stub. |
-| `OCR_ALERT_RECIPIENTS` | Comma-separated email list for halted-queue alerts. Empty = log-only. |
-| `OCR_ALERT_FROM` | Sender address for halted-queue alerts (default `cydb-noreply@gov.bc.ca`). |
-| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | Reserved for `MAIL_TRANSPORT=smtp` (currently a stub — prefer `ches`). |
-| `CHES_BASE_URL` | CHES web service base URL. Default `https://ches.api.gov.bc.ca/api/v1`. |
-| `CHES_TOKEN_URL` | Keycloak OAuth2 token endpoint (realm-scoped). Required when `MAIL_TRANSPORT=ches`. |
-| `CHES_CLIENT_ID` / `CHES_CLIENT_SECRET` | Keycloak service-account credentials. Required when `MAIL_TRANSPORT=ches`. Never logged. |
-| `SSO_ISSUER_URL` | BC Gov SSO (Keycloak) issuer URL, e.g. `https://dev.loginproxy.gov.bc.ca/auth/realms/standard`. Empty = SSO disabled. |
-| `SSO_CLIENT_ID` | OAuth client id from `SSO/CYDB Submissions-installation-*.json` (`resource` field). Required when `SSO_ISSUER_URL` is set. |
-| `SSO_CLIENT_SECRET` | OAuth client secret (`credentials.secret`). Required when `SSO_ISSUER_URL` is set. Never logged. |
-| `CHEFS_FORM_ID` | CHEFS form UUID — overrides DB config when set. |
-| `CHEFS_API_TOKEN` | CHEFS API token — overrides DB config when set. Never logged. |
-| `CHEFS_VERSION` | Form version (`0` = all versions for JSON export, the CHEFS default). |
-| `CHEFS_BASE_URL` | CHEFS API base URL. Default `https://submit.digital.gov.bc.ca`. |
-| `CHEFS_FILE_COMPONENTS` | Comma-separated file-upload component keys to download. Default `simplefile`. |
-| `CHEFS_API_PARAMS` | JSON object of CHEFS export filter params (e.g. `{"status":"COMPLETED"}`). |
-| `CHEFS_POLLER_ENABLED` | Set to `1` to run the in-process CHEFS poller. |
-| `CHEFS_POLL_INTERVAL_MS` | Poll cadence in ms (default 60000). |
-| `KEYWORD_JSON` | Keywords used for categories display. |
+| Var                                                   | Purpose                                                                                                                        |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `DATABASE_URL`                                        | SQLite file path (relative paths resolve to the process CWD)                                                                   |
+| `ORIGIN`                                              | Public origin used by SvelteKit's CSRF check (set to the deployed URL in production)                                           |
+| `ATTACHMENTS_DIR`                                     | PVC mount path for uploaded files                                                                                              |
+| `MAX_UPLOAD_BYTES`                                    | Per-file size cap (default 25 MiB)                                                                                             |
+| `ALLOWED_UPLOAD_MIME`                                 | Comma-separated mime allowlist                                                                                                 |
+| `RATE_LIMIT_PER_IP`                                   | Anonymous submissions per window per IP (default 3)                                                                            |
+| `RATE_LIMIT_WINDOW_MS`                                | Rate-limit window in milliseconds (default 900000 = 15 min)                                                                    |
+| `LOG_LEVEL`                                           | pino log level (default info)                                                                                                  |
+| `BETTER_AUTH_SECRET`                                  | **Required (Phase 2+).** 32+ characters. Auth is disabled when missing — the app boots but `/login` returns 503.               |
+| `DEV_AUTH_BYPASS`                                     | Dev/CI shim. Format: `email:role[+role][,email:role…]`. Refused when `NODE_ENV=production`.                                    |
+| `ADMIN_BOOTSTRAP_EMAIL`                               | First-deploy admin email (only seeded when no users exist).                                                                    |
+| `ADMIN_BOOTSTRAP_PASSWORD`                            | First-deploy admin password (min 12 chars). Rotate immediately after first login.                                              |
+| `OCR_WORKER_ENABLED`                                  | Phase 3. Set to `1` to start the in-process OCR worker. Default off.                                                           |
+| `OCR_PROVIDER`                                        | `stub` (default) \| `stub-fail` \| `stub-flaky` \| `kong-ms-di` \| `bcgov-di`. Use a stub mode in dev/CI.                      |
+| `OCR_MAX_CONCURRENCY`                                 | In-flight requests (1–4, default 1).                                                                                           |
+| `OCR_MAX_ATTEMPTS`                                    | Per-job retry budget (default 3).                                                                                              |
+| `OCR_FAILURE_BREAKER`                                 | Consecutive terminal failures before the queue halts (default 4).                                                              |
+| `OCR_POLL_INTERVAL_MS`                                | Worker tick interval (default 1000).                                                                                           |
+| `OCR_STUB_FIXTURES`                                   | Path to fixture .txt files used by the stub provider (default `tests/fixtures/ocr`).                                           |
+| `OCR_STUB_FLAKY_FAILURES`                             | How many times the `stub-flaky` mode fails before it succeeds (default 1).                                                     |
+| `OCR_MODEL_ID`                                        | MS DI model id (default `prebuilt-read`).                                                                                      |
+| `AZURE_DI_API_VERSION`                                | MS DI API version (default `2024-11-30`).                                                                                      |
+| `KONG_BASE_URL`                                       | Required when `OCR_PROVIDER=kong-ms-di`. e.g. `https://api.gov.bc.ca/document-intelligence`                                    |
+| `KONG_TOKEN_URL`                                      | OAuth client-credentials token endpoint.                                                                                       |
+| `KONG_CLIENT_ID` / `KONG_CLIENT_SECRET`               | OAuth credentials provisioned by the BC Gov API platform team.                                                                 |
+| `BCGOV_DI_BASE_URL`                                   | Required when `OCR_PROVIDER=bcgov-di`. Test backend: `https://bcgov-di-test-backend-fd34fb-test.apps.silver.devops.gov.bc.ca`. |
+| `BCGOV_DI_API_KEY`                                    | Required when `OCR_PROVIDER=bcgov-di`. Group-scoped key issued by the AI Adoption team. Never logged.                          |
+| `BCGOV_DI_WORKFLOW_SLUG`                              | Workflow id on the BC Gov DI backend (default `ocr-only-minimal`).                                                             |
+| `MAIL_TRANSPORT`                                      | `log` (default) \| `ches` \| `smtp`. `ches` posts halt alerts to the BC Gov Common Hosted Email Service; `smtp` is a stub.     |
+| `OCR_ALERT_RECIPIENTS`                                | Comma-separated email list for halted-queue alerts. Empty = log-only.                                                          |
+| `OCR_ALERT_FROM`                                      | Sender address for halted-queue alerts (default `cydb-noreply@gov.bc.ca`).                                                     |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | Reserved for `MAIL_TRANSPORT=smtp` (currently a stub — prefer `ches`).                                                         |
+| `CHES_BASE_URL`                                       | CHES web service base URL. Default `https://ches.api.gov.bc.ca/api/v1`.                                                        |
+| `CHES_TOKEN_URL`                                      | Keycloak OAuth2 token endpoint (realm-scoped). Required when `MAIL_TRANSPORT=ches`.                                            |
+| `CHES_CLIENT_ID` / `CHES_CLIENT_SECRET`               | Keycloak service-account credentials. Required when `MAIL_TRANSPORT=ches`. Never logged.                                       |
+| `SSO_ISSUER_URL`                                      | BC Gov SSO (Keycloak) issuer URL, e.g. `https://dev.loginproxy.gov.bc.ca/auth/realms/standard`. Empty = SSO disabled.          |
+| `SSO_CLIENT_ID`                                       | OAuth client id from `SSO/CYDB Submissions-installation-*.json` (`resource` field). Required when `SSO_ISSUER_URL` is set.     |
+| `SSO_CLIENT_SECRET`                                   | OAuth client secret (`credentials.secret`). Required when `SSO_ISSUER_URL` is set. Never logged.                               |
+| `CHEFS_FORM_ID`                                       | CHEFS form UUID — overrides DB config when set.                                                                                |
+| `CHEFS_API_TOKEN`                                     | CHEFS API token — overrides DB config when set. Never logged.                                                                  |
+| `CHEFS_VERSION`                                       | Form version (`0` = all versions for JSON export, the CHEFS default).                                                          |
+| `CHEFS_BASE_URL`                                      | CHEFS API base URL. Default `https://submit.digital.gov.bc.ca`.                                                                |
+| `CHEFS_FILE_COMPONENTS`                               | Comma-separated file-upload component keys to download. Default `simplefile`.                                                  |
+| `CHEFS_API_PARAMS`                                    | JSON object of CHEFS export filter params (e.g. `{"status":"COMPLETED"}`).                                                     |
+| `CHEFS_POLLER_ENABLED`                                | Set to `1` to run the in-process CHEFS poller.                                                                                 |
+| `CHEFS_POLL_INTERVAL_MS`                              | Poll cadence in ms (default 60000).                                                                                            |
+| `KEYWORD_JSON`                                        | Keywords used for categories display.                                                                                          |
 
 ### Local OCR development
 
@@ -187,15 +187,15 @@ The reconciler runs every `SEARCH_RECONCILE_INTERVAL_MS` milliseconds and proces
 
 The search UI supports the full Manticore extended query syntax:
 
-| Pattern | Example | Effect |
-|---------|---------|--------|
-| Wildcard prefix/infix | `aut*` / `*ism*` | Matches any term starting/containing the fragment |
-| Phrase | `"speech delay"` | Terms must appear adjacent |
-| Field scope | `@ocr_text vineland` | Restricts match to a named field |
-| Proximity | `"speech delay" NEAR/3` | Terms within 3 words of each other |
-| Quorum | `"adhd anxiety seizures"/2` | At least 2 of the listed terms must match |
-| Exclusion | `diagnosis -provisional` | Excludes documents containing `provisional` |
-| Lemmas | `running` | Matches inflected forms: run, ran, running |
+| Pattern               | Example                     | Effect                                            |
+| --------------------- | --------------------------- | ------------------------------------------------- |
+| Wildcard prefix/infix | `aut*` / `*ism*`            | Matches any term starting/containing the fragment |
+| Phrase                | `"speech delay"`            | Terms must appear adjacent                        |
+| Field scope           | `@ocr_text vineland`        | Restricts match to a named field                  |
+| Proximity             | `"speech delay" NEAR/3`     | Terms within 3 words of each other                |
+| Quorum                | `"adhd anxiety seizures"/2` | At least 2 of the listed terms must match         |
+| Exclusion             | `diagnosis -provisional`    | Excludes documents containing `provisional`       |
+| Lemmas                | `running`                   | Matches inflected forms: run, ran, running        |
 
 Fuzzy/typo tolerance is on by default — minor misspellings are corrected automatically.
 
@@ -205,29 +205,33 @@ Fuzzy/typo tolerance is on by default — minor misspellings are corrected autom
 
 ### Env vars
 
-| Var | Purpose |
-|-----|---------|
-| `MANTICORE_URL` | Manticore HTTP endpoint (default `http://localhost:9308`) |
-| `SEARCH_RECONCILE_INTERVAL_MS` | Reconciler tick interval in ms (default 2000) |
-| `SEARCH_RECONCILE_BATCH` | Max rows re-indexed per tick (default 50) |
+| Var                            | Purpose                                                   |
+| ------------------------------ | --------------------------------------------------------- |
+| `MANTICORE_URL`                | Manticore HTTP endpoint (default `http://localhost:9308`) |
+| `SEARCH_RECONCILE_INTERVAL_MS` | Reconciler tick interval in ms (default 2000)             |
+| `SEARCH_RECONCILE_BATCH`       | Max rows re-indexed per tick (default 50)                 |
 
 ## Routes
 
 Public:
+
 - `/` — staff portal landing page (links to `/login`)
 - `/login`, `/logout` — staff sign-in
 - `/healthz`, `/readyz` — process / dependency probes
 
 Role-gated (`admin` | `cfd_worker`):
+
 - `/submissions` — sortable, paginated table
 - `/submissions/[uuid]` — read-only detail view with inline PDF/image preview
 - `/attachments/[id]` — streamed file (inline preview by default; `?download=1` forces attachment disposition)
 
 Role-gated (`admin`):
+
 - `/admin` — seed/clear database tooling
 - `/admin/ocr` — OCR queue: status counts, halt banner, requeue/abandon failed jobs, resume halted queue
 
 Role-gated (`clinician`):
+
 - `/clinician` — Phase 2 stub; assignment workflows land in Phase 4
 
 ## Notes

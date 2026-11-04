@@ -1,11 +1,16 @@
 export interface FormioConditional {
-  show?: boolean | null;
-  when?: string | null;
-  eq?: string;
+	show?: boolean | null;
+	when?: string | null;
+	eq?: string;
 }
 
 export function getByPath(state: Record<string, unknown>, path: string): unknown {
-  return path.split('.').reduce<any>((acc, k) => (acc == null ? undefined : acc[k]), state);
+	return path
+		.split('.')
+		.reduce<unknown>(
+			(acc, k) => (acc == null ? undefined : (acc as Record<string, unknown>)[k]),
+			state
+		);
 }
 
 /**
@@ -13,12 +18,12 @@ export function getByPath(state: Record<string, unknown>, path: string): unknown
  * If `when` and `show` are both set, the field is shown iff string-equals(state[when], eq) === show.
  */
 export function evaluateConditional(
-  cond: FormioConditional | undefined,
-  state: Record<string, unknown>
+	cond: FormioConditional | undefined,
+	state: Record<string, unknown>
 ): boolean {
-  if (!cond) return true;
-  if (cond.show == null || !cond.when) return true;
-  const actual = getByPath(state, cond.when);
-  const matches = String(actual) === String(cond.eq ?? '');
-  return cond.show ? matches : !matches;
+	if (!cond) return true;
+	if (cond.show == null || !cond.when) return true;
+	const actual = getByPath(state, cond.when);
+	const matches = String(actual) === String(cond.eq ?? '');
+	return cond.show ? matches : !matches;
 }

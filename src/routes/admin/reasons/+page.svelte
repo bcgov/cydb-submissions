@@ -18,7 +18,7 @@
 		</p>
 	</div>
 
-	{#if form?.success && (form?.action === 'addAccept' || form?.action === 'editAccept' || form?.action === 'setActiveAccept') }
+	{#if form?.success && (form?.action === 'addAccept' || form?.action === 'editAccept' || form?.action === 'setActiveAccept')}
 		<p
 			role="status"
 			class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800"

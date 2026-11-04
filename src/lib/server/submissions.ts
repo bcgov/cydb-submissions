@@ -111,7 +111,7 @@ export async function writeInvalidSubmission(
 		.values({
 			submissionUuid: args.submissionUuid,
 			rawPayload: args.rawPayload,
-			validationErrors: args.validationErrors as any,
+			validationErrors: args.validationErrors,
 			ipAddress: args.ipAddress,
 			userAgent: args.userAgent
 		})

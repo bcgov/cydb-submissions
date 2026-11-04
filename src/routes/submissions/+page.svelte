@@ -13,6 +13,7 @@
 	// keyboard-accessible path). Don't navigate when the user is selecting text.
 	function rowHref(uuid: string, isInvalid = false) {
 		const base = isInvalid ? `/submissions/invalid/${uuid}` : `/submissions/${uuid}`;
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient copy, never held as state
 		const params = new URLSearchParams(page.url.searchParams);
 		if (!params.has('sort')) params.set('sort', 'date');
 		if (!params.has('order')) params.set('order', 'desc');
@@ -25,6 +26,7 @@
 	}
 
 	function sortHref(col: string) {
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient copy, never held as state
 		const params = new URLSearchParams(page.url.searchParams);
 		const currentSort = params.get('sort') ?? 'date';
 		const currentOrder = params.get('order') ?? 'desc';
@@ -35,12 +37,14 @@
 	}
 
 	function pageHref(p: number) {
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient copy, never held as state
 		const params = new URLSearchParams(page.url.searchParams);
 		params.set('page', String(p));
 		return `?${params.toString()}`;
 	}
 
 	function statusFilterHref(value: string) {
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient copy, never held as state
 		const params = new URLSearchParams(page.url.searchParams);
 		params.set('status', value);
 		params.set('page', '1');
@@ -48,6 +52,7 @@
 	}
 
 	function searchClearHref() {
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient copy, never held as state
 		const params = new URLSearchParams(page.url.searchParams);
 		params.delete('q');
 		params.set('page', '1');
@@ -76,20 +81,20 @@
 		{ value: 'provisionally eligible', label: 'Provisionally eligible' },
 		{ value: 'opt-out', label: 'Opt-Out' },
 		{ value: 'OCR Error', label: 'OCR Error' },
-		{ value: 'OCR queued', label: 'OCR Queued'},
+		{ value: 'OCR queued', label: 'OCR Queued' },
 		{ value: 'duplicate', label: 'Duplicate' }
 	];
 </script>
 
 <div class="p-6">
-	<h1 class="mb-4 mx-auto max-w-3xl text-2xl font-semibold">Submissions</h1>
+	<h1 class="mx-auto mb-4 max-w-3xl text-2xl font-semibold">Submissions</h1>
 
-	<form method="GET" class="mb-4 mx-auto max-w-3xl flex items-center gap-2">
+	<form method="GET" class="mx-auto mb-4 flex max-w-3xl items-center gap-2">
 		<input
 			type="search"
 			name="q"
 			value={data.query.q}
-			placeholder={'Search all fields — try aut*, "speech delay", @ocr_text vineland'}
+			placeholder="Search all fields — try aut*, &quot;speech delay&quot;, @ocr_text vineland"
 			class="w-full max-w-xl rounded border border-gray-300 px-3 py-2 text-sm"
 			aria-label="Search submissions"
 		/>
@@ -118,19 +123,21 @@
 	</form>
 
 	{#if data.searchError}
-		<p class="mb-4 mx-auto max-w-3xl rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">
+		<p
+			class="mx-auto mb-4 max-w-3xl rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800"
+		>
 			Invalid search query: {data.searchError}
 		</p>
 	{/if}
 	{#if hasQuery && !data.searchError}
-		<p class="mb-2 mx-auto max-w-3xl text-sm text-gray-600">
+		<p class="mx-auto mb-2 max-w-3xl text-sm text-gray-600">
 			{data.total} result{data.total === 1 ? '' : 's'} for "{data.query.q}", ranked by relevance.
 		</p>
 	{/if}
 
-	<div class="mb-4 mx-auto max-w-5xl flex flex-wrap gap-2">
+	<div class="mx-auto mb-4 flex max-w-5xl flex-wrap gap-2">
 		{#if data.showStatusFilter}
-			{#each filterOptions as opt}
+			{#each filterOptions as opt (opt.value)}
 				<a
 					href={statusFilterHref(opt.value)}
 					class="rounded border px-3 py-1 text-sm {data.query.statusFilter === opt.value
@@ -159,13 +166,22 @@
 		<Table.Body>
 			{#each data.rows as row (row.uuid)}
 				{@const isInvalid = 'isInvalidSubmission' in row && row.isInvalidSubmission}
-				<Table.Row class="cursor-pointer hover:bg-muted/50" onclick={() => openRow(row.uuid, isInvalid)}>
+				<Table.Row
+					class="cursor-pointer hover:bg-muted/50"
+					onclick={() => openRow(row.uuid, isInvalid)}
+				>
 					<Table.Cell class="whitespace-nowrap">{formatDate(row.submittedAt)}</Table.Cell>
-					<Table.Cell class="whitespace-nowrap">{row.childYouthFirstName} {row.childYouthLastName}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap"
+						>{row.childYouthFirstName} {row.childYouthLastName}</Table.Cell
+					>
 					<Table.Cell class="whitespace-nowrap">{row.surname ?? '—'}</Table.Cell>
 					<Table.Cell class="whitespace-nowrap">{row.screening}</Table.Cell>
-					<Table.Cell class="whitespace-nowrap">{isInvalid ? row.attachmentCount : row.assessments?.length ?? 0}</Table.Cell>
-					<Table.Cell class="whitespace-nowrap"><StatusBadge status={row.status as never} /></Table.Cell>
+					<Table.Cell class="whitespace-nowrap"
+						>{isInvalid ? row.attachmentCount : (row.assessments?.length ?? 0)}</Table.Cell
+					>
+					<Table.Cell class="whitespace-nowrap"
+						><StatusBadge status={row.status as never} /></Table.Cell
+					>
 					<Table.Cell class="whitespace-nowrap">{row.total}</Table.Cell>
 					<Table.Cell>
 						<a class="text-blue-700 underline" href={rowHref(row.uuid, isInvalid)}>View</a>
@@ -174,21 +190,33 @@
 				{#if hasQuery && 'snippet' in row && row.snippet}
 					<Table.Row>
 						<Table.Cell colspan={7}>
+							<!-- eslint-disable svelte/no-at-html-tags -- escaped by sanitizeSnippet -->
 							<span class="text-xs text-gray-600"
 								>…{@html sanitizeSnippet(String(row.snippet))}…</span
 							>
+							<!-- eslint-enable svelte/no-at-html-tags -->
 						</Table.Cell>
 					</Table.Row>
 				{/if}
 			{/each}
 			{#each data.invalidRows as row (row.uuid)}
-				<Table.Row class="cursor-pointer hover:bg-muted/50" onclick={() => goto(rowHref(row.uuid, true))}>
+				<Table.Row
+					class="cursor-pointer hover:bg-muted/50"
+					onclick={() => goto(rowHref(row.uuid, true))}
+				>
 					<Table.Cell class="whitespace-nowrap">{formatDate(row.receivedAt)}</Table.Cell>
-					<Table.Cell class="whitespace-nowrap">{row.childYouthFirstName}{row.childYouthLastName === '—' && row.childYouthFirstName === '—' ? '' : ' ' + row.childYouthLastName}</Table.Cell>
+					<Table.Cell class="whitespace-nowrap"
+						>{row.childYouthFirstName}{row.childYouthLastName === '—' &&
+						row.childYouthFirstName === '—'
+							? ''
+							: ' ' + row.childYouthLastName}</Table.Cell
+					>
 					<Table.Cell class="whitespace-nowrap">{row.surname}</Table.Cell>
 					<Table.Cell class="whitespace-nowrap">{row.screening}</Table.Cell>
 					<Table.Cell class="whitespace-nowrap">{row.assessments}</Table.Cell>
-					<Table.Cell class="whitespace-nowrap"><StatusBadge status={'invalid' as never} /></Table.Cell>
+					<Table.Cell class="whitespace-nowrap"
+						><StatusBadge status={'invalid' as never} /></Table.Cell
+					>
 					<Table.Cell>—</Table.Cell>
 					<Table.Cell
 						><a class="text-blue-700 underline" href={rowHref(row.uuid, true)}>View</a></Table.Cell

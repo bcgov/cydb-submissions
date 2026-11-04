@@ -33,14 +33,17 @@ Deduplicate concurrent requests for the same expensive thing:
 ```ts
 let inflight: Promise<T> | null = null;
 async function get() {
-  if (cachedAndFresh()) return cached;
-  if (inflight) return inflight;
-  inflight = doExpensiveThing().finally(() => { inflight = null; });
-  return inflight;
+	if (cachedAndFresh()) return cached;
+	if (inflight) return inflight;
+	inflight = doExpensiveThing().finally(() => {
+		inflight = null;
+	});
+	return inflight;
 }
 ```
 
 Used by:
+
 - `ChesTokenCache.token()` and `KongTokenCache.token()` — OAuth2 token refresh
 - (implicitly) the OCR lease loop, by virtue of `setInterval` not overlapping its own ticks if you await within the callback
 
@@ -51,16 +54,16 @@ Don't reach for promise libraries here — this is the whole pattern.
 Persistent halt state lives in the `system_state` table. Workers check before each tick:
 
 ```ts
-if (getSystemState(db, 'ocr.halted')) return;  // skip this tick
+if (getSystemState(db, 'ocr.halted')) return; // skip this tick
 ```
 
 Setting the halt:
 
 ```ts
 setSystemState(db, 'ocr.halted', {
-  trippedAt: new Date().toISOString(),
-  threshold: opts.breakerThreshold,
-  lastErrorClass: err.name
+	trippedAt: new Date().toISOString(),
+	threshold: opts.breakerThreshold,
+	lastErrorClass: err.name
 });
 ```
 
@@ -90,7 +93,7 @@ if (next >= opts.breakerThreshold) {
 setSystemState(db, 'ocr.failureCount', 0);
 ```
 
-Threshold is configurable (`OCR_FAILURE_BREAKER`, default 4 for OCR; CHEFS uses the same idea). The breaker counts *terminal* failures (the job has exhausted its retries), not per-attempt failures.
+Threshold is configurable (`OCR_FAILURE_BREAKER`, default 4 for OCR; CHEFS uses the same idea). The breaker counts _terminal_ failures (the job has exhausted its retries), not per-attempt failures.
 
 ### Lease loop
 
@@ -113,6 +116,7 @@ setInterval(tick, opts.pollIntervalMs);
 ```
 
 `acquireLease` is the atomic bit. In `src/lib/server/ocr/lease.ts` it's a transaction that:
+
 1. SELECTs the oldest `status='queued'` row where `next_attempt_at <= CURRENT_TIMESTAMP`.
 2. UPDATEs it to `status='processing'`, `leased_at=now`, `leased_by=<worker id>`.
 3. Returns the row (or `undefined` if none matched).
@@ -122,6 +126,7 @@ The transaction means a second hypothetical worker can't lease the same row. Wit
 ## The OCR worker
 
 ### Files
+
 - `src/lib/server/ocr/worker.ts` — `startWorker()` returns a `WorkerHandle { stop() }`
 - `src/lib/server/ocr/lease.ts` — `acquireLease`, `recordSuccess`, `recordFailure`
 - `src/lib/server/ocr/process-job.ts` — the actual OCR call + status transitions + keyword evaluation
@@ -156,25 +161,25 @@ The transaction means a second hypothetical worker can't lease the same row. Wit
 After the OCR transaction commits (so `ocr_results` is visible in SQLite), `processJob` fires an `onIndexed` hook wired in `src/hooks.server.ts`:
 
 ```ts
-onIndexed: (id) => indexSubmission(db, getSearchClient(), id)
+onIndexed: (id) => indexSubmission(db, getSearchClient(), id);
 ```
 
 This pushes the submission immediately to the Manticore sidecar so its OCR text is searchable without waiting for the next reconciler tick. The push is **best-effort**: a Manticore failure is caught, logged, and never rethrown — OCR processing is unaffected. Because `search_indexed_at` stays `NULL` on failure, the reconciler heals it on its next pass.
 
 ### Configuration
 
-| Env var | Default | Purpose |
-|---|---|---|
-| `OCR_WORKER_ENABLED` | unset | Set to `'1'` to start the worker |
-| `OCR_PROVIDER` | `stub` | One of `stub`, `stub-fail`, `stub-flaky`, `bcgov-di`, `kong-ms-di` |
-| `OCR_MAX_CONCURRENCY` | `1` | In-flight jobs (capped at 4) |
-| `OCR_MAX_ATTEMPTS` | `3` | Per-job retry budget |
-| `OCR_FAILURE_BREAKER` | `4` | Terminal failures before halting |
-| `OCR_POLL_INTERVAL_MS` | `1000` | Tick interval |
-| `OCR_MODEL_ID` | `prebuilt-read` | Azure DI model id (passed through to providers) |
-| `AZURE_DI_API_VERSION` | `2024-11-30` | Only used by `kong-ms-di` |
-| `OCR_ALERT_FROM` | `cydb-noreply@gov.bc.ca` | From-address for halt alerts |
-| `OCR_ALERT_RECIPIENTS` | empty | Comma-separated; empty = log-only (no mail attempt) |
+| Env var                | Default                  | Purpose                                                            |
+| ---------------------- | ------------------------ | ------------------------------------------------------------------ |
+| `OCR_WORKER_ENABLED`   | unset                    | Set to `'1'` to start the worker                                   |
+| `OCR_PROVIDER`         | `stub`                   | One of `stub`, `stub-fail`, `stub-flaky`, `bcgov-di`, `kong-ms-di` |
+| `OCR_MAX_CONCURRENCY`  | `1`                      | In-flight jobs (capped at 4)                                       |
+| `OCR_MAX_ATTEMPTS`     | `3`                      | Per-job retry budget                                               |
+| `OCR_FAILURE_BREAKER`  | `4`                      | Terminal failures before halting                                   |
+| `OCR_POLL_INTERVAL_MS` | `1000`                   | Tick interval                                                      |
+| `OCR_MODEL_ID`         | `prebuilt-read`          | Azure DI model id (passed through to providers)                    |
+| `AZURE_DI_API_VERSION` | `2024-11-30`             | Only used by `kong-ms-di`                                          |
+| `OCR_ALERT_FROM`       | `cydb-noreply@gov.bc.ca` | From-address for halt alerts                                       |
+| `OCR_ALERT_RECIPIENTS` | empty                    | Comma-separated; empty = log-only (no mail attempt)                |
 
 Provider-specific env vars are documented in each provider section below.
 
@@ -195,11 +200,13 @@ This is what powers the Playwright OCR happy-path test and local-dev OCR.
 In `src/lib/server/ocr/provider-bcgov-di.ts`. The BC Gov AI Adoption team hosts a "Document Intelligence backend" — a REST service that fronts Azure DI with a simplified workflow API.
 
 Flow (three HTTP calls):
+
 1. `POST {baseUrl}/api/upload` with the file as multipart, `workflow_slug` parameter. Returns `{ document_id }`.
 2. Poll `GET {baseUrl}/api/documents/<id>` until `status === 'completed'`. Header: `x-api-key: <BCGOV_DI_API_KEY>`.
 3. `GET {baseUrl}/api/documents/<id>/ocr` to fetch the extracted text.
 
 Env vars:
+
 - `BCGOV_DI_BASE_URL` — backend URL (test: `https://bcgov-di-test-backend-fd34fb-test.apps.silver.devops.gov.bc.ca`; prod URL TBD when issued)
 - `BCGOV_DI_API_KEY` — group-scoped key from the AI Adoption team; secret
 - `BCGOV_DI_WORKFLOW_SLUG` — `ocr-only-minimal` by default; check with the team if you need others
@@ -211,10 +218,12 @@ The `x-api-key` header is added to the pino redactor's allowlist so it never lea
 In `src/lib/server/ocr/provider-kong-msdi.ts`. Uses the BC Gov Kong API gateway → Azure Document Intelligence directly. OAuth2 client_credentials for auth (`KongTokenCache` in `src/lib/server/ocr/kong-token.ts`).
 
 Flow (two HTTP calls):
+
 1. `POST {KONG_BASE_URL}/formrecognizer/documentModels/<modelId>:analyze` with the file bytes. Returns 202 + `operation-location` header.
 2. Poll the `operation-location` URL until `status === 'succeeded'`. Pulls the result from the response body.
 
 Env vars:
+
 - `KONG_BASE_URL` — e.g. `https://api.gov.bc.ca/document-intelligence`
 - `KONG_TOKEN_URL` — OAuth2 token endpoint
 - `KONG_CLIENT_ID` / `KONG_CLIENT_SECRET` — secret
@@ -232,6 +241,7 @@ If `OCR_ALERT_RECIPIENTS` is empty, the mail call is skipped entirely — the ha
 ## The CHEFS poller
 
 ### Files
+
 - `src/lib/server/chefs/poller.ts` — `startPoller()` returns a `PollerHandle`
 - `src/lib/server/chefs/config.ts` — `getEffectiveConfig` resolves env > DB
 - `src/lib/server/chefs/client.ts` — `listSubmissions`, `downloadFile` against CHEFS export API
@@ -244,6 +254,7 @@ If `OCR_ALERT_RECIPIENTS` is empty, the mail call is skipped entirely — the ha
 CHEFS (Common Hosted Forms Service) is BC Gov's form-hosting platform. Our public form is hosted there. CHEFS exposes an export API (`GET /forms/{formId}/submissions`) that returns recently-submitted forms in JSON. The poller pulls this, downloads any file references, and writes everything into our database.
 
 Each tick:
+
 1. Check `chefs.halted`. Skip if set.
 2. Resolve effective config: env vars override DB-stored config row-by-row (see `getEffectiveConfig`).
 3. `listSubmissions(cfg)` → array of new submission IDs.
@@ -267,21 +278,22 @@ CHEFS config is stored in **two places**: the `system_state` row (`chefs.config`
 
 Env vars:
 
-| Env var | Purpose |
-|---|---|
-| `CHEFS_FORM_ID` | UUID of the form on CHEFS |
-| `CHEFS_API_TOKEN` | Bearer token for the CHEFS API; secret |
-| `CHEFS_VERSION` | `0` for "all versions" (CHEFS default) |
-| `CHEFS_BASE_URL` | Default `https://submit.digital.gov.bc.ca`; validated by `isAllowedChefsBaseUrl` on admin save |
-| `CHEFS_FILE_COMPONENTS` | Comma-separated form-component keys that hold file uploads (default `simplefile`) |
-| `CHEFS_API_PARAMS` | JSON object of extra export filter params (e.g. `{"status":"COMPLETED"}`) |
-| `CHEFS_POLLER_ENABLED` | `1` to start the poller |
-| `CHEFS_POLL_INTERVAL_MS` | Poll cadence in ms (default 60000) |
-| `CHEFS_INGEST_ONLY` | (Legacy) when `1`, blocks the public form route — kept only for the dormant archive code path |
+| Env var                  | Purpose                                                                                        |
+| ------------------------ | ---------------------------------------------------------------------------------------------- |
+| `CHEFS_FORM_ID`          | UUID of the form on CHEFS                                                                      |
+| `CHEFS_API_TOKEN`        | Bearer token for the CHEFS API; secret                                                         |
+| `CHEFS_VERSION`          | `0` for "all versions" (CHEFS default)                                                         |
+| `CHEFS_BASE_URL`         | Default `https://submit.digital.gov.bc.ca`; validated by `isAllowedChefsBaseUrl` on admin save |
+| `CHEFS_FILE_COMPONENTS`  | Comma-separated form-component keys that hold file uploads (default `simplefile`)              |
+| `CHEFS_API_PARAMS`       | JSON object of extra export filter params (e.g. `{"status":"COMPLETED"}`)                      |
+| `CHEFS_POLLER_ENABLED`   | `1` to start the poller                                                                        |
+| `CHEFS_POLL_INTERVAL_MS` | Poll cadence in ms (default 60000)                                                             |
+| `CHEFS_INGEST_ONLY`      | (Legacy) when `1`, blocks the public form route — kept only for the dormant archive code path  |
 
 ### baseUrl SSRF allowlist
 
 `/admin/chefs ?/save` validates the baseUrl with `isAllowedChefsBaseUrl(...)` before writing it to the DB. Allowed:
+
 - `https://` only (no HTTP)
 - Hostname must be `gov.bc.ca` or a `*.gov.bc.ca` subdomain
 - Rejected: RFC1918 ranges, loopback, link-local, AWS metadata IP, `kubernetes.default[.svc]`, suffix-spoofs
@@ -291,6 +303,7 @@ This means an admin can't accidentally (or maliciously) point the poller at an i
 ### Admin actions
 
 `/admin/chefs` exposes:
+
 - `save` — write a new config to `system_state.chefs.config`
 - `rotateToken` — rotate the stored API token (the admin pastes a fresh one)
 - `test` — `listSubmissions(cfg)` once to verify connectivity
@@ -302,6 +315,7 @@ This means an admin can't accidentally (or maliciously) point the poller at an i
 ## The search reconciler
 
 ### Files
+
 - `src/lib/server/search/reconciler.ts` — `startReconciler()` returns a `ReconcilerHandle { stop() }`
 - `src/lib/server/search/indexer.ts` — `indexSubmission(db, client, id)` — single-row push to Manticore
 - `src/lib/server/search/instance.ts` — `getSearchClient()` — shared Manticore client
@@ -338,10 +352,10 @@ maybeStartSearch():
 
 ### Configuration
 
-| Env var | Default | Purpose |
-|---|---|---|
-| `SEARCH_RECONCILE_INTERVAL_MS` | `2000` | Tick cadence |
-| `SEARCH_RECONCILE_BATCH` | `50` | Max rows indexed per tick |
+| Env var                        | Default | Purpose                   |
+| ------------------------------ | ------- | ------------------------- |
+| `SEARCH_RECONCILE_INTERVAL_MS` | `2000`  | Tick cadence              |
+| `SEARCH_RECONCILE_BATCH`       | `50`    | Max rows indexed per tick |
 
 The Manticore sidecar address (`localhost:9308`) is currently compiled in. See `80-deployment.md` for sidecar provisioning and `30-architecture.md` for the full-text index design.
 
@@ -354,6 +368,7 @@ Manticore failures are logged and swallowed — they never affect SQLite or OCR 
 CHES (Common Hosted Email Service) is BC Gov's REST API wrapping `nodemailer`, behind Keycloak OAuth2 for auth. We use it to send halt alerts.
 
 ### Files
+
 - `src/lib/server/mail/ches-token.ts` — `ChesTokenCache` (OAuth2 client_credentials with skew)
 - `src/lib/server/mail/mailer-ches.ts` — `ChesMailer` (POST `{baseUrl}/email`)
 - `src/lib/server/mail/select-mailer.ts` — `selectMailer(env, logger)` → `Mailer`
@@ -363,11 +378,13 @@ CHES (Common Hosted Email Service) is BC Gov's REST API wrapping `nodemailer`, b
 ### Token flow
 
 `ChesTokenCache.token()`:
+
 1. If cached and not within `skewSeconds` (default 30) of expiry, return cached value.
 2. If a refresh is in-flight, await the same promise.
 3. Otherwise, POST `client_credentials` to `CHES_TOKEN_URL`, parse `{ access_token, expires_in }`, cache, return.
 
 The form is URL-encoded:
+
 ```
 grant_type=client_credentials&client_id=<CHES_CLIENT_ID>&client_secret=<CHES_CLIENT_SECRET>
 ```
@@ -375,30 +392,33 @@ grant_type=client_credentials&client_id=<CHES_CLIENT_ID>&client_secret=<CHES_CLI
 ### Send flow
 
 `ChesMailer.send(msg)`:
+
 1. `token = await tokenCache.token()`
 2. `POST ${baseUrl}/email` with `Authorization: Bearer ${token}`, content-type JSON, body:
+
 ```json
 {
-  "from": "cydb-noreply@gov.bc.ca",
-  "to": ["ops@gov.bc.ca"],
-  "subject": "OCR queue halted",
-  "bodyType": "text",
-  "body": "..."
+	"from": "cydb-noreply@gov.bc.ca",
+	"to": ["ops@gov.bc.ca"],
+	"subject": "OCR queue halted",
+	"bodyType": "text",
+	"body": "..."
 }
 ```
+
 3. Non-2xx → throw with the response body included (truncated to 200 chars).
 
 `bodyType: 'text'` is deliberate. CHES docs warn that HTML triggers BC Gov-internal spam filters; plain text bypasses them.
 
 ### Configuration
 
-| Env var | Default | Purpose |
-|---|---|---|
-| `MAIL_TRANSPORT` | `log` | `log` (no send), `ches`, or `smtp` (stub) |
-| `CHES_BASE_URL` | `https://ches.api.gov.bc.ca/api/v1` | The REST endpoint |
-| `CHES_TOKEN_URL` | unset | Keycloak token endpoint (typically `https://loginproxy.gov.bc.ca/auth/realms/comsvcauth/protocol/openid-connect/token`) |
-| `CHES_CLIENT_ID` | unset | Service-account client id; secret |
-| `CHES_CLIENT_SECRET` | unset | Service-account secret; secret |
+| Env var              | Default                             | Purpose                                                                                                                 |
+| -------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `MAIL_TRANSPORT`     | `log`                               | `log` (no send), `ches`, or `smtp` (stub)                                                                               |
+| `CHES_BASE_URL`      | `https://ches.api.gov.bc.ca/api/v1` | The REST endpoint                                                                                                       |
+| `CHES_TOKEN_URL`     | unset                               | Keycloak token endpoint (typically `https://loginproxy.gov.bc.ca/auth/realms/comsvcauth/protocol/openid-connect/token`) |
+| `CHES_CLIENT_ID`     | unset                               | Service-account client id; secret                                                                                       |
+| `CHES_CLIENT_SECRET` | unset                               | Service-account secret; secret                                                                                          |
 
 Note the realm difference: CHES service accounts are in `comsvcauth`, not `standard`. Sign-in users are in `standard`. Two different realms, two different sets of credentials.
 
@@ -453,6 +473,7 @@ process.exit(0)
 ### Why lazy start?
 
 `maybeStartOcrWorker`, `maybeStartChefsPoller`, and `maybeStartSearch` run **on the first HTTP request**, not at module load. Reasons:
+
 - During test runs, `vitest` imports the module without starting workers. Workers only start when a request comes in (and tests don't make requests against the live hook chain).
 - The startup is async and includes a `loadKeywords()` file-read; doing it on first request defers the work to when it's actually needed.
 - The `workerStarted` / `pollerStarted` / `searchStarted` flags ensure exactly-once start despite the first-request race.

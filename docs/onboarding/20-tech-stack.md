@@ -3,31 +3,32 @@
 You came in with web + Node + TypeScript fluency. This file fills the Svelte-shaped hole. You don't need a complete Svelte course to be productive here — you need enough to read and modify the patterns this codebase already uses. That's what this file is.
 
 External docs to keep in tabs:
+
 - **Svelte 5** — https://svelte.dev/docs/svelte
 - **SvelteKit** — https://svelte.dev/docs/kit
 - **shadcn-svelte** — https://shadcn-svelte.com
 - **bits-ui** (the headless primitives under shadcn-svelte) — https://bits-ui.com
 - **Tailwind CSS 4** — https://tailwindcss.com/docs
 
-Below is what you need to know to navigate *this repo*, in the order that's likely to matter.
+Below is what you need to know to navigate _this repo_, in the order that's likely to matter.
 
 ## 1. The mental model: Svelte vs. React
 
 If you're coming from React, every reflex maps to something, but the names differ. The biggest conceptual shift is that **Svelte is a compiler**: your `.svelte` file is transformed at build time into vanilla JS, not interpreted at runtime. Reactivity is a language feature, not a hook.
 
-| React concept | Svelte 5 equivalent in this repo |
-|---|---|
-| Function component | `*.svelte` file |
-| `useState(x)` | `let x = $state(initial)` |
-| `useMemo(() => …)` | `let x = $derived(…)` |
-| `useEffect(() => …, [deps])` | `$effect(() => …)` |
-| Props (`function C({ foo })`) | `let { foo }: { foo: T } = $props()` |
-| Conditional render `{ x && <A/> }` | `{#if x}<A />{/if}` |
-| List render `xs.map(...)` | `{#each xs as x (x.id)}…{/each}` |
-| Event handler `onClick={fn}` | `onclick={fn}` (lowercase; native DOM event names) |
-| `dangerouslySetInnerHTML` | `{@html ...}` — **avoid; we don't use it** |
-| Context | Svelte's `setContext` / `getContext` — we don't use it in this repo |
-| Children | `import('svelte').Snippet` typed slot; `{@render children()}` |
+| React concept                      | Svelte 5 equivalent in this repo                                    |
+| ---------------------------------- | ------------------------------------------------------------------- |
+| Function component                 | `*.svelte` file                                                     |
+| `useState(x)`                      | `let x = $state(initial)`                                           |
+| `useMemo(() => …)`                 | `let x = $derived(…)`                                               |
+| `useEffect(() => …, [deps])`       | `$effect(() => …)`                                                  |
+| Props (`function C({ foo })`)      | `let { foo }: { foo: T } = $props()`                                |
+| Conditional render `{ x && <A/> }` | `{#if x}<A />{/if}`                                                 |
+| List render `xs.map(...)`          | `{#each xs as x (x.id)}…{/each}`                                    |
+| Event handler `onClick={fn}`       | `onclick={fn}` (lowercase; native DOM event names)                  |
+| `dangerouslySetInnerHTML`          | `{@html ...}` — **avoid; we don't use it**                          |
+| Context                            | Svelte's `setContext` / `getContext` — we don't use it in this repo |
+| Children                           | `import('svelte').Snippet` typed slot; `{@render children()}`       |
 
 Things that don't have direct React analogues:
 
@@ -41,25 +42,26 @@ Here's a complete component you might write in this repo:
 
 ```svelte
 <script lang="ts">
-  import { Button } from '$lib/components/ui/button';
+	import { Button } from '$lib/components/ui/button';
 
-  let { count = 0, onChange }: { count?: number; onChange?: (n: number) => void } = $props();
-  let local = $state(count);
-  let doubled = $derived(local * 2);
+	let { count = 0, onChange }: { count?: number; onChange?: (n: number) => void } = $props();
+	let local = $state(count);
+	let doubled = $derived(local * 2);
 
-  function increment() {
-    local += 1;
-    onChange?.(local);
-  }
+	function increment() {
+		local += 1;
+		onChange?.(local);
+	}
 </script>
 
 <div class="space-y-2">
-  <p>count: {local} · doubled: {doubled}</p>
-  <Button type="button" onclick={increment}>+1</Button>
+	<p>count: {local} · doubled: {doubled}</p>
+	<Button type="button" onclick={increment}>+1</Button>
 </div>
 ```
 
 Things to notice:
+
 - `lang="ts"` enables TypeScript.
 - Props are destructured from `$props()` with a TS type annotation.
 - `$state` makes a local variable reactive — assigning to it re-renders dependent DOM.
@@ -72,16 +74,16 @@ Things to notice:
 
 SvelteKit reads `src/routes/` and maps it to URLs. **Folder = route segment**, file name = role. The role determines whether the file runs on server, client, or both.
 
-| File | What it is | Where it runs |
-|---|---|---|
-| `+page.svelte` | The visual component for this route | Both — SSR on first hit, hydrates client-side |
-| `+page.server.ts` | Server-side `load` function + form actions | Server only. Use for DB queries, secrets, auth. |
-| `+page.ts` | Universal `load` function | Server + client. Don't put secrets here. We barely use this. |
-| `+layout.svelte` | Wraps all child routes | Both |
-| `+layout.server.ts` | Layout-level server load (runs for every nested route) | Server only |
-| `+server.ts` | An HTTP endpoint that's *not* a page (returns JSON, streams, downloads) | Server only |
-| `+error.svelte` | Custom error page for this branch of the tree | Both |
-| `hooks.server.ts` | Top-level request middleware ("handles") | Server only — see `30-architecture.md` |
+| File                | What it is                                                              | Where it runs                                                |
+| ------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `+page.svelte`      | The visual component for this route                                     | Both — SSR on first hit, hydrates client-side                |
+| `+page.server.ts`   | Server-side `load` function + form actions                              | Server only. Use for DB queries, secrets, auth.              |
+| `+page.ts`          | Universal `load` function                                               | Server + client. Don't put secrets here. We barely use this. |
+| `+layout.svelte`    | Wraps all child routes                                                  | Both                                                         |
+| `+layout.server.ts` | Layout-level server load (runs for every nested route)                  | Server only                                                  |
+| `+server.ts`        | An HTTP endpoint that's _not_ a page (returns JSON, streams, downloads) | Server only                                                  |
+| `+error.svelte`     | Custom error page for this branch of the tree                           | Both                                                         |
+| `hooks.server.ts`   | Top-level request middleware ("handles")                                | Server only — see `30-architecture.md`                       |
 
 A few examples from this repo:
 
@@ -105,10 +107,10 @@ import { db } from '$lib/server/db';
 import { submissions } from '$lib/server/db/schema';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-  // 'locals' is the typed object populated by hooks.server.ts.
-  // 'url' is the parsed request URL.
-  const rows = await db.select().from(submissions).limit(50);
-  return { submissions: rows };
+	// 'locals' is the typed object populated by hooks.server.ts.
+	// 'url' is the parsed request URL.
+	const rows = await db.select().from(submissions).limit(50);
+	return { submissions: rows };
 };
 ```
 
@@ -116,12 +118,12 @@ In the matching `+page.svelte`:
 
 ```svelte
 <script lang="ts">
-  import type { PageData } from './$types';
-  let { data }: { data: PageData } = $props();
+	import type { PageData } from './$types';
+	let { data }: { data: PageData } = $props();
 </script>
 
 {#each data.submissions as s (s.id)}
-  <a href="/submissions/{s.submissionUuid}">{s.submitterSurname}</a>
+	<a href="/submissions/{s.submissionUuid}">{s.submitterSurname}</a>
 {/each}
 ```
 
@@ -154,20 +156,20 @@ The matching markup in the `+page.svelte`:
 
 ```svelte
 <form method="POST" action="?/seed" use:enhance>
-  <input type="hidden" name="csrf" value={data.csrfToken} />
-  <Button type="submit">Seed mock data</Button>
+	<input type="hidden" name="csrf" value={data.csrfToken} />
+	<Button type="submit">Seed mock data</Button>
 </form>
 ```
 
 The `use:enhance` directive (imported from `$app/forms`) progressively enhances the form so a JS-enabled browser submits it without a full page reload. **It still works without JS** — that's the point of form actions vs. fetch.
 
-Default action: if you `actions: { default: async () => { … } }` (no name), the form's `action` attribute is just `""`. **You can't have a `default` action *alongside* named actions** — SvelteKit forbids it. The login page hit this; that's why our email/password action is named `password` instead of `default`.
+Default action: if you `actions: { default: async () => { … } }` (no name), the form's `action` attribute is just `""`. **You can't have a `default` action _alongside_ named actions** — SvelteKit forbids it. The login page hit this; that's why our email/password action is named `password` instead of `default`.
 
 Return values: an action can return `{ ... }` (becomes `form` data on the page), `fail(status, { … })` (also becomes `form` data, with `status` set), or `throw redirect(303, …)`.
 
 ## 6. Hooks (server-side middleware)
 
-`src/hooks.server.ts` is where every request enters. The `handle` export is a chain (built with `sequence(...)`) of *handle* functions, each of which receives `{ event, resolve }` and returns the response. Each handle can:
+`src/hooks.server.ts` is where every request enters. The `handle` export is a chain (built with `sequence(...)`) of _handle_ functions, each of which receives `{ event, resolve }` and returns the response. Each handle can:
 
 - Mutate `event.locals.*` (`event.locals.user`, `event.locals.roles`, `event.locals.logger`, etc.)
 - Reject the request (return a 4xx Response, or throw `error()` / `redirect()`)
@@ -175,6 +177,7 @@ Return values: an action can return `{ ... }` (becomes `form` data on the page),
 - Post-process the response after `resolve` returns
 
 Our chain in order:
+
 1. **`handlePhase1`** — boots in-process workers if first request, sets `event.locals.requestId`, populates the CSRF cookie, child-logger.
 2. **`handleBetterAuth`** — invokes better-auth to populate `event.locals.user` + `event.locals.session` from the session cookie.
 3. **`handlePopulateRoles`** — loads `event.locals.roles` from the DB; if no real user, applies the dev bypass shim (non-prod only).
@@ -213,17 +216,17 @@ Usage:
 
 ```svelte
 <script lang="ts">
-  import { Button } from '$lib/components/ui/button';
-  import * as Card from '$lib/components/ui/card';
+	import { Button } from '$lib/components/ui/button';
+	import * as Card from '$lib/components/ui/card';
 </script>
 
 <Card.Root>
-  <Card.Header>
-    <Card.Title>Hello</Card.Title>
-  </Card.Header>
-  <Card.Content>
-    <Button>Click me</Button>
-  </Card.Content>
+	<Card.Header>
+		<Card.Title>Hello</Card.Title>
+	</Card.Header>
+	<Card.Content>
+		<Button>Click me</Button>
+	</Card.Content>
 </Card.Root>
 ```
 
@@ -237,6 +240,7 @@ Key things to know:
 ## 9. Tailwind CSS 4 in this repo
 
 We're on Tailwind v4 (the rewrite). Key differences from Tailwind v3:
+
 - Configuration is read from `app.css` (`@import 'tailwindcss';` plus `@theme` blocks), not a `tailwind.config.js`.
 - The Vite plugin (`@tailwindcss/vite`) does the heavy lifting; there's no PostCSS pipeline.
 - Default colour palette and spacing scale are slightly different from v3 — when copying classes from Stack Overflow, check they still exist.
@@ -271,6 +275,7 @@ A small set of things to remember:
 ## 12. Recommended ramp
 
 If you've used React but not Svelte:
+
 - Watch the **"Svelte 5 in 30 minutes"** rune-focused intro on the official site (svelte.dev/tutorial).
 - Skim the SvelteKit routing page top-to-bottom.
 - Then come back here and re-read this file with the official terminology fresh in mind.
@@ -296,10 +301,10 @@ The index (`submissions_idx`) is kept current by a real-time push whenever OCR c
 
 **Env vars**
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `MANTICORE_URL` | `http://localhost:9308` | Sidecar address |
-| `SEARCH_RECONCILE_INTERVAL_MS` | `2000` | Reconciler poll cadence |
-| `SEARCH_RECONCILE_BATCH` | `50` | Rows per reconciler batch |
+| Variable                       | Default                 | Purpose                   |
+| ------------------------------ | ----------------------- | ------------------------- |
+| `MANTICORE_URL`                | `http://localhost:9308` | Sidecar address           |
+| `SEARCH_RECONCILE_INTERVAL_MS` | `2000`                  | Reconciler poll cadence   |
+| `SEARCH_RECONCILE_BATCH`       | `50`                    | Rows per reconciler batch |
 
 Local dev: `podman compose -f compose.search.yaml up -d` starts the sidecar. See `30-architecture.md` for how the sidecar fits into the request lifecycle and `80-deployment.md` for Pod/container configuration.

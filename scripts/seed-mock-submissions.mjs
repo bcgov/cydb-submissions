@@ -26,25 +26,6 @@ const TINY_PNG = Buffer.from(
 	'hex'
 );
 
-// Valid assessment type → professional pairs
-const ASSESSMENT_TYPES = [
-	{
-		assessmentType: 'Pediatrician Report or Assessment',
-		completedBy: 'Pediatrician'
-	},
-	{
-		assessmentType: 'Speech and Language Pathology Report or Assessment',
-		completedBy: 'Speech and Language Pathologist'
-	},
-	{
-		assessmentType: 'Autism Diagnostic Assessment Report/ Assessment',
-		completedBy: 'BCAAN (British Columbia Autism Assessment Network)'
-	}
-];
-
-// Valid gender enum values
-const GENDERS = ['manBoy', 'nonBinaryPerson', 'womanGirl', 'preferNotToAnswerUnknown'];
-
 // Realistic OCR text per attachment, keyed by filename. The search indexer
 // (src/lib/server/search/indexer.ts:ocrTextFor) joins ocr_results.raw_text into
 // the Manticore `ocr_text` field, so this is what makes document-content search

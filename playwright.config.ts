@@ -6,8 +6,7 @@ export default defineConfig({
 	globalSetup: './tests/e2e/global-setup.ts',
 	workers: 1,
 	webServer: {
-		command:
-			'node scripts/migrate.mjs && npm run build && npm run preview -- --port 4173',
+		command: 'node scripts/migrate.mjs && npm run build && npm run preview -- --port 4173',
 		port: 4173,
 		reuseExistingServer: !process.env.CI,
 		timeout: 240_000,

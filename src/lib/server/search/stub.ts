@@ -1,4 +1,10 @@
-import type { SearchClient, SearchDocument, InvalidSearchDocument, SearchInput, SearchResult } from './types';
+import type {
+	SearchClient,
+	SearchDocument,
+	InvalidSearchDocument,
+	SearchInput,
+	SearchResult
+} from './types';
 
 /**
  * Test double. Naive AND-of-substrings matching over the concatenated fields.
@@ -11,7 +17,9 @@ export class InMemorySearchClient implements SearchClient {
 
 	async ensureIndex(): Promise<void> {}
 	async ensureInvalidIndex(): Promise<void> {}
-	async ping(): Promise<boolean> { return true; }
+	async ping(): Promise<boolean> {
+		return true;
+	}
 
 	async replaceDoc(doc: SearchDocument): Promise<void> {
 		this.docs.set(doc.id, doc);
@@ -30,7 +38,11 @@ export class InMemorySearchClient implements SearchClient {
 	}
 
 	async search(input: SearchInput): Promise<SearchResult> {
-		const terms = input.match.toLowerCase().split(/\s+/).map((t) => t.replace(/[*"@/+-]/g, '')).filter(Boolean);
+		const terms = input.match
+			.toLowerCase()
+			.split(/\s+/)
+			.map((t) => t.replace(/[*"@/+-]/g, ''))
+			.filter(Boolean);
 		const matched = [...this.docs.values()].filter((d) => {
 			if (input.ids && !input.ids.includes(d.id)) return false;
 			if (input.statusEquals && d.status !== input.statusEquals) return false;
@@ -45,13 +57,20 @@ export class InMemorySearchClient implements SearchClient {
 			hits: page.map((d) => ({
 				id: d.id,
 				weight: 1,
-				snippet: input.highlight === false ? '' : snippetFor(`${d.ocrText} ${d.structuredText} ${d.surname}`, terms)
+				snippet:
+					input.highlight === false
+						? ''
+						: snippetFor(`${d.ocrText} ${d.structuredText} ${d.surname}`, terms)
 			}))
 		};
 	}
 
 	async searchInvalid(input: SearchInput): Promise<SearchResult> {
-		const terms = input.match.toLowerCase().split(/\s+/).map((t) => t.replace(/[*"@/+-]/g, '')).filter(Boolean);
+		const terms = input.match
+			.toLowerCase()
+			.split(/\s+/)
+			.map((t) => t.replace(/[*"@/+-]/g, ''))
+			.filter(Boolean);
 		const matched = [...this.invalidDocs.values()].filter((d) => {
 			if (input.ids && !input.ids.includes(d.id)) return false;
 			const hay = `${d.payloadText} ${d.errorsText} ${d.metadataText}`.toLowerCase();
@@ -64,7 +83,8 @@ export class InMemorySearchClient implements SearchClient {
 			hits: page.map((d) => ({
 				id: d.id,
 				weight: 1,
-				snippet: input.highlight === false ? '' : snippetFor(`${d.payloadText} ${d.errorsText}`, terms)
+				snippet:
+					input.highlight === false ? '' : snippetFor(`${d.payloadText} ${d.errorsText}`, terms)
 			}))
 		};
 	}

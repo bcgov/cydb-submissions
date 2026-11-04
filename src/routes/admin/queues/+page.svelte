@@ -14,12 +14,8 @@
 	let ocrRequeueAllOpen = $state(false);
 	let chefsResumeOpen = $state(false);
 
-	const ocrFailedCount = $derived(
-		data.ocr.counts.find((c) => c.status === 'failed')?.n ?? 0
-	);
-	const ocrQueuedCount = $derived(
-		data.ocr.counts.find((c) => c.status === 'queued')?.n ?? 0
-	);
+	const ocrFailedCount = $derived(data.ocr.counts.find((c) => c.status === 'failed')?.n ?? 0);
+	const ocrQueuedCount = $derived(data.ocr.counts.find((c) => c.status === 'queued')?.n ?? 0);
 	const ocrProcessingCount = $derived(
 		data.ocr.counts.find((c) => c.status === 'processing')?.n ?? 0
 	);
@@ -34,20 +30,25 @@
 	}
 </script>
 
-<div class="p-6 max-w-6xl mx-auto space-y-6">
+<div class="mx-auto max-w-6xl space-y-6 p-6">
 	<div class="flex items-baseline justify-between">
 		<div>
 			<h1 class="text-2xl font-semibold">Queue pipeline</h1>
-			<p class="text-sm text-gray-700">CHEFS ingestion + OCR processing — status, recent errors, and controls.</p>
+			<p class="text-sm text-gray-700">
+				CHEFS ingestion + OCR processing — status, recent errors, and controls.
+			</p>
 		</div>
-		<div class="text-xs text-gray-500 space-x-3">
+		<div class="space-x-3 text-xs text-gray-500">
 			<a href="/admin/chefs" class="underline">CHEFS settings →</a>
 			<a href="/admin/ocr" class="underline">OCR queue detail →</a>
 		</div>
 	</div>
 
 	{#if form?.success}
-		<p role="status" class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+		<p
+			role="status"
+			class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800"
+		>
 			{form.success}
 		</p>
 	{/if}
@@ -57,7 +58,7 @@
 		</p>
 	{/if}
 
-	<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+	<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 		<!-- CHEFS card -->
 		<Card.Root>
 			<Card.Header>
@@ -74,7 +75,8 @@
 				<Card.Description>
 					Form: <code>{data.chefs.config.formId || '(unset)'}</code>
 					<span class="text-xs text-gray-500"
-						>· token via {data.chefs.config.apiTokenSource}{data.chefs.config.envOverrides.length > 0
+						>· token via {data.chefs.config.apiTokenSource}{data.chefs.config.envOverrides.length >
+						0
 							? ' · env overrides: ' + data.chefs.config.envOverrides.join(', ')
 							: ''}</span
 					>
@@ -86,9 +88,9 @@
 						<div class="font-semibold text-red-900">
 							Halted at {fmtTime(data.chefs.halted.trippedAt)}
 						</div>
-						<div class="text-xs mt-1">
-							Last error: <code>{data.chefs.halted.lastErrorClass ?? 'unknown'}</code> ·
-							threshold {data.chefs.halted.threshold}
+						<div class="mt-1 text-xs">
+							Last error: <code>{data.chefs.halted.lastErrorClass ?? 'unknown'}</code> · threshold {data
+								.chefs.halted.threshold}
 						</div>
 					</div>
 				{/if}
@@ -114,8 +116,8 @@
 
 				{#if data.chefs.lastSync && data.chefs.lastSync.errors.length > 0}
 					<div>
-						<div class="text-xs text-gray-500 mb-1">Recent sync errors</div>
-						<ul class="text-xs space-y-1 max-h-32 overflow-y-auto">
+						<div class="mb-1 text-xs text-gray-500">Recent sync errors</div>
+						<ul class="max-h-32 space-y-1 overflow-y-auto text-xs">
 							{#each data.chefs.lastSync.errors as e, i (i)}
 								<li class="rounded bg-red-50 px-2 py-1">
 									{#if e.submissionUuid}<code>{e.submissionUuid}</code> —{/if}
@@ -126,13 +128,15 @@
 					</div>
 				{/if}
 			</Card.Content>
-			<Card.Footer class="gap-2 flex-wrap">
+			<Card.Footer class="flex-wrap gap-2">
 				<form method="POST" action="?/chefsSyncNow" use:enhance class="inline">
 					<input type="hidden" name="csrf" value={page.data.csrfToken} />
 					<Button type="submit" size="sm">Sync now</Button>
 				</form>
 				{#if data.chefs.halted}
-					<Button size="sm" variant="outline" onclick={() => (chefsResumeOpen = true)}>Resume</Button>
+					<Button size="sm" variant="outline" onclick={() => (chefsResumeOpen = true)}
+						>Resume</Button
+					>
 				{/if}
 			</Card.Footer>
 		</Card.Root>
@@ -160,10 +164,10 @@
 						<div class="font-semibold text-red-900">
 							Halted at {fmtTime(data.ocr.halted.trippedAt)}
 						</div>
-						<div class="text-xs mt-1">
-							Last error: <code>{data.ocr.halted.lastErrorClass ?? 'unknown'}</code> ·
-							threshold {data.ocr.halted.threshold} ·
-							failing job IDs: {data.ocr.halted.jobIds.join(', ') || 'none recorded'}
+						<div class="mt-1 text-xs">
+							Last error: <code>{data.ocr.halted.lastErrorClass ?? 'unknown'}</code> · threshold {data
+								.ocr.halted.threshold} · failing job IDs: {data.ocr.halted.jobIds.join(', ') ||
+								'none recorded'}
 						</div>
 					</div>
 				{/if}
@@ -192,7 +196,7 @@
 					{/if}
 				</div>
 			</Card.Content>
-			<Card.Footer class="gap-2 flex-wrap">
+			<Card.Footer class="flex-wrap gap-2">
 				{#if data.ocr.halted}
 					<Button size="sm" onclick={() => (ocrResumeOpen = true)}>Resume queue</Button>
 				{/if}
@@ -259,10 +263,11 @@
 				<form
 					method="POST"
 					action="?/ocrResume"
-					use:enhance={() => async ({ update }) => {
-						await update();
-						ocrResumeOpen = false;
-					}}
+					use:enhance={() =>
+						async ({ update }) => {
+							await update();
+							ocrResumeOpen = false;
+						}}
 				>
 					<input type="hidden" name="csrf" value={page.data.csrfToken} />
 					<AlertDialog.Action type="submit">Resume queue</AlertDialog.Action>
@@ -286,10 +291,11 @@
 				<form
 					method="POST"
 					action="?/ocrRequeueAllFailed"
-					use:enhance={() => async ({ update }) => {
-						await update();
-						ocrRequeueAllOpen = false;
-					}}
+					use:enhance={() =>
+						async ({ update }) => {
+							await update();
+							ocrRequeueAllOpen = false;
+						}}
 				>
 					<input type="hidden" name="csrf" value={page.data.csrfToken} />
 					<AlertDialog.Action type="submit">Requeue all</AlertDialog.Action>
@@ -313,10 +319,11 @@
 				<form
 					method="POST"
 					action="?/chefsResume"
-					use:enhance={() => async ({ update }) => {
-						await update();
-						chefsResumeOpen = false;
-					}}
+					use:enhance={() =>
+						async ({ update }) => {
+							await update();
+							chefsResumeOpen = false;
+						}}
 				>
 					<input type="hidden" name="csrf" value={page.data.csrfToken} />
 					<AlertDialog.Action type="submit">Resume poller</AlertDialog.Action>

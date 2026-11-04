@@ -12,9 +12,8 @@ const baseEnv = {
 describe('buildAuthOptions — SSO + password-reset posture (8.5, 3.8, 12.1)', () => {
 	it('enables PKCE on the keycloak SSO config (8.5)', () => {
 		const opts = buildAuthOptions(baseEnv);
-		const generic = opts.plugins?.find(
-			(p: { id?: string }) => p.id === 'generic-oauth'
-		) as { options?: { config?: Array<{ pkce?: boolean }> } } | undefined;
+		const generic = opts.plugins?.find((p: { id?: string }) => p.id === 'generic-oauth') as
+			{ options?: { config?: Array<{ pkce?: boolean }> } } | undefined;
 		expect(generic).toBeTruthy();
 		const kc = generic!.options?.config?.[0];
 		expect(kc).toBeTruthy();

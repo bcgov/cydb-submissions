@@ -196,12 +196,12 @@ Response back to adapter-node → Route → client
 
 ```ts
 interface Locals {
-  requestId: string;
-  user?: { id: string; email: string; name: string };
-  session?: Session;
-  roles: Set<Role>;
-  csrfToken: string;
-  logger: Logger;
+	requestId: string;
+	user?: { id: string; email: string; name: string };
+	session?: Session;
+	roles: Set<Role>;
+	csrfToken: string;
+	logger: Logger;
 }
 ```
 
@@ -211,16 +211,16 @@ In `src/hooks.server.ts`:
 
 ```ts
 const ROUTE_RULES: Array<{ prefix: string; roles: Role[] }> = [
-  { prefix: '/admin',       roles: ['admin'] },
-  { prefix: '/clinician',   roles: ['clinician'] },
-  { prefix: '/submissions', roles: ['admin', 'cfd_worker'] },
-  { prefix: '/attachments', roles: ['admin', 'cfd_worker', 'clinician'] }
+	{ prefix: '/admin', roles: ['admin'] },
+	{ prefix: '/clinician', roles: ['clinician'] },
+	{ prefix: '/submissions', roles: ['admin', 'cfd_worker'] },
+	{ prefix: '/attachments', roles: ['admin', 'cfd_worker', 'clinician'] }
 ];
 ```
 
 Match algorithm: `path === r.prefix || path.startsWith(r.prefix + '/')`. So `/admin` matches the admin rule; `/admin/queues` also matches; `/admin../foo` doesn't (and isn't a real route anyway).
 
-If the path doesn't match any rule, the request passes through ungated. **Public routes are public by default — adding a route to a role-gated area requires no extra wiring, but adding a *new* role-gated prefix means adding a row to ROUTE_RULES.**
+If the path doesn't match any rule, the request passes through ungated. **Public routes are public by default — adding a route to a role-gated area requires no extra wiring, but adding a _new_ role-gated prefix means adding a row to ROUTE_RULES.**
 
 `/attachments/[id]` is double-gated: the route rule allows all three roles in, then the endpoint joins to `submissions` and runs `canAccessAttachmentByStatus(roles, status)` to enforce a per-status policy. See `50-auth-and-roles.md` for the matrix.
 
@@ -233,6 +233,7 @@ Three workers run in the same Node process as the HTTP server. They start lazily
 Started by `maybeStartOcrWorker()` in `hooks.server.ts` when `env.OCR_WORKER_ENABLED === '1'`. It calls `startWorker({…})` in `src/lib/server/ocr/worker.ts`, which returns a `WorkerHandle` (`stop()` for graceful shutdown).
 
 Each tick:
+
 1. **Check halt sentinel.** `getSystemState(db, 'ocr.halted')` — if set, skip everything.
 2. **Lease a job.** `acquireLease(db, now)` — transactional UPDATE that picks the oldest `status=queued` job whose `nextAttemptAt` has passed, marks it `status=leased`, returns it.
 3. **Process the job.** `processJob(...)` — read the attachment file, call the configured OCR provider, store the result in `ocr_analyses`, run the keyword evaluator (`keywords.ts`), update `submissions.status` to `OCR processed` (or `OCR Error`).
@@ -246,6 +247,7 @@ The breaker can only be cleared by an admin through `/admin/queues` or `/admin/o
 Started by `maybeStartChefsPoller()` when the effective CHEFS config has `pollerEnabled=true`. Calls `startPoller({…})` in `src/lib/server/chefs/poller.ts`.
 
 Each tick:
+
 1. **Check halt sentinel** (`chefs.halted`).
 2. **`listSubmissions(...)`** against the CHEFS export API to get new submission IDs since the last sync.
 3. **For each new submission:** `runIngest(...)` — fetch the submission JSON, map to our schema (`mapper.ts`), `downloadAndPersist(...)` the file references, `writeValidSubmission(...)` to insert the row + attachment rows, `enqueueAttachmentForOcr(...)` for each file.
@@ -290,12 +292,12 @@ Page rendered with ranked, highlighted results
 
 Each submission is indexed as a single Manticore document in the `submissions_idx` index, with four text fields:
 
-| Field | Content |
-|---|---|
+| Field             | Content                                                                                            |
+| ----------------- | -------------------------------------------------------------------------------------------------- |
 | `structured_text` | Form fields expanded to human labels via `OPTIONS` (e.g. `"Autism Spectrum Disorder"` not `"ASD"`) |
-| `ocr_text` | Raw text extracted by OCR from attachments |
-| `metadata_text` | Request metadata (IP, UA, timestamp) |
-| `surname` | Applicant surname for exact-prefix matching |
+| `ocr_text`        | Raw text extracted by OCR from attachments                                                         |
+| `metadata_text`   | Request metadata (IP, UA, timestamp)                                                               |
+| `surname`         | Applicant surname for exact-prefix matching                                                        |
 
 Index settings: `morphology=lemmatize_en_all`, `min_infix_len=2`, `index_exact_words=1`. Fuzzy matching is on by default. The document is built by `buildSearchDocument` in `document.ts`, which calls `OPTIONS` label-expansion at index time so the index content matches what staff read in the UI.
 
@@ -319,10 +321,12 @@ Both the OCR worker and CHEFS poller — and the OAuth2 token caches (CHES, Kong
 ```ts
 let inflight: Promise<T> | null = null;
 async function getThing() {
-  if (cachedAndFresh()) return cached;
-  if (inflight) return inflight;            // ← share the in-flight promise
-  inflight = doExpensiveThing().finally(() => { inflight = null; });
-  return inflight;
+	if (cachedAndFresh()) return cached;
+	if (inflight) return inflight; // ← share the in-flight promise
+	inflight = doExpensiveThing().finally(() => {
+		inflight = null;
+	});
+	return inflight;
 }
 ```
 
@@ -337,7 +341,7 @@ State that survives across process restarts goes in the `system_state` key/value
 setSystemState(db, 'ocr.halted', { trippedAt, threshold, lastErrorClass });
 
 // To check at runtime:
-if (getSystemState(db, 'ocr.halted')) return;  // skip this tick
+if (getSystemState(db, 'ocr.halted')) return; // skip this tick
 
 // To clear (admin action only):
 clearSystemState(db, 'ocr.halted');

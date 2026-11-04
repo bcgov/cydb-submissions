@@ -1,5 +1,4 @@
 env:
-
   # ConfigMap env
 
   - name: ALLOWED_UPLOAD_MIME

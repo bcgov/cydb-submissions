@@ -5,6 +5,7 @@ This file is your day-to-day cycle: clone, set up, develop with TDD, commit, shi
 ## Prerequisites
 
 You need:
+
 - Node.js ≥ 22 (see `.nvmrc` if present, or `package.json` `engines`)
 - npm ≥ 10
 - git
@@ -52,12 +53,14 @@ It runs on `http://localhost:5173` (or 5174 if 5173 is taken). With `DEV_AUTH_BY
 ## The dev loop
 
 Hot reload covers most things:
+
 - Edit a `.svelte` file → page rerenders in-place
 - Edit a `+page.server.ts` → load function re-runs on next nav
 - Edit `hooks.server.ts` → Vite restarts the server (you'll lose worker state briefly)
 - Edit a `tests/unit/*.test.ts` → if `npm run test:unit` is running, it re-runs the file
 
 What requires a manual restart:
+
 - Adding a new env var to `.env`
 - Changing migrations (you need to `rm local.db && node scripts/migrate.mjs`)
 - Anything in `src/lib/server/db/index.ts` (DB connection init)
@@ -90,7 +93,7 @@ docs(onboarding): write 30-architecture
 chore(deploy): gitignore per-env ConfigMaps + document the pattern
 ```
 
-The body should explain *why*, not what — the diff already shows the what.
+The body should explain _why_, not what — the diff already shows the what.
 
 For example, here's a commit shaped like what we ship:
 
@@ -194,15 +197,15 @@ The integration test is the authoritative check that `ManticoreClient` request s
 
 In the UI search box on `/submissions` you can try:
 
-| Syntax | What it does |
-|---|---|
-| `aut*` | Prefix wildcard |
-| `"speech delay"` | Exact phrase |
-| `@ocr_text vineland` | Field-scoped search |
-| `"speech delay" NEAR/3` | Proximity |
-| `"adhd anxiety seizures"/2` | Quorum (2-of-3 match) |
-| `diagnosis -provisional` | Exclusion |
-| `running` | Lemma (matches run, ran, …) |
+| Syntax                      | What it does                |
+| --------------------------- | --------------------------- |
+| `aut*`                      | Prefix wildcard             |
+| `"speech delay"`            | Exact phrase                |
+| `@ocr_text vineland`        | Field-scoped search         |
+| `"speech delay" NEAR/3`     | Proximity                   |
+| `"adhd anxiety seizures"/2` | Quorum (2-of-3 match)       |
+| `diagnosis -provisional`    | Exclusion                   |
+| `running`                   | Lemma (matches run, ran, …) |
 
 Typos are tolerated automatically via Manticore's built-in fuzzy matching.
 
@@ -328,17 +331,17 @@ When you write new code in this style:
 
 ```ts
 export interface FooOpts {
-  db: DrizzleDb;
-  http?: typeof fetch;
-  logger: Logger;
-  // ...
+	db: DrizzleDb;
+	http?: typeof fetch;
+	logger: Logger;
+	// ...
 }
 
 export class Foo {
-  private http: typeof fetch;
-  constructor(private opts: FooOpts) {
-    this.http = opts.http ?? fetch;
-  }
+	private http: typeof fetch;
+	constructor(private opts: FooOpts) {
+		this.http = opts.http ?? fetch;
+	}
 }
 ```
 
@@ -359,6 +362,7 @@ npm install --save-dev <dev-dep>
 ```
 
 Then:
+
 1. **Confirm the license.** This is BC Gov code; only MIT/Apache/BSD/ISC. No GPL.
 2. **Check the bundle size impact.** Run `npm run build` and compare the output.
 3. **Run `npm audit --omit=dev`.** If it adds a high-severity advisory, find another package.
@@ -366,16 +370,16 @@ Then:
 
 Don't reach for a library before checking whether one of these is in the toolbox:
 
-| If you want | Use |
-|---|---|
-| Date math | Native `Date` or `@internationalized/date` (already in devDeps) |
-| Validation | `zod` (already in deps) |
-| Classes for Tailwind | `cn()` in `$lib/utils.ts` |
-| Random IDs | `nanoid` (already in deps) |
-| Hashing | `node:crypto` |
-| HTTP client | `fetch` |
-| Logging | `pino` (already in deps) via `$lib/server/log` |
-| Iconography | `@lucide/svelte` |
+| If you want          | Use                                                             |
+| -------------------- | --------------------------------------------------------------- |
+| Date math            | Native `Date` or `@internationalized/date` (already in devDeps) |
+| Validation           | `zod` (already in deps)                                         |
+| Classes for Tailwind | `cn()` in `$lib/utils.ts`                                       |
+| Random IDs           | `nanoid` (already in deps)                                      |
+| Hashing              | `node:crypto`                                                   |
+| HTTP client          | `fetch`                                                         |
+| Logging              | `pino` (already in deps) via `$lib/server/log`                  |
+| Iconography          | `@lucide/svelte`                                                |
 
 ## CI expectation
 
@@ -407,11 +411,13 @@ The configmaps are gitignored — you won't see them in `git status`. But the op
 ## When you need to ship a hotfix
 
 The repo's branching model is light:
+
 - `main` is the live branch
 - Feature work happens on `feature/<name>` or `<purpose>` branches
 - Fast-forward merge to main; no merge commits unless conflicts force one
 
 For a hotfix:
+
 1. Branch off main: `git checkout -b hotfix-<thing>`
 2. Write the failing test first
 3. Make it pass

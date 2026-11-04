@@ -161,7 +161,6 @@ export const submissionSchema = z
 		}
 	})
 	// Drop the internal _hasFile flag from the output.
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	.transform((v) => ({ ...v, editGrid: v.editGrid?.map(({ _hasFile, ...row }) => row) }));
 
 export type SubmissionInput = z.infer<typeof submissionSchema>;

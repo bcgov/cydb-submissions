@@ -6,14 +6,6 @@
 import * as schema from '$lib/server/db/schema';
 import { randomUUID } from 'node:crypto';
 
-type Db = {
-	insert: (table: typeof schema.submissions) => {
-		values: (row: unknown) => {
-			returning: (cols: unknown) => { all: () => Array<{ id: number }> };
-		};
-	};
-};
-
 const BASE_SUBMISSION = {
 	status: 'submitted' as const,
 	submitterSurname: 'Test',

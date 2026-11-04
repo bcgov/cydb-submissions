@@ -79,7 +79,11 @@ export async function editReasonAccept(db: DrizzleDb, id: number, text: string):
 		.where(eq(acceptReasons.id, id));
 }
 
-export async function setReasonActiveAccept(db: DrizzleDb, id: number, active: boolean): Promise<void> {
+export async function setReasonActiveAccept(
+	db: DrizzleDb,
+	id: number,
+	active: boolean
+): Promise<void> {
 	await db
 		.update(acceptReasons)
 		.set({ active, updatedAt: sql`CURRENT_TIMESTAMP` })

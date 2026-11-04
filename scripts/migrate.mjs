@@ -42,7 +42,6 @@ try {
 	console.error('migrate: failed with error');
 	console.error(e);
 } finally {
-	sqlite.pragma('foreign_keys = ON')
+	sqlite.pragma('foreign_keys = ON');
 	sqlite.close();
 }
-

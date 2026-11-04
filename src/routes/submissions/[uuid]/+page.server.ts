@@ -41,7 +41,13 @@ function submissionsListUrl(url: URL): string {
 }
 
 export const load: PageServerLoad = async ({ params, locals, url }) => {
-	requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator', 'clinician');
+	requireRole(
+		{ user: locals.user ?? null, roles: locals.roles },
+		'admin',
+		'cfd_worker',
+		'validator',
+		'clinician'
+	);
 	const categoryMap = await getCategoryMapping();
 	const rows = await db
 		.select()
@@ -57,7 +63,8 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 	const isAdmin = locals.roles.has('admin');
 	const isCfdWorker = locals.roles.has('cfd_worker');
 	const isValidator = locals.roles.has('validator') && !isAdmin && !isCfdWorker;
-	const isClinicianOnly = locals.roles.has('clinician') && !isAdmin && !isCfdWorker && !locals.roles.has('validator');
+	const isClinicianOnly =
+		locals.roles.has('clinician') && !isAdmin && !isCfdWorker && !locals.roles.has('validator');
 
 	if (isCfdWorker && !isAdmin && !CFD_WORKER_STATUSES.has(submission.status as never)) {
 		throw error(403, 'Access denied');
@@ -148,7 +155,7 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 						category10: keywordHits.category10,
 						category11: keywordHits.category11,
 						category12: keywordHits.category12,
-						category13: keywordHits.category13,
+						category13: keywordHits.category13
 					})
 					.from(keywordHits)
 					.where(inArray(keywordHits.attachmentId, attIds))
@@ -159,18 +166,18 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 
 	const keywordsByAtt = new Map();
 
-	for(const entry of keywords) {
+	for (const entry of keywords) {
 		if (keywordsByAtt.get(entry.attachmentId) === undefined) {
-			keywordsByAtt.set(entry.attachmentId, new Map<string, Array<string>>())
+			keywordsByAtt.set(entry.attachmentId, new Map<string, Array<string>>());
 		}
 		for (const [key, value] of Object.entries(entry)) {
 			if (!key.startsWith('category')) continue;
 			const attachmentIdEntry = keywordsByAtt.get(entry.attachmentId);
 			if (attachmentIdEntry.get(key) === undefined) {
-				attachmentIdEntry.set(key, new Array<string>())
+				attachmentIdEntry.set(key, new Array<string>());
 			}
-			if (value as number  > 0) {
-				attachmentIdEntry.get(key).push(entry.keyword)
+			if ((value as number) > 0) {
+				attachmentIdEntry.get(key).push(entry.keyword);
 			}
 		}
 	}
@@ -224,7 +231,11 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 		activeReasons,
 		activeAcceptReasons,
 		canDecide: locals.roles.has('admin') || locals.roles.has('cfd_worker'),
-		canMarkForPolicy: locals.roles.has('admin') || locals.roles.has('cfd_worker') || locals.roles.has('validator') || locals.roles.has('clinician'),
+		canMarkForPolicy:
+			locals.roles.has('admin') ||
+			locals.roles.has('cfd_worker') ||
+			locals.roles.has('validator') ||
+			locals.roles.has('clinician'),
 		isAdmin: locals.roles.has('admin'),
 		isCfdWorker: isCfdWorker && !isAdmin,
 		claim: claimRow ? { email: claimEmail } : null,
@@ -232,14 +243,22 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 		chefsLink,
 		canReingest:
 			Boolean(chefsLink) &&
-			(locals.roles.has('admin') || locals.roles.has('cfd_worker') || locals.roles.has('validator')) &&
+			(locals.roles.has('admin') ||
+				locals.roles.has('cfd_worker') ||
+				locals.roles.has('validator')) &&
 			(REINGEST_ALLOWED_STATUSES as readonly string[]).includes(submission.status)
 	};
 };
 
 export const actions: Actions = {
 	claim: async ({ request, params, locals, url, cookies }) => {
-		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator', 'clinician');
+		requireRole(
+			{ user: locals.user ?? null, roles: locals.roles },
+			'admin',
+			'cfd_worker',
+			'validator',
+			'clinician'
+		);
 		const form = await request.formData();
 		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
 			return fail(403, { action: 'claim', error: 'CSRF token mismatch' });
@@ -288,7 +307,13 @@ export const actions: Actions = {
 	},
 
 	unclaim: async ({ request, params, locals, url, cookies }) => {
-		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator', 'clinician');
+		requireRole(
+			{ user: locals.user ?? null, roles: locals.roles },
+			'admin',
+			'cfd_worker',
+			'validator',
+			'clinician'
+		);
 		const form = await request.formData();
 		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
 			return fail(403, { action: 'unclaim', error: 'CSRF token mismatch' });
@@ -346,7 +371,7 @@ export const actions: Actions = {
 			.getAll('reasonIds')
 			.map((v) => Number(v))
 			.filter((n) => Number.isInteger(n) && n > 0);
-		const tierChoice = form.get('tier') ? form.get('tier') as string : null;
+		const tierChoice = form.get('tier') ? (form.get('tier') as string) : null;
 
 		const sub = (
 			await db
@@ -357,15 +382,25 @@ export const actions: Actions = {
 		)[0];
 		if (!sub) return fail(404, { action: 'decide', error: 'Submission not found.' });
 		if (sub.status !== 'provisionally eligible' && sub.status !== 'ready for policy')
-			return fail(400, { action: 'decide', error: 'Decisions can only be recorded for submissions in provisionally eligible or ready for policy status.' });
+			return fail(400, {
+				action: 'decide',
+				error:
+					'Decisions can only be recorded for submissions in provisionally eligible or ready for policy status.'
+			});
 		if (sub.status === 'ready for policy' && decision === 'accepted')
-			return fail(400, { action: 'decide', error: 'Only reject is permitted for submissions in ready for policy status.' });
+			return fail(400, {
+				action: 'decide',
+				error: 'Only reject is permitted for submissions in ready for policy status.'
+			});
 		if (sub.decision)
 			return fail(409, { action: 'decide', error: 'This submission has already been decided.' });
 		if (sub.status !== 'provisionally eligible' && sub.status !== 'ready for policy')
 			return fail(400, { action: 'decide', error: 'Submission is not in a decidable status.' });
 		if (sub.status === 'ready for policy' && decision === 'accepted')
-			return fail(400, { action: 'decide', error: 'Cannot accept a submission in ready for policy status.' });
+			return fail(400, {
+				action: 'decide',
+				error: 'Cannot accept a submission in ready for policy status.'
+			});
 
 		const claim = (
 			await db
@@ -375,7 +410,10 @@ export const actions: Actions = {
 				.limit(1)
 		)[0];
 		if (!claim || claim.userId !== locals.user!.id)
-			return fail(403, { action: 'decide', error: 'You must claim this submission before recording a decision.' });
+			return fail(403, {
+				action: 'decide',
+				error: 'You must claim this submission before recording a decision.'
+			});
 
 		const active = await listActiveReasons(db);
 		const activeAccept = await listActiveAcceptReasons(db);
@@ -394,8 +432,8 @@ export const actions: Actions = {
 		});
 		if (result === 'already_decided')
 			return fail(409, { action: 'decide', error: 'This submission has already been decided.' });
-    await db.delete(submissionClaims).where(eq(submissionClaims.submissionId, sub.id));
-    
+		await db.delete(submissionClaims).where(eq(submissionClaims.submissionId, sub.id));
+
 		auditLog(
 			'submission_decided',
 			{
@@ -486,7 +524,10 @@ export const actions: Actions = {
 		)[0];
 		if (!sub) return fail(404, { action: 'readyForClinician', error: 'Submission not found.' });
 		if (!['OCR processed', 'OCR Error'].includes(sub.status))
-			return fail(400, { action: 'readyForClinician', error: 'Submission is not in OCR processed or OCR error status.' });
+			return fail(400, {
+				action: 'readyForClinician',
+				error: 'Submission is not in OCR processed or OCR error status.'
+			});
 
 		const claim = (
 			await db
@@ -539,7 +580,10 @@ export const actions: Actions = {
 		)[0];
 		if (!sub) return fail(404, { action: 'readyForValidator', error: 'Submission not found.' });
 		if (!['OCR processed', 'OCR Error'].includes(sub.status))
-			return fail(400, { action: 'readyForValidator', error: 'Submission is not in OCR processed or OCR error status.' });
+			return fail(400, {
+				action: 'readyForValidator',
+				error: 'Submission is not in OCR processed or OCR error status.'
+			});
 
 		const claim = (
 			await db
@@ -578,7 +622,13 @@ export const actions: Actions = {
 	},
 
 	readyForPolicy: async ({ request, params, locals, url, cookies }) => {
-		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator', 'clinician');
+		requireRole(
+			{ user: locals.user ?? null, roles: locals.roles },
+			'admin',
+			'cfd_worker',
+			'validator',
+			'clinician'
+		);
 		const form = await request.formData();
 		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
 			return fail(403, { action: 'readyForPolicy', error: 'CSRF token mismatch' });
@@ -596,7 +646,8 @@ export const actions: Actions = {
 		if (!ALLOWED_STATUSES.includes(sub.status as never))
 			return fail(400, {
 				action: 'readyForPolicy',
-				error: 'Submission must be in ready for review or ready for clinician status to perform this action.'
+				error:
+					'Submission must be in ready for review or ready for clinician status to perform this action.'
 			});
 
 		const claim = (
@@ -631,12 +682,18 @@ export const actions: Actions = {
 			locals.logger,
 			db
 		);
-		if (!locals.roles.has('admin') && !locals.roles.has('cfd_worker')) redirect(303, submissionsListUrl(url));
+		if (!locals.roles.has('admin') && !locals.roles.has('cfd_worker'))
+			redirect(303, submissionsListUrl(url));
 		return { action: 'readyForPolicy', success: 'Submission marked as ready for policy.' };
 	},
 
 	provisionallyEligible: async ({ request, params, locals, url, cookies }) => {
-		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator');
+		requireRole(
+			{ user: locals.user ?? null, roles: locals.roles },
+			'admin',
+			'cfd_worker',
+			'validator'
+		);
 		const form = await request.formData();
 		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
 			return fail(403, { action: 'provisionallyEligible', error: 'CSRF token mismatch' });
@@ -652,7 +709,8 @@ export const actions: Actions = {
 		if (sub.status !== 'ready for review' && sub.status !== 'ready for policy')
 			return fail(400, {
 				action: 'provisionallyEligible',
-				error: 'Submission must be in ready for review or ready for policy status to perform this action.'
+				error:
+					'Submission must be in ready for review or ready for policy status to perform this action.'
 			});
 
 		const claim = (
@@ -687,12 +745,22 @@ export const actions: Actions = {
 			locals.logger,
 			db
 		);
-		if (!locals.roles.has('admin') && !locals.roles.has('cfd_worker')) redirect(303, submissionsListUrl(url));
-		return { action: 'provisionallyEligible', success: 'Submission marked as provisionally eligible.' };
+		if (!locals.roles.has('admin') && !locals.roles.has('cfd_worker'))
+			redirect(303, submissionsListUrl(url));
+		return {
+			action: 'provisionallyEligible',
+			success: 'Submission marked as provisionally eligible.'
+		};
 	},
 
 	markDuplicate: async ({ request, params, locals, url, cookies }) => {
-		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator', 'clinician');
+		requireRole(
+			{ user: locals.user ?? null, roles: locals.roles },
+			'admin',
+			'cfd_worker',
+			'validator',
+			'clinician'
+		);
 		const form = await request.formData();
 		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
 			return fail(403, { action: 'markDuplicate', error: 'CSRF token mismatch' });
@@ -707,11 +775,20 @@ export const actions: Actions = {
 		if (!sub) return fail(404, { action: 'markDuplicate', error: 'Submission not found.' });
 
 		const ALLOWED_STATUSES = [
-			'submitted', 'OCR queued', 'OCR processed', 'OCR Error',
-			'ready for review', 'ready for clinician', 'ready for policy', 'provisionally eligible'
+			'submitted',
+			'OCR queued',
+			'OCR processed',
+			'OCR Error',
+			'ready for review',
+			'ready for clinician',
+			'ready for policy',
+			'provisionally eligible'
 		] as const;
 		if (!ALLOWED_STATUSES.includes(sub.status as never))
-			return fail(400, { action: 'markDuplicate', error: 'Submission cannot be marked as duplicate from its current status.' });
+			return fail(400, {
+				action: 'markDuplicate',
+				error: 'Submission cannot be marked as duplicate from its current status.'
+			});
 
 		await db
 			.update(submissions)
@@ -732,7 +809,8 @@ export const actions: Actions = {
 			locals.logger,
 			db
 		);
-		if (!locals.roles.has('admin') && !locals.roles.has('cfd_worker')) redirect(303, submissionsListUrl(url));
+		if (!locals.roles.has('admin') && !locals.roles.has('cfd_worker'))
+			redirect(303, submissionsListUrl(url));
 		return { action: 'markDuplicate', success: 'Submission marked as duplicate.' };
 	},
 
@@ -751,7 +829,10 @@ export const actions: Actions = {
 		)[0];
 		if (!sub) return fail(404, { action: 'resetDuplicate', error: 'Submission not found.' });
 		if (sub.status !== 'duplicate')
-			return fail(400, { action: 'resetDuplicate', error: 'Submission is not in duplicate status.' });
+			return fail(400, {
+				action: 'resetDuplicate',
+				error: 'Submission is not in duplicate status.'
+			});
 
 		const claim = (
 			await db
@@ -761,7 +842,10 @@ export const actions: Actions = {
 				.limit(1)
 		)[0];
 		if (!claim || claim.userId !== locals.user!.id)
-			return fail(403, { action: 'resetDuplicate', error: 'You must claim this submission before resetting its status.' });
+			return fail(403, {
+				action: 'resetDuplicate',
+				error: 'You must claim this submission before resetting its status.'
+			});
 
 		const newStatus = recomputeSubmissionStatus(db, sub.id);
 
@@ -783,7 +867,13 @@ export const actions: Actions = {
 	},
 
 	saveNotes: async ({ request, params, locals, cookies }) => {
-		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator', 'clinician');
+		requireRole(
+			{ user: locals.user ?? null, roles: locals.roles },
+			'admin',
+			'cfd_worker',
+			'validator',
+			'clinician'
+		);
 		const form = await request.formData();
 		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
 			return fail(403, { action: 'saveNotes', error: 'CSRF token mismatch' });
@@ -823,14 +913,23 @@ export const actions: Actions = {
 	// entirely — old metadata, attachments, OCR results, keyword hits, decision,
 	// and claim are removed once the replacement data is confirmed available.
 	reingest: async ({ request, params, locals, url, cookies }) => {
-		requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator');
+		requireRole(
+			{ user: locals.user ?? null, roles: locals.roles },
+			'admin',
+			'cfd_worker',
+			'validator'
+		);
 		const form = await request.formData();
 		if (!csrfOk(form.get('csrf'), cookies.get('cydb_csrf')))
 			return fail(403, { action: 'reingest', error: 'CSRF token mismatch' });
 
 		const sub = (
 			await db
-				.select({ id: submissions.id, submissionUuid: submissions.submissionUuid, status: submissions.status })
+				.select({
+					id: submissions.id,
+					submissionUuid: submissions.submissionUuid,
+					status: submissions.status
+				})
 				.from(submissions)
 				.where(eq(submissions.submissionUuid, params.uuid))
 				.limit(1)
@@ -850,7 +949,10 @@ export const actions: Actions = {
 				.limit(1)
 		)[0];
 		if (!claim)
-			return fail(400, { action: 'reingest', error: 'Submission must be claimed before reingesting.' });
+			return fail(400, {
+				action: 'reingest',
+				error: 'Submission must be claimed before reingesting.'
+			});
 
 		const cfg = getEffectiveConfig(db, env as Record<string, string | undefined>);
 
@@ -858,7 +960,10 @@ export const actions: Actions = {
 		try {
 			rawList = await listSubmissions(cfg, { fetch });
 		} catch (e) {
-			return fail(502, { action: 'reingest', error: `Failed to reach CHEFS: ${(e as Error).message}` });
+			return fail(502, {
+				action: 'reingest',
+				error: `Failed to reach CHEFS: ${(e as Error).message}`
+			});
 		}
 
 		const match = (rawList as ChefsSubmissionRaw[]).find((raw) => {

@@ -1,6 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import { listSubmissions, downloadFile, basicAuthHeader } from '$lib/server/chefs/client';
 import { type ChefsConfig } from '$lib/server/chefs/types';
+import { createLogger } from '$lib/server/log';
+
+const logger = createLogger({ level: 'silent' });
 
 const cfg: ChefsConfig = {
 	formId: 'form-uuid',
@@ -96,9 +99,12 @@ describe('downloadFile', () => {
 			},
 			arrayBuffer: async () => bytes.buffer
 		});
-		const out = await downloadFile(cfg, 'file-uuid', {
-			fetch: fakeFetch as unknown as typeof fetch
-		});
+		const out = await downloadFile(
+			cfg,
+			'file-uuid',
+			{ fetch: fakeFetch as unknown as typeof fetch },
+			logger
+		);
 		expect(fakeFetch).toHaveBeenCalledWith(
 			'https://chefs.test/app/api/v1/files/file-uuid',
 			expect.objectContaining({
@@ -113,10 +119,11 @@ describe('downloadFile', () => {
 		const fakeFetch = vi.fn().mockResolvedValue({
 			ok: false,
 			status: 404,
+			headers: { get: () => null },
 			text: async () => 'not found'
 		});
 		await expect(
-			downloadFile(cfg, 'missing', { fetch: fakeFetch as unknown as typeof fetch })
+			downloadFile(cfg, 'missing', { fetch: fakeFetch as unknown as typeof fetch }, logger)
 		).rejects.toMatchObject({ errorClass: 'NotFound', status: 404 });
 	});
 });

@@ -34,6 +34,7 @@ describe('decision-store', () => {
 			submissionId: subId,
 			decision: 'rejected',
 			reasons: ['Incomplete information'],
+			tierChoice: null,
 			decidedBy: 'admin-1'
 		});
 		expect(res).toBe('ok');
@@ -54,12 +55,14 @@ describe('decision-store', () => {
 			submissionId: subId,
 			decision: 'accepted',
 			reasons: [],
+			tierChoice: 'tier one',
 			decidedBy: 'a1'
 		});
 		const res = await recordDecision(db as never, {
 			submissionId: subId,
 			decision: 'rejected',
 			reasons: ['x'],
+			tierChoice: null,
 			decidedBy: 'a2'
 		});
 		expect(res).toBe('already_decided');
@@ -67,23 +70,26 @@ describe('decision-store', () => {
 		expect(row.decision).toBe('accepted');
 	});
 
-	it('resetDecision clears the decision and reverts status to ready for review', async () => {
+	it('resetDecision clears the decision and recomputes status from OCR jobs', async () => {
 		await recordDecision(db as never, {
 			submissionId: subId,
 			decision: 'accepted',
 			reasons: [],
+			tierChoice: 'tier one',
 			decidedBy: 'a1'
 		});
 		await resetDecision(db as never, subId);
 		const row = sqlite
 			.prepare(
-				`SELECT status, decision, decision_reasons, decided_by, decided_at FROM submissions WHERE id=?`
+				`SELECT status, decision, decision_reasons, decided_by, decided_at, accept_tier FROM submissions WHERE id=?`
 			)
 			.get(subId) as any;
-		expect(row.status).toBe('ready for review');
+		// No OCR jobs exist for this submission, so status falls back to 'submitted'.
+		expect(row.status).toBe('submitted');
 		expect(row.decision).toBeNull();
 		expect(row.decision_reasons).toBeNull();
 		expect(row.decided_by).toBeNull();
 		expect(row.decided_at).toBeNull();
+		expect(row.accept_tier).toBeNull();
 	});
 });

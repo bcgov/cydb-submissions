@@ -161,5 +161,12 @@ describe('ingestOne', () => {
 });
 
 function stubLogger() {
-	return { info: vi.fn(), warn: vi.fn(), error: vi.fn(), child: () => stubLogger() } as any;
+	return {
+		trace: vi.fn(),
+		debug: vi.fn(),
+		info: vi.fn(),
+		warn: vi.fn(),
+		error: vi.fn(),
+		child: () => stubLogger()
+	} as any;
 }

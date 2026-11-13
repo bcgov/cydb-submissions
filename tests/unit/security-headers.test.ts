@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { buildSecurityHeaders } from '$lib/server/security/headers';
 
 describe('buildSecurityHeaders — response-header bundle (10.1, 10.2, 10.5, 10.6, 1.3)', () => {
-	it('returns X-Frame-Options DENY', () => {
+	it('returns X-Frame-Options SAMEORIGIN', () => {
 		const h = buildSecurityHeaders({ pathname: '/', isProduction: true });
-		expect(h['x-frame-options']).toBe('DENY');
+		expect(h['x-frame-options']).toBe('SAMEORIGIN');
 	});
 
 	it('returns X-Content-Type-Options nosniff', () => {
@@ -29,7 +29,7 @@ describe('buildSecurityHeaders — response-header bundle (10.1, 10.2, 10.5, 10.
 
 	it('still sets the non-CSP hardening headers', () => {
 		const h = buildSecurityHeaders({ pathname: '/', isProduction: true });
-		expect(h['x-frame-options']).toBe('DENY');
+		expect(h['x-frame-options']).toBe('SAMEORIGIN');
 		expect(h['x-content-type-options']).toBe('nosniff');
 		expect(h['referrer-policy']).toBe('same-origin');
 		expect(h['strict-transport-security']).toMatch(/max-age=/);

@@ -62,9 +62,9 @@ describe('BcgovDiProvider', () => {
 
 	it.each([
 		['application/pdf', 'a.pdf', 'pdf'],
-		['image/jpeg', 'b.jpeg', 'jpg'],
-		['image/png', 'c.png', 'png'],
-		['image/heic', 'd.heic', 'heic']
+		['image/jpeg', 'b.jpeg', 'image'],
+		['image/png', 'c.png', 'image'],
+		['image/heic', 'd.heic', 'image']
 	])('maps mime %s + filename %s to file_type %s', async (mime, name, expected) => {
 		const fakeFetch = vi
 			.fn()
@@ -87,7 +87,7 @@ describe('BcgovDiProvider', () => {
 		expect(body.file_type).toBe(expected);
 	});
 
-	it('falls back to filename extension when mime is unknown', async () => {
+	it('falls back to file_type bin when mime is unknown', async () => {
 		const fakeFetch = vi
 			.fn()
 			.mockResolvedValueOnce(okResponse({ document: { id: 'doc-1', status: 'done' } }))
@@ -106,7 +106,7 @@ describe('BcgovDiProvider', () => {
 		});
 		await p.analyze(Buffer.from('x'), 'application/octet-stream', 'mystery.TIFF');
 		const body = JSON.parse(fakeFetch.mock.calls[0][1].body as string);
-		expect(body.file_type).toBe('tiff');
+		expect(body.file_type).toBe('bin');
 	});
 
 	it('throws OcrProviderError on non-2xx upload', async () => {

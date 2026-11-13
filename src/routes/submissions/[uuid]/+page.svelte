@@ -51,8 +51,10 @@
 	const decideDisabled = $derived(
 		notesDirty ||
 			decisionChoice === null ||
-			(decisionChoice === 'rejected' && !Object.values(selectedReasonIds).some((v) => v === true)) ||
-			(decisionChoice === 'accepted' && (!Object.values(selectedAcceptReasonIds).some((v) => v === true) || tierChoice === null))
+			(decisionChoice === 'rejected' &&
+				!Object.values(selectedReasonIds).some((v) => v === true)) ||
+			(decisionChoice === 'accepted' &&
+				(!Object.values(selectedAcceptReasonIds).some((v) => v === true) || tierChoice === null))
 	);
 
 	// Ticked reason ids for injection into the hidden form inputs
@@ -73,13 +75,19 @@
 	const onlyReject = $derived(data.submission.status === 'ready for policy');
 
 	// Statuses that already render their own dedicated status-reset section below
-	const RESET_STATUS_DEDICATED_SECTIONS = ['ready for clinician', 'ready for review', 'accepted', 'rejected', 'duplicate'];
+	const RESET_STATUS_DEDICATED_SECTIONS = [
+		'ready for clinician',
+		'ready for review',
+		'accepted',
+		'rejected',
+		'duplicate'
+	];
 
 	// Whether the ready-for-clinician dialog is open
 	let readyForClinicianDialogOpen = $state(false);
 	// True after the ready-for-clinician action succeeds
 	let readyForClinicianSuccess = $state(false);
-		// True after the ready-for-validator action succeeds
+	// True after the ready-for-validator action succeeds
 	let readyForValidatorSuccess = $state(false);
 
 	// Whether the ready-for-validator dialog is open
@@ -114,11 +122,11 @@
 		}
 	}
 
-	beforeNavigate(({cancel}) => {
+	beforeNavigate(({ cancel }) => {
 		if (notesDirty && !confirm('You have unsaved changes to your notes! Discard them?')) {
 			cancel(); // Stop navigation if the user cancels
 		}
-  });
+	});
 
 	const backHref = $derived(
 		(() => {
@@ -228,7 +236,9 @@
 
 	<AlertDialog.Root
 		open={reingestDialogOpen}
-		onOpenChange={(open) => { if (!open) reingestDialogOpen = false; }}
+		onOpenChange={(open) => {
+			if (!open) reingestDialogOpen = false;
+		}}
 	>
 		<AlertDialog.Content>
 			<AlertDialog.Header>
@@ -259,7 +269,9 @@
 
 	<AlertDialog.Root
 		open={reingestNoClaimDialogOpen}
-		onOpenChange={(open) => { if (!open) reingestNoClaimDialogOpen = false; }}
+		onOpenChange={(open) => {
+			if (!open) reingestNoClaimDialogOpen = false;
+		}}
 	>
 		<AlertDialog.Content>
 			<AlertDialog.Header>
@@ -269,37 +281,65 @@
 				</AlertDialog.Description>
 			</AlertDialog.Header>
 			<AlertDialog.Footer>
-				<AlertDialog.Action onclick={() => (reingestNoClaimDialogOpen = false)}>OK</AlertDialog.Action>
+				<AlertDialog.Action onclick={() => (reingestNoClaimDialogOpen = false)}
+					>OK</AlertDialog.Action
+				>
 			</AlertDialog.Footer>
 		</AlertDialog.Content>
 	</AlertDialog.Root>
 
 	<!-- Decision block: read only for decided statuses -->
 	{#if ['accepted', 'rejected'].includes(data.submission.status)}
-		<section class="space-y-3 rounded border px-5 py-4 {data.submission.status === 'accepted' ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}">
+		<section
+			class="space-y-3 rounded border px-5 py-4 {data.submission.status === 'accepted'
+				? 'border-green-200 bg-green-50'
+				: 'border-red-200 bg-red-50'}"
+		>
 			<div class="flex items-center justify-between">
-				<h2 class="text-base font-semibold {data.submission.status === 'accepted' ? 'text-green-900' : 'text-red-900'}">
+				<h2
+					class="text-base font-semibold {data.submission.status === 'accepted'
+						? 'text-green-900'
+						: 'text-red-900'}"
+				>
 					{data.submission.status === 'accepted' ? 'Accepted' : 'Rejected'}
 				</h2>
 				{#if data.submission.status === 'accepted' && data.decision.acceptTier}
-					<span class="rounded-full px-2.5 py-0.5 text-xs font-medium capitalize bg-green-100 text-green-800 border border-green-200">
+					<span
+						class="rounded-full border border-green-200 bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 capitalize"
+					>
 						{data.decision.acceptTier === 'tier one' ? 'Base Tier' : 'Higher Tier'}
 					</span>
 				{/if}
 			</div>
 			{#if data.decision.decidedByEmail}
-				<p class="text-sm {data.submission.status === 'accepted' ? 'text-green-700' : 'text-red-700'}">
-					Decided by {data.decision.decidedByEmail}{#if data.decision.decidedAt}&nbsp;on {formatDate(data.decision.decidedAt)}{/if}
+				<p
+					class="text-sm {data.submission.status === 'accepted'
+						? 'text-green-700'
+						: 'text-red-700'}"
+				>
+					Decided by {data.decision.decidedByEmail}{#if data.decision.decidedAt}&nbsp;on {formatDate(
+							data.decision.decidedAt
+						)}{/if}
 				</p>
 			{/if}
 			{#if data.decision.reasons && data.decision.reasons.length > 0}
 				<div>
-					<p class="mb-1.5 text-sm font-semibold tracking-wide {data.submission.status === 'accepted' ? 'text-green-800' : 'text-red-800'}">
+					<p
+						class="mb-1.5 text-sm font-semibold tracking-wide {data.submission.status === 'accepted'
+							? 'text-green-800'
+							: 'text-red-800'}"
+					>
 						{data.submission.status === 'accepted' ? 'Accept Reasons' : 'Reject Reasons'}
 					</p>
 					<ul class="space-y-1 pl-5">
-						{#each data.decision.reasons as reason}
-							<li class="list-disc text-sm {data.submission.status === 'accepted' ? 'text-green-800' : 'text-red-800'}">{reason}</li>
+						{#each data.decision.reasons as reason (reason)}
+							<li
+								class="list-disc text-sm {data.submission.status === 'accepted'
+									? 'text-green-800'
+									: 'text-red-800'}"
+							>
+								{reason}
+							</li>
 						{/each}
 					</ul>
 				</div>
@@ -307,12 +347,18 @@
 
 			{#if data.isAdmin && data.claimedByMe}
 				{#if form?.action === 'resetStatus' && form?.success}
-					<p role="status" class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+					<p
+						role="status"
+						class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800"
+					>
 						{form.success}
 					</p>
 				{/if}
 				{#if form?.action === 'resetStatus' && form?.error}
-					<p role="alert" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+					<p
+						role="alert"
+						class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+					>
 						{form.error}
 					</p>
 				{/if}
@@ -326,27 +372,46 @@
 	<!-- Ready-for-policy component -->
 	{#if data.claimedByMe && data.canMarkForPolicy && ['ready for review', 'ready for clinician'].includes(data.submission.status) && !data.decision.decision}
 		<section class="space-y-4 rounded border border-gray-200 bg-gray-50 px-5 py-4">
-			<h2 class="text-base font-semibold">Send for{#if data.submission.status !== 'ready for review'}&nbsp;policy{/if} review</h2>
+			<h2 class="text-base font-semibold">
+				Send for{#if data.submission.status !== 'ready for review'}&nbsp;policy{/if} review
+			</h2>
 
 			{#if form?.action === 'readyForPolicy' && form?.success}
-				<p role="status" class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+				<p
+					role="status"
+					class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800"
+				>
 					{form.success}
 				</p>
 			{/if}
 			{#if form?.action === 'readyForPolicy' && form?.error}
-				<p role="alert" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+				<p
+					role="alert"
+					class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+				>
 					{form.error}
 				</p>
 			{/if}
-			
-			<p class="text-sm text-gray-600">Mark this submission as ready for{#if data.submission.status !== 'ready for review'}&nbsp;policy{/if} review.</p>
+
+			<p class="text-sm text-gray-600">
+				Mark this submission as ready for{#if data.submission.status !== 'ready for review'}&nbsp;policy{/if}
+				review.
+			</p>
 			<div class="flex flex-wrap gap-3">
 				{#if data.submission.status === 'ready for review' && (data.isAdmin || data.isCfdWorker || (!data.isAdmin && !data.isCfdWorker))}
-					<Button variant="outline" disabled={notesDirty} onclick={() => (provisionallyEligibleDialogOpen = true)}>
+					<Button
+						variant="outline"
+						disabled={notesDirty}
+						onclick={() => (provisionallyEligibleDialogOpen = true)}
+					>
 						Mark as provisionally eligible
 					</Button>
 				{/if}
-				<Button variant="outline" disabled={notesDirty} onclick={() => (readyForPolicyDialogOpen = true)}>
+				<Button
+					variant="outline"
+					disabled={notesDirty}
+					onclick={() => (readyForPolicyDialogOpen = true)}
+				>
 					Mark for policy review
 				</Button>
 			</div>
@@ -357,7 +422,9 @@
 			<!-- Ready for policy dialog -->
 			<AlertDialog.Root
 				open={readyForPolicyDialogOpen}
-				onOpenChange={(open) => { if (!open) readyForPolicyDialogOpen = false; }}
+				onOpenChange={(open) => {
+					if (!open) readyForPolicyDialogOpen = false;
+				}}
 			>
 				<AlertDialog.Content>
 					<AlertDialog.Header>
@@ -392,7 +459,9 @@
 			<!-- Provisionally eligible dialog -->
 			<AlertDialog.Root
 				open={provisionallyEligibleDialogOpen}
-				onOpenChange={(open) => { if (!open) provisionallyEligibleDialogOpen = false; }}
+				onOpenChange={(open) => {
+					if (!open) provisionallyEligibleDialogOpen = false;
+				}}
 			>
 				<AlertDialog.Content>
 					<AlertDialog.Header>
@@ -468,16 +537,19 @@
 							</label>
 						{/if}
 						{#if onlyReject}
-						<label class="flex cursor-pointer items-center gap-2 text-sm">
-							<input
-								type="radio"
-								name="decisionChoice"
-								value="provisionally eligible"
-								checked={decisionChoice === 'provisionally eligible'}
-								onchange={() => { decisionChoice = 'provisionally eligible'; selectedReasonIds = {}; }}
-							/>
-							Provisionally eligible
-						</label>
+							<label class="flex cursor-pointer items-center gap-2 text-sm">
+								<input
+									type="radio"
+									name="decisionChoice"
+									value="provisionally eligible"
+									checked={decisionChoice === 'provisionally eligible'}
+									onchange={() => {
+										decisionChoice = 'provisionally eligible';
+										selectedReasonIds = {};
+									}}
+								/>
+								Provisionally eligible
+							</label>
 						{/if}
 						<label class="flex cursor-pointer items-center gap-2 text-sm">
 							<input
@@ -560,7 +632,11 @@
 					{/if}
 				</fieldset>
 
-				<Button variant="default" disabled={decideDisabled} onclick={() => (decideDialogOpen = true)}>
+				<Button
+					variant="default"
+					disabled={decideDisabled}
+					onclick={() => (decideDialogOpen = true)}
+				>
 					Record decision
 				</Button>
 				{#if notesDirty && decisionChoice}
@@ -585,30 +661,32 @@
 							<AlertDialog.Cancel onclick={() => (decideDialogOpen = false)}>
 								Cancel
 							</AlertDialog.Cancel>
-						<form
-							method="POST"
-							action={decisionChoice === 'provisionally eligible' ? '?/provisionallyEligible' : '?/decide'}
-							use:enhance={() =>
-								async ({ update }) => {
-									await update();
-									decideDialogOpen = false;
-								}}
-						>
-							<input type="hidden" name="csrf" value={page.data.csrfToken} />
-							<input type="hidden" name="decision" value={decisionChoice ?? ''} />
-							{#if decisionChoice === 'rejected'}
-								{#each tickedReasonIds as id (id)}
-									<input type="hidden" name="reasonIds" value={id} />
-								{/each}
-							{/if}
-							{#if decisionChoice === 'accepted'}
-								{#each tickedAcceptReasonIds as id (id)}
-									<input type="hidden" name="reasonIds" value={id} />
-								{/each}
-								<input type="hidden" name="tier" value={tierChoice} />
-							{/if}
-							<AlertDialog.Action type="submit">Confirm</AlertDialog.Action>
-						</form>
+							<form
+								method="POST"
+								action={decisionChoice === 'provisionally eligible'
+									? '?/provisionallyEligible'
+									: '?/decide'}
+								use:enhance={() =>
+									async ({ update }) => {
+										await update();
+										decideDialogOpen = false;
+									}}
+							>
+								<input type="hidden" name="csrf" value={page.data.csrfToken} />
+								<input type="hidden" name="decision" value={decisionChoice ?? ''} />
+								{#if decisionChoice === 'rejected'}
+									{#each tickedReasonIds as id (id)}
+										<input type="hidden" name="reasonIds" value={id} />
+									{/each}
+								{/if}
+								{#if decisionChoice === 'accepted'}
+									{#each tickedAcceptReasonIds as id (id)}
+										<input type="hidden" name="reasonIds" value={id} />
+									{/each}
+									<input type="hidden" name="tier" value={tierChoice} />
+								{/if}
+								<AlertDialog.Action type="submit">Confirm</AlertDialog.Action>
+							</form>
 						</AlertDialog.Footer>
 					</AlertDialog.Content>
 				</AlertDialog.Root>
@@ -658,15 +736,23 @@
 			<h2 class="text-base font-semibold">Send for review</h2>
 
 			<p class="text-sm text-gray-600">
-				Send this submission for clinician or validator review.
-				Any notes you have saved will be visible to the reviewer.
+				Send this submission for clinician or validator review. Any notes you have saved will be
+				visible to the reviewer.
 			</p>
 
 			<div class="flex flex-wrap gap-3">
-				<Button variant="outline" disabled={notesDirty} onclick={() => (readyForClinicianDialogOpen = true)}>
+				<Button
+					variant="outline"
+					disabled={notesDirty}
+					onclick={() => (readyForClinicianDialogOpen = true)}
+				>
 					Mark for clinician review
 				</Button>
-				<Button variant="outline" disabled={notesDirty} onclick={() => (readyForValidatorDialogOpen = true)}>
+				<Button
+					variant="outline"
+					disabled={notesDirty}
+					onclick={() => (readyForValidatorDialogOpen = true)}
+				>
 					Mark for validator review
 				</Button>
 			</div>
@@ -684,8 +770,8 @@
 					<AlertDialog.Header>
 						<AlertDialog.Title>Mark for clinician review?</AlertDialog.Title>
 						<AlertDialog.Description>
-							Are you sure you want to send this submission for clinician review?
-							This action cannot be undone.
+							Are you sure you want to send this submission for clinician review? This action cannot
+							be undone.
 						</AlertDialog.Description>
 					</AlertDialog.Header>
 					<AlertDialog.Footer>
@@ -721,8 +807,8 @@
 					<AlertDialog.Header>
 						<AlertDialog.Title>Mark for validator review?</AlertDialog.Title>
 						<AlertDialog.Description>
-							Are you sure you want to send this submission for validator review?
-							This action cannot be undone.
+							Are you sure you want to send this submission for validator review? This action cannot
+							be undone.
 						</AlertDialog.Description>
 					</AlertDialog.Header>
 					<AlertDialog.Footer>
@@ -756,12 +842,18 @@
 			<h2 class="text-base font-semibold">Duplicate</h2>
 
 			{#if form?.action === 'resetDuplicate' && form?.success}
-				<p role="status" class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+				<p
+					role="status"
+					class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800"
+				>
 					{form.success}
 				</p>
 			{/if}
 			{#if form?.action === 'resetDuplicate' && form?.error}
-				<p role="alert" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+				<p
+					role="alert"
+					class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+				>
 					{form.error}
 				</p>
 			{/if}
@@ -773,13 +865,16 @@
 
 			<AlertDialog.Root
 				open={resetDuplicateDialogOpen}
-				onOpenChange={(open) => { if (!open) resetDuplicateDialogOpen = false; }}
+				onOpenChange={(open) => {
+					if (!open) resetDuplicateDialogOpen = false;
+				}}
 			>
 				<AlertDialog.Content>
 					<AlertDialog.Header>
 						<AlertDialog.Title>Reset duplicate status?</AlertDialog.Title>
 						<AlertDialog.Description>
-							This will return the submission to the appropriate status based on its OCR processing state.
+							This will return the submission to the appropriate status based on its OCR processing
+							state.
 						</AlertDialog.Description>
 					</AlertDialog.Header>
 					<AlertDialog.Footer>
@@ -810,12 +905,18 @@
 			<h2 class="text-base font-semibold">Ready for Clinician</h2>
 
 			{#if form?.action === 'resetStatus' && form?.success}
-				<p role="status" class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+				<p
+					role="status"
+					class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800"
+				>
 					{form.success}
 				</p>
 			{/if}
 			{#if form?.action === 'resetStatus' && form?.error}
-				<p role="alert" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+				<p
+					role="alert"
+					class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+				>
 					{form.error}
 				</p>
 			{/if}
@@ -856,12 +957,18 @@
 			<h2 class="text-base font-semibold">Status</h2>
 
 			{#if form?.action === 'resetStatus' && form?.success}
-				<p role="status" class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+				<p
+					role="status"
+					class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800"
+				>
 					{form.success}
 				</p>
 			{/if}
 			{#if form?.action === 'resetStatus' && form?.error}
-				<p role="alert" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+				<p
+					role="alert"
+					class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+				>
 					{form.error}
 				</p>
 			{/if}
@@ -988,7 +1095,7 @@
 					name="notes"
 					rows="6"
 					bind:value={notesValue}
-					class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+					class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:ring-1 focus:ring-blue-400 focus:outline-none"
 				></textarea>
 				<div class="mt-2 flex items-center gap-3">
 					<Button type="submit" variant="default" size="sm">Save</Button>
@@ -1010,18 +1117,24 @@
 		</section>
 	{/if}
 
-		<!-- Duplicate option component -->
+	<!-- Duplicate option component -->
 	{#if data.claimedByMe && ['submitted', 'OCR queued', 'OCR processed', 'OCR Error', 'ready for review', 'ready for clinician', 'ready for policy', 'provisionally eligible'].includes(data.submission.status)}
-		<section class="space-y-4 rounded border border-gray-200 bg-gray-50  px-5 py-4">
+		<section class="space-y-4 rounded border border-gray-200 bg-gray-50 px-5 py-4">
 			<h2 class="text-base font-semibold">Mark as duplicate</h2>
 
 			{#if form?.action === 'markDuplicate' && form?.success}
-				<p role="status" class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+				<p
+					role="status"
+					class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800"
+				>
 					{form.success}
 				</p>
 			{/if}
 			{#if form?.action === 'markDuplicate' && form?.error}
-				<p role="alert" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+				<p
+					role="alert"
+					class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+				>
 					{form.error}
 				</p>
 			{/if}
@@ -1029,7 +1142,12 @@
 			<p class="text-sm text-gray-600">
 				Mark this submission as a duplicate of another submission. This action cannot be undone.
 			</p>
-			<Button variant="outline" size="sm" disabled={notesDirty} onclick={() => (duplicateDialogOpen = true)}>
+			<Button
+				variant="outline"
+				size="sm"
+				disabled={notesDirty}
+				onclick={() => (duplicateDialogOpen = true)}
+			>
 				Mark as duplicate
 			</Button>
 			{#if notesDirty}
@@ -1038,7 +1156,9 @@
 
 			<AlertDialog.Root
 				open={duplicateDialogOpen}
-				onOpenChange={(open) => { if (!open) duplicateDialogOpen = false; }}
+				onOpenChange={(open) => {
+					if (!open) duplicateDialogOpen = false;
+				}}
 			>
 				<AlertDialog.Content>
 					<AlertDialog.Header>

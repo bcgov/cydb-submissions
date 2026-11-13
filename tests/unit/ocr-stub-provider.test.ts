@@ -13,7 +13,9 @@ describe('StubProvider', () => {
 	});
 	it('mode=stub-fail always throws OcrProviderError', async () => {
 		const p = new StubProvider({ mode: 'stub-fail', fixtureDir, delayMs: 0 });
-		await expect(p.analyze(Buffer.from(''), 'application/pdf', 'x.pdf')).rejects.toThrow(/OcrProviderError/);
+		await expect(p.analyze(Buffer.from(''), 'application/pdf', 'x.pdf')).rejects.toThrow(
+			/OcrProviderError/
+		);
 	});
 	it('mode=stub-flaky fails N times then succeeds', async () => {
 		const p = new StubProvider({ mode: 'stub-flaky', fixtureDir, delayMs: 0, flakyFailures: 2 });

@@ -9,5 +9,8 @@ bun.lockb
 /static/
 /drizzle/
 
+# Helm templates contain Go templating, not valid YAML
+/openshift/helm/templates/
+
 # Superseded earlier approach — not maintained
 /archive/

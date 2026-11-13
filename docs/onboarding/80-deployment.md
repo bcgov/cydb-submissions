@@ -117,6 +117,7 @@ Three stages: `deps` → `build` → `runtime`. The runtime image:
 - CMD: `sh -c "node scripts/migrate.mjs && node scripts/seed-admin.mjs && node build"`
 
 The CMD chain matters:
+
 1. **`scripts/migrate.mjs`** applies any unapplied migrations against `local.db`. Idempotent — re-runs are safe.
 2. **`scripts/seed-admin.mjs`** checks if `user` is empty; if so, creates the bootstrap admin from `ADMIN_BOOTSTRAP_EMAIL`/`PASSWORD`. Otherwise no-op.
 3. **`node build`** boots the SvelteKit app (the production server).
@@ -132,6 +133,7 @@ Two Kubernetes resources hold the runtime env:
 Sensitive values. Created from `openshift/secret.example.yaml` (which is committed and shows the shape but no real values). The actual `openshift/secret.yaml` is gitignored.
 
 Includes (when populated):
+
 - `BETTER_AUTH_SECRET` — 32+ random chars; signs sessions and OAuth state cookies
 - `ADMIN_BOOTSTRAP_EMAIL`, `ADMIN_BOOTSTRAP_PASSWORD` — for the first-deploy admin
 - `SSO_CLIENT_ID`, `SSO_CLIENT_SECRET` — from the BC Gov SSO installation JSON
@@ -146,6 +148,7 @@ Includes (when populated):
 Non-sensitive but per-environment. Created from one of `openshift/configmap-{dev,test,prod}.yaml`. **All three are gitignored** — they document per-environment values that change without code changes, and the BC Gov security stance is that operator-maintained env files don't belong in git.
 
 Includes:
+
 - `NODE_ENV=production`, `HOST`, `PORT`, `DATABASE_URL`, `ATTACHMENTS_DIR`
 - `LOG_LEVEL` (`info` for test/prod, `debug` for dev)
 - OCR worker config: `OCR_WORKER_ENABLED`, `OCR_PROVIDER`, `OCR_MAX_CONCURRENCY`, etc.
@@ -246,6 +249,7 @@ Hit the hostname in a browser. You should see the staff landing page; SSO will w
 Every change goes through dev → test → prod.
 
 For each environment:
+
 1. Build the image, tag, push (see above).
 2. Apply any changed ConfigMap (if the change touched env vars):
    ```bash
@@ -318,6 +322,7 @@ If OOM kills start appearing in `oc events`, check which container was killed (`
 PVC backups are handled by the BC Gov Platform team's snapshot infrastructure. We don't run our own.
 
 Recovery, if you ever need it:
+
 1. Stop the pod: `oc scale deployment/cydb-submissions --replicas=0`
 2. Mount the snapshot to a temporary debug pod; `oc cp` files out
 3. Restore by copying back to the live PVC mount, then scaling back to 1
@@ -325,6 +330,7 @@ Recovery, if you ever need it:
 This is operationally expensive. A more practical "oops" recovery (delete a misclick admin action, restore one submission row) doesn't exist; we'd have to write a one-off SQL script.
 
 If RPO/RTO matter to you (or to a security review), confirm with the Platform team:
+
 - How often is the PVC snapshot taken?
 - How long is it retained?
 - What's the recovery time?
@@ -387,7 +393,7 @@ oc exec deployment/cydb-submissions -- sh -c \
   "echo 'UPDATE submissions SET search_indexed_at = NULL;' | sqlite3 /data/db/local.db"
 ```
 
-Re-indexing proceeds `SEARCH_RECONCILE_BATCH` rows per `SEARCH_RECONCILE_INTERVAL_MS` tick. To rebuild the index *table* itself (e.g. after a schema/morphology change), drop it in Manticore and restart the app — `ensureIndex` recreates `submissions_idx` on boot:
+Re-indexing proceeds `SEARCH_RECONCILE_BATCH` rows per `SEARCH_RECONCILE_INTERVAL_MS` tick. To rebuild the index _table_ itself (e.g. after a schema/morphology change), drop it in Manticore and restart the app — `ensureIndex` recreates `submissions_idx` on boot:
 
 ```bash
 oc exec deployment/cydb-submissions -c manticore -- \
@@ -419,17 +425,17 @@ oc logs deployment/cydb-submissions | jq -c 'select(.level >= 40)'   # warn+
 
 The three environments are configured to exercise progressively more of the integration surface:
 
-| | dev | test | prod |
-|---|---|---|---|
-| `NODE_ENV` | production | production | production |
-| `LOG_LEVEL` | debug | info | info |
-| `OCR_WORKER_ENABLED` | 1 | 1 | 1 |
-| `OCR_PROVIDER` | stub | bcgov-di | bcgov-di |
-| `MAIL_TRANSPORT` | log | ches | ches |
-| `OCR_ALERT_RECIPIENTS` | (empty) | test mailbox | ops mailbox |
-| `CHEFS_POLLER_ENABLED` | 0 | 1 | 1 |
-| `SSO_ISSUER_URL` | dev.loginproxy | test.loginproxy | loginproxy |
-| `DEV_AUTH_BYPASS` | (empty) | (empty) | (empty) |
+|                        | dev            | test            | prod        |
+| ---------------------- | -------------- | --------------- | ----------- |
+| `NODE_ENV`             | production     | production      | production  |
+| `LOG_LEVEL`            | debug          | info            | info        |
+| `OCR_WORKER_ENABLED`   | 1              | 1               | 1           |
+| `OCR_PROVIDER`         | stub           | bcgov-di        | bcgov-di    |
+| `MAIL_TRANSPORT`       | log            | ches            | ches        |
+| `OCR_ALERT_RECIPIENTS` | (empty)        | test mailbox    | ops mailbox |
+| `CHEFS_POLLER_ENABLED` | 0              | 1               | 1           |
+| `SSO_ISSUER_URL`       | dev.loginproxy | test.loginproxy | loginproxy  |
+| `DEV_AUTH_BYPASS`      | (empty)        | (empty)         | (empty)     |
 
 Dev cluster runs `NODE_ENV=production` but with the OCR stub provider and log-only mail — useful for confirming the deployed app boots end-to-end without actually calling external services. Test cluster talks to real CHEFS and real OCR but quiet email. Prod is real-everything.
 

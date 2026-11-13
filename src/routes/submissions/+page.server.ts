@@ -11,10 +11,20 @@ import { SearchQueryError } from '$lib/server/search/types';
 import { getCategoryMapping } from '$lib/server/ocr/keywords';
 
 export const load: PageServerLoad = async ({ url, locals }) => {
-	requireRole({ user: locals.user ?? null, roles: locals.roles }, 'admin', 'cfd_worker', 'validator', 'clinician');
+	requireRole(
+		{ user: locals.user ?? null, roles: locals.roles },
+		'admin',
+		'cfd_worker',
+		'validator',
+		'clinician'
+	);
 	const isAdmin = locals.roles.has('admin');
 	const isValidator = locals.roles.has('validator') && !isAdmin && !locals.roles.has('cfd_worker');
-	const isClinicianOnly = locals.roles.has('clinician') && !isAdmin && !locals.roles.has('cfd_worker') && !locals.roles.has('validator');
+	const isClinicianOnly =
+		locals.roles.has('clinician') &&
+		!isAdmin &&
+		!locals.roles.has('cfd_worker') &&
+		!locals.roles.has('validator');
 	const categoryMap = await getCategoryMapping();
 	const q = parseSubmissionsQuery(url);
 
@@ -30,7 +40,11 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			locals.logger
 		);
 		try {
-			const effectiveStatusFilter = isValidator ? 'ready for review' : isClinicianOnly ? 'ready for clinician' : q.statusFilter;
+			const effectiveStatusFilter = isValidator
+				? 'ready for review'
+				: isClinicianOnly
+					? 'ready for clinician'
+					: q.statusFilter;
 			const result = await runSearch(db, getSearchClient(), {
 				query: q.q,
 				...buildStatusFilter(effectiveStatusFilter),
@@ -44,9 +58,16 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			return {
 				rows: result.rows,
 				invalidRows: [] as {
-					uuid: string; receivedAt: string; validationErrors: unknown; ipAddress: string | null;
-					childYouthFirstName: string; childYouthLastName: string; surname: string; screening: string;
-					assessments: number; attachmentCount: number | string;
+					uuid: string;
+					receivedAt: string;
+					validationErrors: unknown;
+					ipAddress: string | null;
+					childYouthFirstName: string;
+					childYouthLastName: string;
+					surname: string;
+					screening: string;
+					assessments: number;
+					attachmentCount: number | string;
 				}[],
 				total: result.total,
 				query: q,
@@ -60,8 +81,15 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 				return {
 					rows: [],
 					invalidRows: [] as {
-						uuid: string; receivedAt: string; validationErrors: unknown; ipAddress: string | null;
-						childYouthFirstName: string; childYouthLastName: string; surname: string; screening: string; assessments: number;
+						uuid: string;
+						receivedAt: string;
+						validationErrors: unknown;
+						ipAddress: string | null;
+						childYouthFirstName: string;
+						childYouthLastName: string;
+						surname: string;
+						screening: string;
+						assessments: number;
 					}[],
 					total: 0,
 					query: q,
@@ -80,20 +108,20 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		: isClinicianOnly
 			? eq(submissions.status, 'ready for clinician')
 			: q.statusFilter === 'all'
-			? undefined
-			: q.statusFilter === 'exclude_invalid'
-				? ne(submissions.status, 'invalid')
-				: q.statusFilter === 'ocr_processed'
-					? eq(submissions.status, 'OCR processed')
-					: q.statusFilter === 'ready_for_review'
-						? eq(submissions.status, 'ready for review')
-						: q.statusFilter === 'ready_for_clinician'
-							? eq(submissions.status, 'ready for clinician')
-							: q.statusFilter === 'ready_for_policy'
-								? eq(submissions.status, 'ready for policy')
-								: q.statusFilter === 'provisionally_eligible'
-									? eq(submissions.status, 'provisionally eligible')
-									: eq(submissions.status, q.statusFilter);
+				? undefined
+				: q.statusFilter === 'exclude_invalid'
+					? ne(submissions.status, 'invalid')
+					: q.statusFilter === 'ocr_processed'
+						? eq(submissions.status, 'OCR processed')
+						: q.statusFilter === 'ready_for_review'
+							? eq(submissions.status, 'ready for review')
+							: q.statusFilter === 'ready_for_clinician'
+								? eq(submissions.status, 'ready for clinician')
+								: q.statusFilter === 'ready_for_policy'
+									? eq(submissions.status, 'ready for policy')
+									: q.statusFilter === 'provisionally_eligible'
+										? eq(submissions.status, 'provisionally eligible')
+										: eq(submissions.status, q.statusFilter);
 
 	// "submissions"."id" MUST be a quoted literal here, not ${submissions.id}.
 	// Drizzle renders the column-ref form as an unqualified "id" inside this subquery,
@@ -160,7 +188,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			submittedAt: submissions.dateSigned,
 			status: submissions.status,
 			total: totalExpr,
-			attachmentCount: attachmentCountExpr,
+			attachmentCount: attachmentCountExpr
 		})
 		.from(submissions);
 
@@ -186,7 +214,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		const rawFieldPath = sql.raw(`'$.${fieldPath}'`);
 		const sqlout = sql<string>`(CASE WHEN json_valid(raw_payload) = 1
 			THEN COALESCE(json_extract(raw_payload, ${rawFieldPath}), '—')
-			ELSE '—' END)`
+			ELSE '—' END)`;
 		return sqlout;
 	}
 
@@ -196,7 +224,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		THEN COALESCE( NULLIF( json_array_length( 
 			COALESCE( json_extract(raw_payload, ${rawFieldPath}) , '[]') 
 			), 0), '—')
-		ELSE '—' END)`
+		ELSE '—' END)`;
 		return sqlout;
 	}
 
@@ -235,7 +263,10 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 					.offset((q.page - 1) * q.size)
 			: Promise.resolve([]),
 		shouldIncludeInvalidTable
-			? db.select({ n: count() }).from(invalidSubmissions).where(isNull(invalidSubmissions.resolvedAt))
+			? db
+					.select({ n: count() })
+					.from(invalidSubmissions)
+					.where(isNull(invalidSubmissions.resolvedAt))
 			: Promise.resolve([{ n: 0 }])
 	]);
 	const regularTotal = totalRow[0]?.n ?? 0;

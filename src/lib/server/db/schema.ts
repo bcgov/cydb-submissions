@@ -138,6 +138,8 @@ export const submissionAttachments = sqliteTable(
 		sizeBytes: integer('size_bytes').notNull(),
 		mimeType: text('mime_type').notNull(),
 		sha256: text('sha256').notNull(),
+		// Non-null when the file was not retrievable at ingest (e.g. 404 from CHEFS); no file on disk.
+		missingAt: text('missing_at'),
 		uploadedAt: text('uploaded_at')
 			.notNull()
 			.default(sql`CURRENT_TIMESTAMP`)
@@ -161,7 +163,10 @@ export const userRoles = sqliteTable(
 	},
 	(t) => ({
 		uniqByUserRole: uniqueIndex('user_roles_unique').on(t.userId, t.role),
-		roleCheck: check('user_roles_role_check', sql`${t.role} IN ('admin','cfd_worker','clinician','validator')`)
+		roleCheck: check(
+			'user_roles_role_check',
+			sql`${t.role} IN ('admin','cfd_worker','clinician','validator')`
+		)
 	})
 );
 
@@ -291,20 +296,24 @@ export const keywordHits = sqliteTable(
 			.default(sql`CURRENT_TIMESTAMP`)
 	},
 	(t) => ({
-		uniqByPair: uniqueIndex('keyword_hits_submission_attachment_keyword_unique').on(t.submissionId, t.keyword, t.attachmentId),
-		category1_idx: index("category1_idx").on(t.category1),
-		category2_idx: index("category2_idx").on(t.category2),
-		category3_idx: index("category3_idx").on(t.category3),
-		category4_idx: index("category4_idx").on(t.category4),
-		category5_idx: index("category5_idx").on(t.category5),
-		category6_idx: index("category6_idx").on(t.category6),
-		category7_idx: index("category7_idx").on(t.category7),
-		category8_idx: index("category8_idx").on(t.category8),
-		category9_idx: index("category9_idx").on(t.category9),
-		category10_idx: index("category10_idx").on(t.category10),
-		category11_idx: index("category11_idx").on(t.category11),
-		category12_idx: index("category12_idx").on(t.category12),
-		category13_idx: index("category13_idx").on(t.category13)
+		uniqByPair: uniqueIndex('keyword_hits_submission_attachment_keyword_unique').on(
+			t.submissionId,
+			t.keyword,
+			t.attachmentId
+		),
+		category1_idx: index('category1_idx').on(t.category1),
+		category2_idx: index('category2_idx').on(t.category2),
+		category3_idx: index('category3_idx').on(t.category3),
+		category4_idx: index('category4_idx').on(t.category4),
+		category5_idx: index('category5_idx').on(t.category5),
+		category6_idx: index('category6_idx').on(t.category6),
+		category7_idx: index('category7_idx').on(t.category7),
+		category8_idx: index('category8_idx').on(t.category8),
+		category9_idx: index('category9_idx').on(t.category9),
+		category10_idx: index('category10_idx').on(t.category10),
+		category11_idx: index('category11_idx').on(t.category11),
+		category12_idx: index('category12_idx').on(t.category12),
+		category13_idx: index('category13_idx').on(t.category13)
 	})
 );
 
@@ -333,18 +342,21 @@ export const invalidSubmissions = sqliteTable('invalid_submissions', {
 	resolvedNote: text('resolved_note')
 });
 
-export const submissionClaims = sqliteTable('submission_claims', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	submissionId: integer('submission_id')
-	.notNull()
-	.references(() => submissions.id, { onDelete: 'cascade' }),
-	userId: text('user_id')
-	.notNull()
-	.references(() => user.id, { onDelete: 'cascade' }),
+export const submissionClaims = sqliteTable(
+	'submission_claims',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		submissionId: integer('submission_id')
+			.notNull()
+			.references(() => submissions.id, { onDelete: 'cascade' }),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' })
 	},
 	(t) => ({
-		uniqByUserRole: uniqueIndex('submission_claims_unique').on(t.userId, t.submissionId),
-}));
+		uniqByUserRole: uniqueIndex('submission_claims_unique').on(t.userId, t.submissionId)
+	})
+);
 
 // Persistent record of audit events (see src/lib/server/audit.ts). submissionId is a
 // soft/optional link — set to NULL on delete rather than cascading — so audit history

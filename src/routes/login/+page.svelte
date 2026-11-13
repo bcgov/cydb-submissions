@@ -8,8 +8,8 @@
 	let { form, data }: { form: ActionData; data: PageData } = $props();
 </script>
 
-<div class="mx-auto max-w-sm py-16 px-4">
-	<h1 class="text-2xl font-semibold mb-6">Sign in</h1>
+<div class="mx-auto max-w-sm px-4 py-16">
+	<h1 class="mb-6 text-2xl font-semibold">Sign in</h1>
 
 	<form method="POST" action="?/sso" use:enhance class="mb-4">
 		<input type="hidden" name="next" value={data.next ?? ''} />
@@ -17,18 +17,16 @@
 	</form>
 
 	{#if form?.error}
-		<p role="alert" class="text-sm text-red-600 mb-3">{form.error}</p>
+		<p role="alert" class="mb-3 text-sm text-red-600">{form.error}</p>
 	{/if}
 
 	{#if data.personas && data.personas.length > 0}
 		<section
-			class="mt-6 rounded-md border border-dashed border-yellow-500/60 bg-yellow-50 dark:bg-yellow-950/30 p-4"
+			class="mt-6 rounded-md border border-dashed border-yellow-500/60 bg-yellow-50 p-4 dark:bg-yellow-950/30"
 			aria-labelledby="dev-impersonation-heading"
 		>
-			<h2 id="dev-impersonation-heading" class="text-sm font-semibold mb-1">
-				Dev impersonation
-			</h2>
-			<p class="text-xs text-muted-foreground mb-3">
+			<h2 id="dev-impersonation-heading" class="mb-1 text-sm font-semibold">Dev impersonation</h2>
+			<p class="mb-3 text-xs text-muted-foreground">
 				Active only when <code>DEV_AUTH_BYPASS</code> is set and
 				<code>NODE_ENV</code> isn't <code>production</code>. One click signs in as the chosen
 				persona — useful for exercising role-gated routes locally.
@@ -58,7 +56,13 @@
 			<input type="hidden" name="next" value={data.next ?? ''} />
 			<div class="space-y-1">
 				<Label for="email">Email</Label>
-				<Input id="email" name="email" type="email" required value={(form && 'email' in form ? form.email : '') ?? ''} />
+				<Input
+					id="email"
+					name="email"
+					type="email"
+					required
+					value={(form && 'email' in form ? form.email : '') ?? ''}
+				/>
 			</div>
 			<div class="space-y-1">
 				<Label for="password">Password</Label>

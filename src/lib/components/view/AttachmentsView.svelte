@@ -25,6 +25,9 @@
 
 	const fmtSize = (bytes: number) =>
 		bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(0)} KB`;
+
+	const MISSING_EXPLANATION =
+		'An attachment was unable to be downloaded. Please check CHEFS to see if the original file exists or has been deleted.';
 </script>
 
 <section>
@@ -46,10 +49,20 @@
 					>
 						<FileIcon class="size-4 shrink-0 text-gray-400" />
 						<span class="text-sm font-medium text-gray-900">{a.originalFilename}</span>
-						<span class="text-xs text-gray-500">{a.mimeType} · {fmtSize(a.sizeBytes)}</span>
-						<Badge variant="outline" class="text-xs {ocrMeta(a.ocr.status).class}">
-							{ocrMeta(a.ocr.status).label}{a.ocr.pages ? ` · ${a.ocr.pages}p` : ''}
-						</Badge>
+						{#if a.missingAt}
+							<Badge
+								variant="outline"
+								class="border-red-200 bg-red-50 text-xs text-red-800"
+								title={MISSING_EXPLANATION}
+							>
+								Attachment missing
+							</Badge>
+						{:else}
+							<span class="text-xs text-gray-500">{a.mimeType} · {fmtSize(a.sizeBytes)}</span>
+							<Badge variant="outline" class="text-xs {ocrMeta(a.ocr.status).class}">
+								{ocrMeta(a.ocr.status).label}{a.ocr.pages ? ` · ${a.ocr.pages}p` : ''}
+							</Badge>
+						{/if}
 
 						<div class="ml-auto flex items-center gap-1 text-sm">
 							{#if a.ocr.text || a.ocr.keyword.size > 0}
@@ -87,19 +100,25 @@
 									Matched terms
 								</button>
 							{/if}
-							<a
-								class="inline-flex items-center gap-1 rounded px-2 py-1 text-blue-700 hover:bg-blue-50"
-								href="/attachments/{a.id}?download=1"
-							>
-								<DownloadIcon class="size-3.5" />
-								Download
-							</a>
+							{#if !a.missingAt}
+								<a
+									class="inline-flex items-center gap-1 rounded px-2 py-1 text-blue-700 hover:bg-blue-50"
+									href="/attachments/{a.id}?download=1"
+								>
+									<DownloadIcon class="size-3.5" />
+									Download
+								</a>
+							{/if}
 						</div>
 					</div>
 
 					<!-- Preview pane -->
 					<div class="bg-gray-50 p-4">
-						{#if showText}
+						{#if a.missingAt}
+							<p class="text-sm text-red-800">
+								{MISSING_EXPLANATION} Flagged on {formatDate(a.missingAt)}.
+							</p>
+						{:else if showText}
 							<pre
 								class="max-h-[480px] overflow-auto rounded border border-gray-200 bg-white p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap text-gray-800">{a
 									.ocr.text}</pre>
@@ -111,7 +130,12 @@
 								</p>
 							{/if}
 						{:else if showKeyword}
-							<p><i>OCR can make mistakes. Make sure to check the file itself to validate the words listed and their context.</i></p>
+							<p>
+								<i
+									>OCR can make mistakes. Make sure to check the file itself to validate the words
+									listed and their context.</i
+								>
+							</p>
 							<Table.Root class="mt-2">
 								<Table.Header>
 									<Table.Row>
@@ -121,10 +145,14 @@
 								</Table.Header>
 								<Table.Body>
 									{#each a.ocr.keyword.entries() as category (category[0])}
-									<Table.Row>
-										<Table.Cell class="w-1/2 text-wrap">{a.ocr.categoryMap.get(category[0]) ?? 'Undefined'}</Table.Cell>
-										<Table.Cell class="w-1/2 text-wrap">{category[1].length > 0 ? category[1].join('; '): '—' }</Table.Cell>
-									</Table.Row>
+										<Table.Row>
+											<Table.Cell class="w-1/2 text-wrap"
+												>{a.ocr.categoryMap.get(category[0]) ?? 'Undefined'}</Table.Cell
+											>
+											<Table.Cell class="w-1/2 text-wrap"
+												>{category[1].length > 0 ? category[1].join('; ') : '—'}</Table.Cell
+											>
+										</Table.Row>
 									{/each}
 								</Table.Body>
 							</Table.Root>

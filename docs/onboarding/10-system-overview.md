@@ -24,25 +24,25 @@ submitted → OCR queued → OCR processed → ready for review → ready for cl
 
 ### The user roles
 
-| Role | What they do |
-|---|---|
-| `admin` | System operations: manage other users' roles, configure CHEFS ingestion, resume halted queues, requeue failed OCR jobs, see all submissions. |
-| `cfd_worker` | Triage incoming submissions, review the OCR output, annotate, and assign cases to clinicians. Sees the intake/processing slice of statuses. |
-| `clinician` | Receives assigned cases. Reads the submission + attachments + OCR output. Records their evaluation. Sees `ready for clinician` cases only. |
-| (anonymous) | Originally allowed to submit the public form. In the current deployment the public form is **archived** and submissions arrive via the CHEFS poller instead. |
+| Role         | What they do                                                                                                                                                 |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `admin`      | System operations: manage other users' roles, configure CHEFS ingestion, resume halted queues, requeue failed OCR jobs, see all submissions.                 |
+| `cfd_worker` | Triage incoming submissions, review the OCR output, annotate, and assign cases to clinicians. Sees the intake/processing slice of statuses.                  |
+| `clinician`  | Receives assigned cases. Reads the submission + attachments + OCR output. Records their evaluation. Sees `ready for clinician` cases only.                   |
+| (anonymous)  | Originally allowed to submit the public form. In the current deployment the public form is **archived** and submissions arrive via the CHEFS poller instead. |
 
 Roles are stored in a local `userRoles` table. They are also synced from BC Gov SSO on each sign-in (see `50-auth-and-roles.md`).
 
 ## Where the data is
 
-| Class | Where it lives | Notes |
-|---|---|---|
-| Form payloads | `submissions` table in SQLite (`/data/db/local.db` in the deployed pod) | Every leaf field has a typed column; multi-select arrays are stored as JSON; the original raw payload is also retained for forensic / replay use |
-| Invalid submissions | `invalid_submissions` table | Same shape minus typed columns; payload + zod issue list kept for defect review |
-| Attachments | PVC at `/data/attachments`, one subdirectory per submission UUID | sha256 fingerprint recorded in `submission_attachments` |
-| OCR text + keyword hits | `ocr_analyses` + `keyword_hits` tables | Per-attachment text + per-submission keyword counts |
-| Sessions / accounts | `user`, `account`, `session`, `verification` (better-auth tables) | OAuth `account` rows carry the SSO access/refresh tokens |
-| Audit events | pino stdout → OpenShift log aggregator | No in-app audit table; the `auditLog()` wrapper is an allowlist gate |
+| Class                   | Where it lives                                                          | Notes                                                                                                                                            |
+| ----------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Form payloads           | `submissions` table in SQLite (`/data/db/local.db` in the deployed pod) | Every leaf field has a typed column; multi-select arrays are stored as JSON; the original raw payload is also retained for forensic / replay use |
+| Invalid submissions     | `invalid_submissions` table                                             | Same shape minus typed columns; payload + zod issue list kept for defect review                                                                  |
+| Attachments             | PVC at `/data/attachments`, one subdirectory per submission UUID        | sha256 fingerprint recorded in `submission_attachments`                                                                                          |
+| OCR text + keyword hits | `ocr_analyses` + `keyword_hits` tables                                  | Per-attachment text + per-submission keyword counts                                                                                              |
+| Sessions / accounts     | `user`, `account`, `session`, `verification` (better-auth tables)       | OAuth `account` rows carry the SSO access/refresh tokens                                                                                         |
+| Audit events            | pino stdout → OpenShift log aggregator                                  | No in-app audit table; the `auditLog()` wrapper is an allowlist gate                                                                             |
 
 ## Decision log
 
@@ -68,6 +68,7 @@ These are choices that have already been made. Don't re-litigate them unless you
 **In-process workers, not a separate service.** Both the OCR queue worker and the CHEFS poller run on a `setInterval` inside the same Node process that serves HTTP. Reasons: simpler ops (one process, one PVC, one set of env), shared in-memory primitives (single-flight locks, breaker state), and the workload is small enough that the in-process cost is invisible.
 
 The trade-offs you should know:
+
 - **`replicas: 1`** in the Deployment. Scaling out would mean two workers racing for the same DB rows. The lease loop uses an UPDATE-then-SELECT pattern that would tolerate it, but the in-memory rate limiter and bypass cookie don't.
 - **A long-running provider call blocks nothing** because the worker's lease loop is async, but it does hold one of the configured `OCR_MAX_CONCURRENCY` slots.
 
@@ -97,7 +98,7 @@ The trade-offs you should know:
 
 You might encounter these in conversation. They're not yours to own but you'll interact with them.
 
-- **The CHEFS form definition.** The CHEFS team hosts the public-facing form. The schema JSON is in this repo (`src/lib/form/cydb_form_schema.json`), but the *deployed* CHEFS form is configured in the CHEFS admin UI. If the form changes, the schema must be re-exported and committed.
+- **The CHEFS form definition.** The CHEFS team hosts the public-facing form. The schema JSON is in this repo (`src/lib/form/cydb_form_schema.json`), but the _deployed_ CHEFS form is configured in the CHEFS admin UI. If the form changes, the schema must be re-exported and committed.
 - **BC Gov SSO client registration.** Each environment has its own client ID, secret, and registered redirect URI. The CSS (Common Hosted SSO) app is where roles are created and IDIR users assigned to them. Changes happen there, not here.
 - **CHES service account.** The OAuth2 client ID/secret that lets us send mail. Issued by the BC Gov CHES team; we use them via the `CHES_CLIENT_ID` / `CHES_CLIENT_SECRET` env vars.
 - **BC Gov AI Adoption DI backend.** Hosts the OCR pipeline. The `BCGOV_DI_API_KEY` is group-scoped and issued by the AI Adoption team.

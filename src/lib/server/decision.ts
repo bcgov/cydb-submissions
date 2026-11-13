@@ -19,7 +19,7 @@ export function validateDecision(
 	tierChoice: string | null
 ): ValidateResult {
 	if (input.reasonIds.length === 0) return { ok: false, error: 'empty_reasons' };
-	if (input.decision === 'accepted') {	
+	if (input.decision === 'accepted') {
 		if (tierChoice === null || !(tierChoice === 'tier one' || tierChoice === 'tier two')) {
 			return { ok: false, error: 'tier_not_selected' };
 		}

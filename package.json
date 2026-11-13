@@ -1,13 +1,13 @@
 {
 	"name": "cydb-submissions",
 	"private": true,
-	"version": "1.2.7",
+	"version": "1.2.8",
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
-		"prepare": "svelte-kit sync || echo ''",
+		"prepare": "svelte-kit sync || echo \"\"; husky || true",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"lint": "prettier --check . && eslint .",
@@ -46,6 +46,8 @@
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.17.0",
 		"globals": "^17.4.0",
+		"husky": "^9.1.7",
+		"lint-staged": "^17.6.0",
 		"playwright": "^1.59.1",
 		"prettier": "^3.8.1",
 		"prettier-plugin-svelte": "^4.1.1",
@@ -81,5 +83,14 @@
 			"esbuild": "~0.25.12"
 		},
 		"minimatch": "11.0.1"
+	},
+	"lint-staged": {
+		"*.{js,cjs,mjs,ts,svelte}": [
+			"eslint --fix --no-warn-ignored",
+			"prettier --write"
+		],
+		"*.{json,md,css,html,yaml,yml}": [
+			"prettier --write"
+		]
 	}
 }

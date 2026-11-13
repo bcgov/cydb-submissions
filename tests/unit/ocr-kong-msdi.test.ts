@@ -22,13 +22,17 @@ describe('KongMsDiProvider', () => {
 			.mockResolvedValueOnce({
 				status: 202,
 				headers: {
-					get: (h: string) => (h.toLowerCase() === 'operation-location' ? 'https://op.test/123' : null)
+					get: (h: string) =>
+						h.toLowerCase() === 'operation-location' ? 'https://op.test/123' : null
 				}
 			})
 			.mockResolvedValueOnce({ ok: true, json: async () => ({ status: 'running' }) })
 			.mockResolvedValueOnce({
 				ok: true,
-				json: async () => ({ status: 'succeeded', analyzeResult: { content: 'hello world', pages: [{}] } })
+				json: async () => ({
+					status: 'succeeded',
+					analyzeResult: { content: 'hello world', pages: [{}] }
+				})
 			});
 		const p = new KongMsDiProvider({
 			baseUrl: 'https://api.test',
@@ -55,7 +59,9 @@ describe('KongMsDiProvider', () => {
 			tokenCache: fakeTokenCache(),
 			fetch: fakeFetch as unknown as typeof fetch
 		});
-		await expect(p.analyze(Buffer.from('a'), 'application/pdf', 'x.pdf')).rejects.toThrow(/OcrSubmitError_400/);
+		await expect(p.analyze(Buffer.from('a'), 'application/pdf', 'x.pdf')).rejects.toThrow(
+			/OcrSubmitError_400/
+		);
 	});
 
 	it('throws OcrProviderError when MS DI returns failed', async () => {
@@ -64,7 +70,8 @@ describe('KongMsDiProvider', () => {
 			.mockResolvedValueOnce({
 				status: 202,
 				headers: {
-					get: (h: string) => (h.toLowerCase() === 'operation-location' ? 'https://op.test/123' : null)
+					get: (h: string) =>
+						h.toLowerCase() === 'operation-location' ? 'https://op.test/123' : null
 				}
 			})
 			.mockResolvedValueOnce({ ok: true, json: async () => ({ status: 'failed' }) });
@@ -77,7 +84,9 @@ describe('KongMsDiProvider', () => {
 			pollIntervalMs: 1,
 			timeoutMs: 5000
 		});
-		await expect(p.analyze(Buffer.from('a'), 'application/pdf', 'x.pdf')).rejects.toThrow(/OcrAnalyzeFailed/);
+		await expect(p.analyze(Buffer.from('a'), 'application/pdf', 'x.pdf')).rejects.toThrow(
+			/OcrAnalyzeFailed/
+		);
 	});
 
 	it('throws OcrProviderError on missing operation-location', async () => {
@@ -89,6 +98,8 @@ describe('KongMsDiProvider', () => {
 			tokenCache: fakeTokenCache(),
 			fetch: fakeFetch as unknown as typeof fetch
 		});
-		await expect(p.analyze(Buffer.from('a'), 'application/pdf', 'x.pdf')).rejects.toThrow(/OcrMissingOperationLocation/);
+		await expect(p.analyze(Buffer.from('a'), 'application/pdf', 'x.pdf')).rejects.toThrow(
+			/OcrMissingOperationLocation/
+		);
 	});
 });

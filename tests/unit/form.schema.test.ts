@@ -46,16 +46,18 @@ describe('submissionSchema — screening=Yes', () => {
 		expect(submissionSchema.safeParse(bad).success).toBe(false);
 	});
 
-	it('rejects an assessment dated in the future', () => {
+	it('rejects a signatory date of birth in the future', () => {
 		const bad = strip(yes);
-		bad.editGrid = [{ ...yes.editGrid[0], dateOfAssessment: '2999-01-01T00:00:00-07:00' }];
+		bad.childYouthsDateOfBirth1 = '2999-01-01T00:00:00-07:00';
 		expect(submissionSchema.safeParse(bad).success).toBe(false);
 	});
 
-	it('rejects a signatory under 19 at date signed', () => {
-		const bad = strip(yes);
-		bad.childYouthsDateOfBirth1 = '2010-01-01T00:00:00-07:00';
-		expect(submissionSchema.safeParse(bad).success).toBe(false);
+	// Assessment-date and signatory-age checks were intentionally removed (fa4ef09, 0d7eb77).
+	it('does not restrict assessment dates or signatory age', () => {
+		const ok = strip(yes);
+		ok.editGrid = [{ ...yes.editGrid[0], dateOfAssessment: '2999-01-01T00:00:00-07:00' }];
+		ok.childYouthsDateOfBirth1 = '2010-01-01T00:00:00-07:00';
+		expect(submissionSchema.safeParse(ok).success).toBe(true);
 	});
 });
 

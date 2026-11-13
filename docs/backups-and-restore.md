@@ -10,7 +10,7 @@ You can also run manual backups—these can be deleted from the admin interface 
 
 ## Restore
 
-The database can be restored using one of the backup files previously made. 
+The database can be restored using one of the backup files previously made.
 
 You will need to turn off the app pod to release PVC claims and create an ephermeral pod to run the restore operations.
 

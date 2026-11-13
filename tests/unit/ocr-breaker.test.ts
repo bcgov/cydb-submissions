@@ -88,7 +88,11 @@ describe('Breaker', () => {
 	it('does not double-trip — second recordFailure after trip is a no-op for the sentinel', async () => {
 		const log = createLogger({ level: 'silent' });
 		const sends: unknown[] = [];
-		const mailer = { send: async (m: unknown) => { sends.push(m); } };
+		const mailer = {
+			send: async (m: unknown) => {
+				sends.push(m);
+			}
+		};
 		const b = new Breaker({
 			db,
 			mailer,
@@ -107,7 +111,11 @@ describe('Breaker', () => {
 	it('detects external clear and drops stale rehydrated counters', async () => {
 		const log = createLogger({ level: 'silent' });
 		const sends: unknown[] = [];
-		const mailer = { send: async (m: unknown) => { sends.push(m); } };
+		const mailer = {
+			send: async (m: unknown) => {
+				sends.push(m);
+			}
+		};
 		// Pre-seed the halt sentinel so the second Breaker rehydrates as tripped.
 		const seed = new Breaker({
 			db,

@@ -93,9 +93,9 @@ spec:
           # See openshift/deployment.yaml for why these are set.
           env:
             - name: searchd_skiplist_cache_size
-              value: "16M"
+              value: '16M'
             - name: searchd_qcache_max_bytes
-              value: "0"
+              value: '0'
           volumeMounts:
             - name: search-index
               mountPath: /var/lib/manticore
@@ -114,7 +114,7 @@ spec:
               cpu: 100m
               memory: 256Mi
             limits:
-              cpu: "1"
+              cpu: '1'
               memory: 1Gi
       volumes:
         # One PVC for db + attachments (split by subPath above).

@@ -1,0 +1,1 @@
+ALTER TABLE `submission_attachments` ADD `missing_at` text;

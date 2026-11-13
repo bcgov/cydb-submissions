@@ -138,6 +138,8 @@ export const submissionAttachments = sqliteTable(
 		sizeBytes: integer('size_bytes').notNull(),
 		mimeType: text('mime_type').notNull(),
 		sha256: text('sha256').notNull(),
+		// Non-null when the file was not retrievable at ingest (e.g. 404 from CHEFS); no file on disk.
+		missingAt: text('missing_at'),
 		uploadedAt: text('uploaded_at')
 			.notNull()
 			.default(sql`CURRENT_TIMESTAMP`)

@@ -26,6 +26,7 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 			storedPath: submissionAttachments.storedPath,
 			mimeType: submissionAttachments.mimeType,
 			originalFilename: submissionAttachments.originalFilename,
+			missingAt: submissionAttachments.missingAt,
 			submissionStatus: submissions.status
 		})
 		.from(submissionAttachments)
@@ -49,6 +50,8 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 		);
 		throw error(403, 'forbidden');
 	}
+
+	if (att.missingAt) throw error(410, 'attachment file is missing');
 
 	const abs = path.resolve(att.storedPath);
 	let size: number;

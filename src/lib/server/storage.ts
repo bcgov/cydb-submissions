@@ -16,6 +16,8 @@ export interface SavedAttachment {
 	mimeType: string;
 	sha256: string;
 	assessmentIndex?: number;
+	// Set when the source file could not be retrieved (e.g. deleted upstream); no file is stored.
+	missingAt?: string;
 }
 
 interface MimeProfile {

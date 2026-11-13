@@ -14,7 +14,7 @@ export interface WorkerOpts {
 	db: Db;
 	provider: OcrProvider;
 	mailer: Mailer;
-	keywords: Map<string, Map<string, string | string []>>;
+	keywords: Map<string, Map<string, string | string[]>>;
 	logger: Logger;
 	breakerThreshold: number;
 	alertRecipients: string[];
@@ -62,12 +62,20 @@ export function startWorker(opts: WorkerOpts): WorkerHandle {
 				.then(async (r) => {
 					if (r.outcome === 'succeeded') breaker.recordSuccess();
 					else if (r.outcome === 'failed')
-						await breaker.recordFailure({ jobId: lease.id, errorClass: r.errorClass ?? 'UnknownError' });
+						await breaker.recordFailure({
+							jobId: lease.id,
+							errorClass: r.errorClass ?? 'UnknownError'
+						});
 					// 'retried' is a *transient* failure; only terminal failures advance the breaker.
 				})
 				.catch((e) => {
 					opts.logger.error(
-						{ event: 'ocr_attempt_failed', jobId: lease.id, errorClass: 'WorkerError', message: (e as Error).message },
+						{
+							event: 'ocr_attempt_failed',
+							jobId: lease.id,
+							errorClass: 'WorkerError',
+							message: (e as Error).message
+						},
 						'unexpected worker error'
 					);
 					releaseJob(opts.db, lease.id, {

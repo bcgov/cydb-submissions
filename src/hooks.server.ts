@@ -73,27 +73,19 @@ let backupStarted = false;
 async function maybePopulateAccountIssuer() {
 	if (!accountsUpdated) {
 		try {
-			const keycloakResults = await db.update(account)
-				.set({issuer: env.SSO_ISSUER_URL})
-				.where(
-					and(
-						eq(account.issuer, ''), 
-						eq(account.providerId, 'keycloak')
-					)
-			);
-			const localResults = await db.update(account)
-				.set({issuer: 'local:credential'})
-				.where(
-					and(
-						eq(account.issuer, ''), 
-						eq(account.providerId, 'credential')
-					)
-			);
+			const keycloakResults = await db
+				.update(account)
+				.set({ issuer: env.SSO_ISSUER_URL })
+				.where(and(eq(account.issuer, ''), eq(account.providerId, 'keycloak')));
+			const localResults = await db
+				.update(account)
+				.set({ issuer: 'local:credential' })
+				.where(and(eq(account.issuer, ''), eq(account.providerId, 'credential')));
 			if (keycloakResults.changes > 0 || localResults.changes > 0) {
 				logger.info(
 					{ event: 'issuer_update_changed' },
-					`issuer column updated for ${localResults.changes} local and ` + 
-					`${keycloakResults.changes} sso accounts`
+					`issuer column updated for ${localResults.changes} local and ` +
+						`${keycloakResults.changes} sso accounts`
 				);
 			} else {
 				logger.info(
@@ -103,7 +95,11 @@ async function maybePopulateAccountIssuer() {
 			}
 		} catch (e) {
 			logger.error(
-				{ event: 'issuer_update_failed', errorClass: (e as Error).name, message: (e as Error).message },
+				{
+					event: 'issuer_update_failed',
+					errorClass: (e as Error).name,
+					message: (e as Error).message
+				},
 				'failed to update issuer account column'
 			);
 		}
@@ -134,7 +130,7 @@ async function maybeStartOcrWorker() {
 			AZURE_DI_API_VERSION: env.AZURE_DI_API_VERSION,
 			BCGOV_DI_BASE_URL: env.BCGOV_DI_BASE_URL,
 			BCGOV_DI_API_KEY: env.BCGOV_DI_API_KEY,
-			BCGOV_DI_WORKFLOW_SLUG: env.BCGOV_DI_WORKFLOW_SLUG 
+			BCGOV_DI_WORKFLOW_SLUG: env.BCGOV_DI_WORKFLOW_SLUG
 		});
 		const mailer = selectMailer(
 			{
@@ -165,7 +161,9 @@ async function maybeStartOcrWorker() {
 			alertFrom: env.OCR_ALERT_FROM ?? 'cydb-noreply@gov.bc.ca',
 			pollIntervalMs: Number(env.OCR_POLL_INTERVAL_MS ?? 1000),
 			maxConcurrency: Number(env.OCR_MAX_CONCURRENCY ?? 1),
-			onIndexed: async (submissionId) => { await indexSubmission(db, getSearchClient(), submissionId); }
+			onIndexed: async (submissionId) => {
+				await indexSubmission(db, getSearchClient(), submissionId);
+			}
 		});
 	} catch (e) {
 		logger.error(
@@ -189,12 +187,12 @@ function maybeStartChefsPoller() {
 		logger,
 		list: (c) => listSubmissions(c, { fetch }),
 		download: (fileId) =>
-				downloadFile(
-					getEffectiveConfig(db, env as Record<string, string | undefined>),
-					fileId,
-					{ fetch },
-					logger
-				),
+			downloadFile(
+				getEffectiveConfig(db, env as Record<string, string | undefined>),
+				fileId,
+				{ fetch },
+				logger
+			),
 		attachmentsDir: env.ATTACHMENTS_DIR ?? './attachments'
 	});
 }
@@ -246,7 +244,10 @@ async function maybeStartSearch() {
 		await client.ensureIndex();
 		await client.ensureInvalidIndex();
 	} catch (e) {
-		logger.error({ event: 'search_index_bootstrap_failed', message: (e as Error).message }, 'could not create search index');
+		logger.error(
+			{ event: 'search_index_bootstrap_failed', message: (e as Error).message },
+			'could not create search index'
+		);
 	}
 	repairStaleStatusIndex();
 	reconcilerHandle = startReconciler({
@@ -262,7 +263,10 @@ function maybeStartBackupScheduler() {
 	if (backupStarted) return;
 	backupStarted = true;
 	if (env.DB_BACKUP_ENABLED !== '1') {
-		logger.info({ event: 'db_backup_disabled' }, 'DB_BACKUP_ENABLED is not set; backup scheduler not started');
+		logger.info(
+			{ event: 'db_backup_disabled' },
+			'DB_BACKUP_ENABLED is not set; backup scheduler not started'
+		);
 		return;
 	}
 	if (!env.DATABASE_URL) return;
@@ -323,10 +327,7 @@ const handlePhase1: Handle = async ({ event, resolve }) => {
 		}
 	}
 
-	event.locals.logger.info(
-		{ event: 'request_received', method: event.request.method },
-		'request'
-	);
+	event.locals.logger.info({ event: 'request_received', method: event.request.method }, 'request');
 	const res = await resolve(event);
 	event.locals.logger.info({ event: 'request_completed', status: res.status }, 'response');
 	return res;

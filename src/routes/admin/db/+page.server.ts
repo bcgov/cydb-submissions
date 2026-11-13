@@ -93,7 +93,11 @@ export const actions: Actions = {
 		}
 
 		const name = form.get('name');
-		if (typeof name !== 'string' || !isValidBackupName(name) || !name.startsWith('backup-manual-')) {
+		if (
+			typeof name !== 'string' ||
+			!isValidBackupName(name) ||
+			!name.startsWith('backup-manual-')
+		) {
 			return fail(400, { action: 'deleteBackup', error: 'Invalid backup name' });
 		}
 
@@ -117,5 +121,5 @@ export const actions: Actions = {
 		);
 
 		return { action: 'deleteBackup', success: `Deleted ${name}` };
-	},
+	}
 };

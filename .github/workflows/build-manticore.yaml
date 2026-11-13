@@ -6,14 +6,12 @@ permissions:
 
 on:
   workflow_dispatch:
-    
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: "${{ github.repository }}-manticore"
+  IMAGE_NAME: '${{ github.repository }}-manticore'
 
 jobs:
-
   build:
     runs-on: ubuntu-22.04
     permissions:

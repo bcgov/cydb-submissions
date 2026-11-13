@@ -158,7 +158,9 @@ export async function runSearch(
 
 	const [regularResult, invalidResult] = await Promise.all([
 		client.search(searchOpts),
-		opts.includeInvalidIndex ? client.searchInvalid(searchOpts) : Promise.resolve({ hits: [], total: 0 })
+		opts.includeInvalidIndex
+			? client.searchInvalid(searchOpts)
+			: Promise.resolve({ hits: [], total: 0 })
 	]);
 
 	// Merge hits from both indexes, tagging source, then sort by weight desc.
@@ -215,7 +217,12 @@ export async function runSearch(
 						total: totalExpr
 					})
 					.from(schema.submissions)
-					.where(inArray(schema.submissions.id, regularHits.map((h) => h.id)))
+					.where(
+						inArray(
+							schema.submissions.id,
+							regularHits.map((h) => h.id)
+						)
+					)
 					.all()
 			: Promise.resolve([]),
 		invalidHits.length
@@ -224,14 +231,29 @@ export async function runSearch(
 						id: schema.invalidSubmissions.id,
 						uuid: schema.invalidSubmissions.submissionUuid,
 						receivedAt: schema.invalidSubmissions.receivedAt,
-						surname: sql<string | null>`json_extract(${schema.invalidSubmissions.rawPayload}, '$.agreementSignatorysLegalLastName')`,
-						childYouthFirstName: sql<string | null>`json_extract(${schema.invalidSubmissions.rawPayload}, '$.childYouthsFirstName')`,
-						childYouthLastName: sql<string | null>`json_extract(${schema.invalidSubmissions.rawPayload}, '$.childYouthsLegalLastName')`,
-						screening: sql<string | null>`json_extract(${schema.invalidSubmissions.rawPayload}, '$.screening')`,
-						assessmentsJson: sql<string | null>`json_extract(${schema.invalidSubmissions.rawPayload}, '$.editGrid')`
+						surname: sql<
+							string | null
+						>`json_extract(${schema.invalidSubmissions.rawPayload}, '$.agreementSignatorysLegalLastName')`,
+						childYouthFirstName: sql<
+							string | null
+						>`json_extract(${schema.invalidSubmissions.rawPayload}, '$.childYouthsFirstName')`,
+						childYouthLastName: sql<
+							string | null
+						>`json_extract(${schema.invalidSubmissions.rawPayload}, '$.childYouthsLegalLastName')`,
+						screening: sql<
+							string | null
+						>`json_extract(${schema.invalidSubmissions.rawPayload}, '$.screening')`,
+						assessmentsJson: sql<
+							string | null
+						>`json_extract(${schema.invalidSubmissions.rawPayload}, '$.editGrid')`
 					})
 					.from(schema.invalidSubmissions)
-					.where(inArray(schema.invalidSubmissions.id, invalidHits.map((h) => h.id)))
+					.where(
+						inArray(
+							schema.invalidSubmissions.id,
+							invalidHits.map((h) => h.id)
+						)
+					)
 					.all()
 			: Promise.resolve([])
 	]);
@@ -286,12 +308,17 @@ export async function runSearch(
 				if (r.assessmentsJson) {
 					raw = JSON.parse(r.assessmentsJson);
 				}
-			} catch { /* malformed payload — leave as empty array */ }
+			} catch {
+				/* malformed payload — leave as empty array */
+			}
 			rows.push({
 				uuid: r.uuid,
 				surname: r.surname ?? '—',
 				childYouthFirstName: r.childYouthFirstName ?? '—',
-				childYouthLastName: r.childYouthLastName === '—' && r.childYouthFirstName === '—' ? '': r.childYouthLastName ?? '',
+				childYouthLastName:
+					r.childYouthLastName === '—' && r.childYouthFirstName === '—'
+						? ''
+						: (r.childYouthLastName ?? ''),
 				screening: r.screening ?? '—',
 				assessments,
 				submittedAt: r.receivedAt,
@@ -299,9 +326,20 @@ export async function runSearch(
 				attachmentCount: Array.isArray(raw) ? (raw.length > 0 ? raw.length : '—') : '—',
 				snippet,
 				isInvalidSubmission: true,
-				category1: '—', category2: '—', category3: '—', category4: '—', category5: '—',
-				category6: '—', category7: '—', category8: '—', category9: '—', category10: '—',
-				category11: '—', category12: '—', category13: '—', total: '—'
+				category1: '—',
+				category2: '—',
+				category3: '—',
+				category4: '—',
+				category5: '—',
+				category6: '—',
+				category7: '—',
+				category8: '—',
+				category9: '—',
+				category10: '—',
+				category11: '—',
+				category12: '—',
+				category13: '—',
+				total: '—'
 			});
 		}
 	}
@@ -388,9 +426,15 @@ async function pickSortedPage(
 			? db
 					.select({
 						id: schema.invalidSubmissions.id,
-						surname: sql<string | null>`json_extract(${schema.invalidSubmissions.rawPayload}, '$.agreementSignatorysLegalLastName')`,
-						screening: sql<string | null>`json_extract(${schema.invalidSubmissions.rawPayload}, '$.screening')`,
-						assessmentsJson: sql<string | null>`json_extract(${schema.invalidSubmissions.rawPayload}, '$.editGrid')`
+						surname: sql<
+							string | null
+						>`json_extract(${schema.invalidSubmissions.rawPayload}, '$.agreementSignatorysLegalLastName')`,
+						screening: sql<
+							string | null
+						>`json_extract(${schema.invalidSubmissions.rawPayload}, '$.screening')`,
+						assessmentsJson: sql<
+							string | null
+						>`json_extract(${schema.invalidSubmissions.rawPayload}, '$.editGrid')`
 					})
 					.from(schema.invalidSubmissions)
 					.where(inArray(schema.invalidSubmissions.id, invalidIds))
@@ -406,10 +450,14 @@ async function pickSortedPage(
 			const r = regularKeyById.get(hit.id);
 			if (!r) return null;
 			switch (sort) {
-				case 'surname': return (r.surname ?? '').toLowerCase();
-				case 'screening': return (r.screening ?? '').toLowerCase();
-				case 'status': return r.status;
-				case 'assessments': return r.assessments?.length ?? 0;
+				case 'surname':
+					return (r.surname ?? '').toLowerCase();
+				case 'screening':
+					return (r.screening ?? '').toLowerCase();
+				case 'status':
+					return r.status;
+				case 'assessments':
+					return r.assessments?.length ?? 0;
 				default: {
 					const v = (r as { sortValue?: unknown }).sortValue;
 					return typeof v === 'number' ? v : -1;
@@ -419,9 +467,12 @@ async function pickSortedPage(
 		const r = invalidKeyById.get(hit.id);
 		if (!r) return null;
 		switch (sort) {
-			case 'surname': return (r.surname ?? '').toLowerCase();
-			case 'screening': return (r.screening ?? '').toLowerCase();
-			case 'status': return 'invalid';
+			case 'surname':
+				return (r.surname ?? '').toLowerCase();
+			case 'screening':
+				return (r.screening ?? '').toLowerCase();
+			case 'status':
+				return 'invalid';
 			case 'assessments': {
 				try {
 					const arr = r.assessmentsJson ? JSON.parse(r.assessmentsJson) : null;

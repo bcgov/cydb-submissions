@@ -5,7 +5,9 @@ import type { Logger } from 'pino';
 describe('LogMailer', () => {
 	it('emits an error-level log entry with subject and recipients', async () => {
 		const calls: Array<{ obj: Record<string, unknown>; msg: string }> = [];
-		const fakeLogger = { error: (obj: Record<string, unknown>, msg: string) => calls.push({ obj, msg }) } as unknown as Logger;
+		const fakeLogger = {
+			error: (obj: Record<string, unknown>, msg: string) => calls.push({ obj, msg })
+		} as unknown as Logger;
 		const m = new LogMailer(fakeLogger);
 		await m.send({
 			from: 'cydb@example.test',

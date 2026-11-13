@@ -12,27 +12,35 @@
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 </script>
 
-<div class="p-6 max-w-3xl mx-auto space-y-8">
+<div class="mx-auto max-w-3xl space-y-8 p-6">
 	<div>
-		<h1 class="text-2xl font-semibold mb-2">CHEFS ingestion</h1>
+		<h1 class="mb-2 text-2xl font-semibold">CHEFS ingestion</h1>
 		<p class="text-gray-700">
-			Configure the connection to BC Gov CHEFS so this app can pull submissions from
-			the hosted form. Environment variables override DB values; effective values are
-			shown below.
+			Configure the connection to BC Gov CHEFS so this app can pull submissions from the hosted
+			form. Environment variables override DB values; effective values are shown below.
 		</p>
 	</div>
 
 	{#if form?.success}
-		<p role="status" class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">{form.success}</p>
+		<p
+			role="status"
+			class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800"
+		>
+			{form.success}
+		</p>
 	{/if}
 	{#if form?.error}
-		<p role="alert" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{form.error}</p>
+		<p role="alert" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+			{form.error}
+		</p>
 	{/if}
 
 	{#if data.halted}
 		<section class="rounded border-l-4 border-red-500 bg-red-50 p-4">
 			<div class="font-semibold text-red-900">Poller halted at {data.halted.trippedAt}</div>
-			<div class="text-sm mt-1">Last error class: <code>{data.halted.lastErrorClass ?? 'unknown'}</code></div>
+			<div class="mt-1 text-sm">
+				Last error class: <code>{data.halted.lastErrorClass ?? 'unknown'}</code>
+			</div>
 			<form method="POST" action="?/resume" use:enhance class="mt-3">
 				<input type="hidden" name="csrf" value={page.data.csrfToken} />
 				<Button type="submit">Resume poller</Button>
@@ -48,9 +56,14 @@
 
 				<div>
 					<Label for="formId">Form ID</Label>
-					<Input id="formId" name="formId" value={data.config.formId} placeholder="UUID from CHEFS form URL" />
+					<Input
+						id="formId"
+						name="formId"
+						value={data.config.formId}
+						placeholder="UUID from CHEFS form URL"
+					/>
 					{#if data.config.envOverrides.includes('formId')}
-						<p class="text-xs text-amber-700 mt-1">Overridden by <code>CHEFS_FORM_ID</code></p>
+						<p class="mt-1 text-xs text-amber-700">Overridden by <code>CHEFS_FORM_ID</code></p>
 					{/if}
 				</div>
 
@@ -62,12 +75,18 @@
 				<div>
 					<Label for="version">Version</Label>
 					<Input id="version" name="version" value={data.config.version} />
-					<p class="text-xs text-gray-600 mt-1">"0" = all versions (CHEFS default for JSON export).</p>
+					<p class="mt-1 text-xs text-gray-600">
+						"0" = all versions (CHEFS default for JSON export).
+					</p>
 				</div>
 
 				<div>
 					<Label for="fileComponents">File components (comma-separated)</Label>
-					<Input id="fileComponents" name="fileComponents" value={data.config.fileComponents.join(',')} />
+					<Input
+						id="fileComponents"
+						name="fileComponents"
+						value={data.config.fileComponents.join(',')}
+					/>
 				</div>
 
 				<div>
@@ -81,13 +100,23 @@
 				</div>
 
 				<div class="flex items-center gap-2">
-					<input id="pollerEnabled" type="checkbox" name="pollerEnabled" checked={data.config.pollerEnabled} />
+					<input
+						id="pollerEnabled"
+						type="checkbox"
+						name="pollerEnabled"
+						checked={data.config.pollerEnabled}
+					/>
 					<Label for="pollerEnabled">Enable background poller</Label>
 				</div>
 
 				<div>
 					<Label for="pollIntervalMs">Poll interval (ms)</Label>
-					<Input id="pollIntervalMs" name="pollIntervalMs" type="number" value={String(data.config.pollIntervalMs)} />
+					<Input
+						id="pollIntervalMs"
+						name="pollIntervalMs"
+						type="number"
+						value={String(data.config.pollIntervalMs)}
+					/>
 				</div>
 
 				<Button type="submit">Save configuration</Button>
@@ -111,7 +140,10 @@
 				<Input name="apiToken" type="password" placeholder="paste new token" autocomplete="off" />
 				<Button type="submit" variant="outline">Rotate token</Button>
 			</form>
-			<p class="text-xs text-gray-600">The token is never echoed to the browser. Stored plaintext in the DB; rotate via this page or via <code>CHEFS_API_TOKEN</code> env (env wins).</p>
+			<p class="text-xs text-gray-600">
+				The token is never echoed to the browser. Stored plaintext in the DB; rotate via this page
+				or via <code>CHEFS_API_TOKEN</code> env (env wins).
+			</p>
 		</Card.Content>
 	</Card.Root>
 
@@ -127,15 +159,14 @@
 				<Button type="submit">Sync now</Button>
 			</form>
 
-			<div class="text-sm text-gray-700 pt-3">
+			<div class="pt-3 text-sm text-gray-700">
 				<div>Consecutive failures: <code>{data.failureCount}</code></div>
 				{#if data.lastSync}
 					<div class="mt-1">
-						Last sync at <code>{data.lastSync.finishedAt}</code> —
-						fetched <code>{data.lastSync.fetched}</code>,
-						ingested <code>{data.lastSync.ingested}</code>,
-						invalid <code>{data.lastSync.invalid}</code>,
-						skipped <code>{data.lastSync.skippedDuplicate}</code>.
+						Last sync at <code>{data.lastSync.finishedAt}</code> — fetched
+						<code>{data.lastSync.fetched}</code>, ingested <code>{data.lastSync.ingested}</code>,
+						invalid <code>{data.lastSync.invalid}</code>, skipped
+						<code>{data.lastSync.skippedDuplicate}</code>.
 					</div>
 				{:else}
 					<div class="mt-1">No sync has run yet.</div>

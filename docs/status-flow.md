@@ -17,7 +17,7 @@ flowchart LR
     opt[Opt-out]
     dup[Duplicate]
 
-    
+
     ing-->sub
     ing-->opt
     ing-->inv
@@ -34,7 +34,7 @@ flowchart LR
     ocrP-->|Policy: Eligibility is unclear|rfc
     ocrE-->|Policy: Eligibility is clear|rfr
     ocrE-->|Policy: Eligibility is unclear|rfc
-    
+
     rfr-->|OCR review fails; Send back to policy|npr
     rfc-->|Clinician provides review|npr
 

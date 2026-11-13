@@ -15,6 +15,19 @@ import fs from 'node:fs/promises';
 let db: ReturnType<typeof drizzle<typeof schema>>;
 let tmpDir: string;
 
+function kwMap(keywords: string[]): Map<string, Map<string, string | string[]>> {
+	if (keywords.length === 0) return new Map();
+	return new Map([
+		[
+			'category1',
+			new Map<string, string | string[]>([
+				['name', 'Category 1'],
+				['keywords', keywords]
+			])
+		]
+	]);
+}
+
 async function seed(rawText = 'Patient autism diagnosis confirmed.') {
 	const subId = insertValidSubmission(db, { submissionUuid: 't' });
 	const sub = [{ id: subId }];
@@ -61,7 +74,7 @@ describe('processOneJob', () => {
 			db,
 			jobId,
 			provider,
-			keywords: ['autism', 'IEP'],
+			keywords: kwMap(['autism', 'IEP']),
 			logger: createLogger({ level: 'silent' })
 		});
 		const result = db
@@ -77,6 +90,7 @@ describe('processOneJob', () => {
 			.all();
 		expect(hits.find((h) => h.keyword === 'autism')?.count).toBe(2);
 		expect(hits.find((h) => h.keyword === 'IEP')?.count).toBe(1);
+		expect(hits.every((h) => h.category1 === 1)).toBe(true);
 		const job = db.select().from(schema.ocrJobs).where(eq(schema.ocrJobs.id, jobId)).get();
 		expect(job?.status).toBe('succeeded');
 		const sub = db
@@ -137,19 +151,20 @@ describe('processOneJob', () => {
 		const logger = createLogger({ level: 'silent' });
 		// Fail twice, succeed on the third. The job is auto-released back to 'queued' after each failure;
 		// re-lease is implicit because we call processOneJob with the same jobId — flip 'queued' → 'processing'.
-		const r1 = await processOneJob({ db, jobId, provider, keywords: ['autism'], logger });
+		const keywords = kwMap(['autism']);
+		const r1 = await processOneJob({ db, jobId, provider, keywords, logger });
 		expect(r1.outcome).toBe('retried');
 		db.update(schema.ocrJobs)
 			.set({ status: 'processing' })
 			.where(eq(schema.ocrJobs.id, jobId))
 			.run();
-		const r2 = await processOneJob({ db, jobId, provider, keywords: ['autism'], logger });
+		const r2 = await processOneJob({ db, jobId, provider, keywords, logger });
 		expect(r2.outcome).toBe('retried');
 		db.update(schema.ocrJobs)
 			.set({ status: 'processing' })
 			.where(eq(schema.ocrJobs.id, jobId))
 			.run();
-		const r3 = await processOneJob({ db, jobId, provider, keywords: ['autism'], logger });
+		const r3 = await processOneJob({ db, jobId, provider, keywords, logger });
 		expect(r3.outcome).toBe('succeeded');
 		const sub = db
 			.select()

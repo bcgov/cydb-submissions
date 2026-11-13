@@ -7,7 +7,12 @@ import type { Logger } from 'pino';
 import * as schema from '../db/schema';
 import { writeValidSubmission, writeInvalidSubmission } from '../submissions';
 import { mapChefsSubmission } from './mapper';
-import type { ChefsConfig, ChefsFileRef, ChefsSubmissionRaw } from './types';
+import {
+	ChefsClientError,
+	type ChefsConfig,
+	type ChefsFileRef,
+	type ChefsSubmissionRaw
+} from './types';
 import type { DownloadedFile } from './client';
 import type { SavedAttachment } from '../storage';
 import type { SubmissionMetadata } from '../metadata';
@@ -27,8 +32,8 @@ export interface IngestResult {
 	outcome: IngestOutcome;
 }
 
-// Statuses of a `submissions` row for which reingestion is permitted. 
-// Invalid-submission records (the `invalid_submissions` table) 
+// Statuses of a `submissions` row for which reingestion is permitted.
+// Invalid-submission records (the `invalid_submissions` table)
 // have no status column and are always eligible for reingestion.
 export const REINGEST_ALLOWED_STATUSES = [
 	'submitted',
@@ -56,6 +61,8 @@ function uuidExists(db: Db, submissionUuid: string): boolean {
 	return inInvalid.length > 0;
 }
 
+const isNotFound = (e: unknown) => e instanceof ChefsClientError && e.errorClass === 'NotFound';
+
 async function downloadAndPersist(
 	refs: ChefsFileRef[],
 	submissionUuid: string,
@@ -65,7 +72,29 @@ async function downloadAndPersist(
 	await mkdir(dir, { recursive: true });
 	const out: SavedAttachment[] = [];
 	for (const ref of refs) {
-		const dl = await deps.download(ref.fileId);
+		let dl: DownloadedFile;
+		try {
+			dl = await deps.download(ref.fileId);
+		} catch (e) {
+			// A 404 means the file is gone from CHEFS (likely deleted); keep the submission and flag the file.
+			if (isNotFound(e)) {
+				deps.logger.warn(
+					{ submissionUuid, fileId: ref.fileId, originalName: ref.originalName },
+					'chefs ingest: attachment not found in CHEFS (possibly deleted); recording as missing'
+				);
+				out.push({
+					originalFilename: ref.originalName,
+					storedPath: '',
+					sizeBytes: 0,
+					mimeType: 'application/octet-stream',
+					sha256: '',
+					assessmentIndex: ref.assessmentIndex,
+					missingAt: new Date().toISOString()
+				});
+				continue;
+			}
+			throw e;
+		}
 		const stored = path.join(dir, path.basename(ref.originalName));
 		await writeFile(stored, dl.bytes);
 		out.push({
@@ -89,7 +118,10 @@ export async function ingestOne(
 	const mapped = mapChefsSubmission(raw, cfg);
 
 	if (uuidExists(db, mapped.submissionUuid)) {
-		deps.logger.trace({ submissionUuid: mapped.submissionUuid }, 'chefs ingest: skipping duplicate');
+		deps.logger.trace(
+			{ submissionUuid: mapped.submissionUuid },
+			'chefs ingest: skipping duplicate'
+		);
 		return { submissionUuid: mapped.submissionUuid, outcome: 'skipped' };
 	}
 

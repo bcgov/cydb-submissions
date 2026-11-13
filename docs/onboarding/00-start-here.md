@@ -4,18 +4,18 @@ Welcome. You're inheriting the **Children & Youth Disability Benefit (CYDB) Subm
 
 ## What you're inheriting
 
-| Component | Tech |
-|---|---|
-| Web application | SvelteKit 2, Svelte 5 (runes), TypeScript strict, adapter-node |
-| Persistence | SQLite via `better-sqlite3` + Drizzle ORM |
-| UI primitives | `shadcn-svelte` (built on `bits-ui`), Tailwind CSS 4 |
-| Authentication | `better-auth` 1.4 — BC Gov SSO (Keycloak OIDC) primary, email/password fallback |
-| Logging | `pino` with custom PII redaction |
-| Validation | `zod` |
-| Async work | In-process workers: OCR queue, CHEFS poller, both with halt sentinels |
+| Component             | Tech                                                                                                        |
+| --------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Web application       | SvelteKit 2, Svelte 5 (runes), TypeScript strict, adapter-node                                              |
+| Persistence           | SQLite via `better-sqlite3` + Drizzle ORM                                                                   |
+| UI primitives         | `shadcn-svelte` (built on `bits-ui`), Tailwind CSS 4                                                        |
+| Authentication        | `better-auth` 1.4 — BC Gov SSO (Keycloak OIDC) primary, email/password fallback                             |
+| Logging               | `pino` with custom PII redaction                                                                            |
+| Validation            | `zod`                                                                                                       |
+| Async work            | In-process workers: OCR queue, CHEFS poller, both with halt sentinels                                       |
 | Outbound integrations | BC Gov CHEFS API, BC Gov AI Adoption Document Intelligence (OCR), BC Gov Common Hosted Email Service (CHES) |
-| Tests | Vitest 4 (~292 unit cases) + Playwright (~45 E2E cases) |
-| Deploy target | BC Gov OpenShift Gold cluster |
+| Tests                 | Vitest 4 (~292 unit cases) + Playwright (~45 E2E cases)                                                     |
+| Deploy target         | BC Gov OpenShift Gold cluster                                                                               |
 
 ## Reading order
 
@@ -62,7 +62,7 @@ The last command should print `Test Files 52 passed (52)` and `Tests 292 passed 
 
 A few things this onboarding deliberately doesn't try to do:
 
-- **It is not a Svelte tutorial from scratch.** The primer in `20-tech-stack.md` teaches you what you need to navigate *this* codebase. If you've never written a `+page.svelte` before, plan to spend a couple of hours with the official Svelte 5 / SvelteKit docs (linked in 20) on the side.
+- **It is not a Svelte tutorial from scratch.** The primer in `20-tech-stack.md` teaches you what you need to navigate _this_ codebase. If you've never written a `+page.svelte` before, plan to spend a couple of hours with the official Svelte 5 / SvelteKit docs (linked in 20) on the side.
 - **It is not a BC Gov Platform Services manual.** OpenShift specifics in `80-deployment.md` cover the artifacts in this repo and the cluster-side wiring you'll touch. Cluster operations (PVC sizing changes, certificate rotation, GoldDR semantics) are the BC Gov Platform team's domain.
 - **It is not a product backlog.** Decisions that have been made are documented in `10-system-overview.md`. Decisions yet to be made are tracked outside this tree.
 

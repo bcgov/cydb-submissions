@@ -64,16 +64,12 @@
 			<p class="text-sm text-gray-500">No manual backups found.</p>
 		{:else}
 			<ul class="divide-y rounded border text-sm">
-				{#each data.manual as backup}
+				{#each data.manual as backup (backup.name)}
 					<li class="flex items-center justify-between px-3 py-2">
 						<code class="font-mono text-xs">{backup.name}</code>
 						<div class="flex items-center gap-3">
 							<span class="text-gray-500">{(backup.sizeBytes / 1024 / 1024).toFixed(2)} MB</span>
-							<Button
-								variant="destructive"
-								size="sm"
-								onclick={() => (deleteTarget = backup.name)}
-							>
+							<Button variant="destructive" size="sm" onclick={() => (deleteTarget = backup.name)}>
 								Delete
 							</Button>
 						</div>
@@ -89,7 +85,7 @@
 			<p class="text-sm text-gray-500">No scheduled backups found.</p>
 		{:else}
 			<ul class="divide-y rounded border text-sm">
-				{#each data.scheduled as backup}
+				{#each data.scheduled as backup (backup.name)}
 					<li class="flex items-center justify-between px-3 py-2">
 						<code class="font-mono text-xs">{backup.name}</code>
 						<span class="text-gray-500">{(backup.sizeBytes / 1024 / 1024).toFixed(2)} MB</span>
@@ -97,14 +93,21 @@
 				{/each}
 			</ul>
 		{/if}
-		<p class="text-xs text-gray-600">Nightly. Oldest removed automatically after {10} are accumulated.</p>
+		<p class="text-xs text-gray-600">
+			Nightly. Oldest removed automatically after {10} are accumulated.
+		</p>
 	</section>
 
 	<a href="/admin" class="text-sm text-blue-700 underline">← Back to admin</a>
 </div>
 
 <!-- Delete manual backup confirmation -->
-<AlertDialog.Root open={deleteTarget !== null} onOpenChange={(o) => { if (!o) deleteTarget = null; }}>
+<AlertDialog.Root
+	open={deleteTarget !== null}
+	onOpenChange={(o) => {
+		if (!o) deleteTarget = null;
+	}}
+>
 	<AlertDialog.Content>
 		<AlertDialog.Header>
 			<AlertDialog.Title>Delete backup?</AlertDialog.Title>

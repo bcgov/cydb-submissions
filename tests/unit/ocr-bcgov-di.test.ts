@@ -1,7 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { BcgovDiProvider } from '$lib/server/ocr/provider-bcgov-di';
 
-function okResponse(body: unknown, init: { status?: number; headers?: Record<string, string> } = {}) {
+function okResponse(
+	body: unknown,
+	init: { status?: number; headers?: Record<string, string> } = {}
+) {
 	return {
 		ok: (init.status ?? 200) >= 200 && (init.status ?? 200) < 300,
 		status: init.status ?? 200,
@@ -59,9 +62,9 @@ describe('BcgovDiProvider', () => {
 
 	it.each([
 		['application/pdf', 'a.pdf', 'pdf'],
-		['image/jpeg', 'b.jpeg', 'jpg'],
-		['image/png', 'c.png', 'png'],
-		['image/heic', 'd.heic', 'heic']
+		['image/jpeg', 'b.jpeg', 'image'],
+		['image/png', 'c.png', 'image'],
+		['image/heic', 'd.heic', 'image']
 	])('maps mime %s + filename %s to file_type %s', async (mime, name, expected) => {
 		const fakeFetch = vi
 			.fn()
@@ -84,7 +87,7 @@ describe('BcgovDiProvider', () => {
 		expect(body.file_type).toBe(expected);
 	});
 
-	it('falls back to filename extension when mime is unknown', async () => {
+	it('falls back to file_type bin when mime is unknown', async () => {
 		const fakeFetch = vi
 			.fn()
 			.mockResolvedValueOnce(okResponse({ document: { id: 'doc-1', status: 'done' } }))
@@ -103,7 +106,7 @@ describe('BcgovDiProvider', () => {
 		});
 		await p.analyze(Buffer.from('x'), 'application/octet-stream', 'mystery.TIFF');
 		const body = JSON.parse(fakeFetch.mock.calls[0][1].body as string);
-		expect(body.file_type).toBe('tiff');
+		expect(body.file_type).toBe('bin');
 	});
 
 	it('throws OcrProviderError on non-2xx upload', async () => {
@@ -123,7 +126,9 @@ describe('BcgovDiProvider', () => {
 	});
 
 	it('throws OcrProviderError when upload response is missing document.id', async () => {
-		const fakeFetch = vi.fn().mockResolvedValueOnce(okResponse({ document: { status: 'ongoing_ocr' } }));
+		const fakeFetch = vi
+			.fn()
+			.mockResolvedValueOnce(okResponse({ document: { status: 'ongoing_ocr' } }));
 		const p = new BcgovDiProvider({
 			baseUrl: 'https://di.test',
 			apiKey: 'k',

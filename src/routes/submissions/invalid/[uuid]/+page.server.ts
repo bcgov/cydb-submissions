@@ -52,7 +52,7 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 		locals.logger
 	);
 
-	let rawPayload: unknown = null;
+	let rawPayload: unknown;
 	try {
 		rawPayload = JSON.parse(submission.rawPayload);
 	} catch {
@@ -129,7 +129,8 @@ export const actions: Actions = {
 			.limit(1);
 
 		const submission = rows[0];
-		if (!submission) return fail(404, { action: 'reingest', error: 'Invalid submission not found.' });
+		if (!submission)
+			return fail(404, { action: 'reingest', error: 'Invalid submission not found.' });
 
 		const cfg = getEffectiveConfig(db, env as Record<string, string | undefined>);
 
@@ -137,7 +138,10 @@ export const actions: Actions = {
 		try {
 			rawList = await listSubmissions(cfg, { fetch });
 		} catch (e) {
-			return fail(502, { action: 'reingest', error: `Failed to reach CHEFS: ${(e as Error).message}` });
+			return fail(502, {
+				action: 'reingest',
+				error: `Failed to reach CHEFS: ${(e as Error).message}`
+			});
 		}
 
 		const match = (rawList as ChefsSubmissionRaw[]).find((raw) => {

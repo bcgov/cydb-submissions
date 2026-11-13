@@ -42,11 +42,7 @@ export interface ChefsSubmissionRaw {
 }
 
 export type ChefsErrorClass =
-	| 'ConfigMissing'
-	| 'Unauthorized'
-	| 'NotFound'
-	| 'NetworkError'
-	| 'BadResponse';
+	'ConfigMissing' | 'Unauthorized' | 'NotFound' | 'NetworkError' | 'BadResponse';
 
 export class ChefsClientError extends Error {
 	constructor(

@@ -31,7 +31,6 @@ export async function createBackup(
 	dbPath: string,
 	kind: 'scheduled' | 'manual' = 'scheduled'
 ): Promise<BackupResult> {
-	const dbDir = dirname(dbPath);
 	const backupDir = getBackupDir(dbPath);
 	await mkdir(backupDir, { recursive: true });
 

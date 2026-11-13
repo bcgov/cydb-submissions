@@ -17,19 +17,9 @@ describe('canAccessAttachmentByStatus — per-status authorization (4.4)', () =>
 		}
 	});
 
-	it('cfd_worker can access intake/processing + decided statuses, but not clinician or reviewed', () => {
-		const allowed: SubmissionStatus[] = [
-			'submitted',
-			'OCR queued',
-			'OCR Error',
-			'OCR processed',
-			'ready for review',
-			// Workers keep download access to submissions they have decided.
-			'accepted',
-			'rejected',
-			'invalid'
-		];
-		const denied: SubmissionStatus[] = ['ready for clinician', 'reviewed'];
+	it('cfd_worker can access every status except reviewed', () => {
+		const allowed: SubmissionStatus[] = ALL_STATUSES.filter((s) => s !== 'reviewed');
+		const denied: SubmissionStatus[] = ['reviewed'];
 		for (const s of allowed) {
 			expect(canAccessAttachmentByStatus(rolesOf('cfd_worker'), s)).toBe(true);
 		}

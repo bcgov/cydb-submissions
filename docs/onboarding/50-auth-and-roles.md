@@ -53,29 +53,29 @@ The `requireRole` helper throws `error(401)` if the user isn't signed in, `error
 
 ### What each role can do
 
-| Action / Route | admin | cfd_worker | clinician |
-|---|---|---|---|
-| Sign in | ✓ | ✓ | ✓ |
-| See `/submissions` (table) | ✓ | ✓ | ✗ |
-| See `/submissions/[uuid]` (viewer) | ✓ | ✓ | ✗ (today; Phase 4 finalisation may grant by assignment) |
-| Download `/attachments/[id]` | always | status-scoped | status-scoped |
-| See `/admin/*` (config + queues) | ✓ | ✗ | ✗ |
-| See `/clinician` | ✗ | ✗ | ✓ |
-| Halt or resume the OCR queue | ✓ | ✗ | ✗ |
-| Halt or resume CHEFS poller | ✓ | ✗ | ✗ |
-| Requeue or abandon an OCR job | ✓ | ✗ | ✗ |
-| Save CHEFS config or rotate its API token | ✓ | ✗ | ✗ |
-| Sync CHEFS once (on demand) | ✓ | ✗ | ✗ |
+| Action / Route                            | admin  | cfd_worker    | clinician                                               |
+| ----------------------------------------- | ------ | ------------- | ------------------------------------------------------- |
+| Sign in                                   | ✓      | ✓             | ✓                                                       |
+| See `/submissions` (table)                | ✓      | ✓             | ✗                                                       |
+| See `/submissions/[uuid]` (viewer)        | ✓      | ✓             | ✗ (today; Phase 4 finalisation may grant by assignment) |
+| Download `/attachments/[id]`              | always | status-scoped | status-scoped                                           |
+| See `/admin/*` (config + queues)          | ✓      | ✗             | ✗                                                       |
+| See `/clinician`                          | ✗      | ✗             | ✓                                                       |
+| Halt or resume the OCR queue              | ✓      | ✗             | ✗                                                       |
+| Halt or resume CHEFS poller               | ✓      | ✗             | ✗                                                       |
+| Requeue or abandon an OCR job             | ✓      | ✗             | ✗                                                       |
+| Save CHEFS config or rotate its API token | ✓      | ✗             | ✗                                                       |
+| Sync CHEFS once (on demand)               | ✓      | ✗             | ✗                                                       |
 
 ### Status-scoped attachment access
 
 `/attachments/[id]/+server.ts` joins to `submissions` and runs `canAccessAttachmentByStatus(roles, status)` before serving the file. The policy:
 
-| Role | Allowed statuses |
-|---|---|
-| `admin` | all 8 |
+| Role         | Allowed statuses                                                                       |
+| ------------ | -------------------------------------------------------------------------------------- |
+| `admin`      | all 8                                                                                  |
 | `cfd_worker` | `submitted`, `OCR queued`, `OCR Error`, `OCR processed`, `ready for review`, `invalid` |
-| `clinician` | `ready for clinician` only |
+| `clinician`  | `ready for clinician` only                                                             |
 
 Implementation in `src/lib/server/security/attachment-scope.ts`. The matrix exists so a CFD worker can't preview attachments belonging to a case that's been formally assigned to a clinician (or that the clinician has reviewed). It's a defense against accidental cross-role exposure.
 
@@ -91,14 +91,15 @@ For CYDB Submissions, the client ID is `cydb-submissions-6444`. The per-environm
 
 ```json
 {
-  "auth-server-url": "https://loginproxy.gov.bc.ca/auth",
-  "realm": "standard",
-  "resource": "cydb-submissions-6444",
-  "credentials": { "secret": "<env-specific>" }
+	"auth-server-url": "https://loginproxy.gov.bc.ca/auth",
+	"realm": "standard",
+	"resource": "cydb-submissions-6444",
+	"credentials": { "secret": "<env-specific>" }
 }
 ```
 
 These map to env vars:
+
 - `SSO_ISSUER_URL` = `${auth-server-url}/realms/${realm}` (e.g. `https://loginproxy.gov.bc.ca/auth/realms/standard`)
 - `SSO_CLIENT_ID` = `resource`
 - `SSO_CLIENT_SECRET` = `credentials.secret`
@@ -109,15 +110,17 @@ These map to env vars:
 
 ```ts
 genericOAuth({
-  config: [{
-    ...keycloak({
-      clientId: ssoCfg.clientId,
-      clientSecret: ssoCfg.clientSecret,
-      issuer: ssoCfg.issuer
-    }),
-    pkce: true
-  }]
-})
+	config: [
+		{
+			...keycloak({
+				clientId: ssoCfg.clientId,
+				clientSecret: ssoCfg.clientSecret,
+				issuer: ssoCfg.issuer
+			}),
+			pkce: true
+		}
+	]
+});
 ```
 
 `keycloak()` is a better-auth helper that fills in OIDC discovery URLs (`${issuer}/.well-known/openid-configuration`), scopes (`openid profile email`), and the userinfo endpoint (`${issuer}/protocol/openid-connect/userinfo`). We **spread it and override `pkce: true`** because the default helper leaves PKCE off. PKCE protects against authorization-code interception in case of a misconfigured browser proxy.
@@ -166,6 +169,7 @@ User redirected to the callbackURL passed in (validated by safeNextUrl)
 ### JIT role provisioning
 
 Roles flow from the IdP, not from a local sign-up form. When a new BC Gov SSO user signs in for the first time:
+
 1. better-auth creates a row in `user` (and `account`) with `email`, `name`, and `image` from the OIDC userinfo response.
 2. `databaseHooks.account.create.after` runs `extractSsoRoles(account.accessToken, clientId)` to find their roles.
 3. `syncUserRoles(db, account.userId, roles)` upserts.
@@ -178,15 +182,15 @@ BC Gov SSO injects a custom token mapper called `client_roles`. When you decode 
 
 ```json
 {
-  "exp": 1716200000,
-  "iss": "https://loginproxy.gov.bc.ca/auth/realms/standard",
-  "aud": "cydb-submissions-6444",
-  "sub": "abc123",
-  "email": "user@gov.bc.ca",
-  "client_roles": ["admin", "cfd_worker"],
-  "resource_access": {
-    "cydb-submissions-6444": { "roles": ["admin", "cfd_worker"] }
-  }
+	"exp": 1716200000,
+	"iss": "https://loginproxy.gov.bc.ca/auth/realms/standard",
+	"aud": "cydb-submissions-6444",
+	"sub": "abc123",
+	"email": "user@gov.bc.ca",
+	"client_roles": ["admin", "cfd_worker"],
+	"resource_access": {
+		"cydb-submissions-6444": { "roles": ["admin", "cfd_worker"] }
+	}
 }
 ```
 
@@ -203,7 +207,7 @@ Both shapes go through the same allowlist filter (`ROLE_SET`). Anything in the t
 
 `/logout` calls `auth.api.signOut`. better-auth deletes the local `session` row. We also clear the `cydb_bypass` cookie defensively.
 
-We do **not** initiate a Keycloak `end_session_endpoint` request — there's no RP-initiated logout. The user is signed out of *this app* but still has a session at the IdP. If they navigate to BC Gov SSO directly, they can re-authenticate without typing a password. This is acceptable for our threat model; it's a minor finding to circle back to.
+We do **not** initiate a Keycloak `end_session_endpoint` request — there's no RP-initiated logout. The user is signed out of _this app_ but still has a session at the IdP. If they navigate to BC Gov SSO directly, they can re-authenticate without typing a password. This is acceptable for our threat model; it's a minor finding to circle back to.
 
 ## Path 2: Email + Password (clinician fallback)
 
@@ -225,6 +229,7 @@ better-auth issues session cookie
 ### Login throttle
 
 `src/lib/server/security/login-throttle.ts` implements a sliding-window throttle:
+
 - 5 failures per (ip, email) within 15 min → 15-min lockout
 - 20 failures per ip (any email) within 15 min → 15-min lockout (defends distributed credential stuffing)
 - Success clears the per-(ip, email) bucket; the per-IP bucket persists (one correct password doesn't legitimise the cluster)
@@ -261,6 +266,7 @@ Format: comma-separated `email:role[+role...]` pairs. The shim **refuses to oper
 ### How it activates
 
 `handlePopulateRoles` in `hooks.server.ts`:
+
 - If `event.locals.user` is already set (from better-auth), do nothing.
 - Otherwise, look for `?bypass=<email>` in the URL OR a `cydb_bypass` cookie.
 - Call `applyBypass(db, cfg, requestedEmail)` which:
@@ -275,6 +281,7 @@ Format: comma-separated `email:role[+role...]` pairs. The shim **refuses to oper
 ### The dev login UI
 
 When `DEV_AUTH_BYPASS` is configured and `NODE_ENV !== 'production'`, the `/login` page renders a "Dev impersonation" panel listing each configured persona as a button. Clicking a button posts to `?/devLogin` which:
+
 1. Signs out any prior better-auth session
 2. Sets `cydb_bypass=<email>`
 3. Calls `applyBypass` to pre-seed (so the redirect target sees the new identity immediately)
@@ -330,6 +337,7 @@ The token uses a plain `===` comparison rather than a constant-time check. The r
 ### Why two layers?
 
 SvelteKit's check covers the case where a malicious cross-origin site tries to submit a form via JavaScript. The custom token additionally protects against:
+
 - A misconfigured deployment where the Origin check is accidentally disabled.
 - Subtle bugs in `Origin` header parsing in proxies / sidecars (none today, but defence in depth is cheap).
 
@@ -352,6 +360,7 @@ export const actions: Actions = {
 ```
 
 If you add a NEW top-level prefix:
+
 1. Add it to `ROUTE_RULES` in `hooks.server.ts`.
 2. Decide which roles can reach it.
 3. Add an E2E spec in `tests/e2e/role-denial.spec.ts` (or similar) covering the unauthorized case.
@@ -359,6 +368,7 @@ If you add a NEW top-level prefix:
 ## Adding a new role
 
 Don't, lightly. The `ROLES` tuple is used in:
+
 - TypeScript: `Role` union, `ROLE_SET` in `sso-roles.ts`.
 - SQL: `CHECK` constraint on `user_roles.role`.
 - `ROUTE_RULES` in `hooks.server.ts`.

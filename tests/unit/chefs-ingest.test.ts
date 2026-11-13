@@ -4,7 +4,7 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import * as schema from '$lib/server/db/schema';
 import { ingestOne } from '$lib/server/chefs/ingest';
-import type { ChefsConfig } from '$lib/server/chefs/types';
+import { ChefsClientError, type ChefsConfig } from '$lib/server/chefs/types';
 import path from 'node:path';
 import os from 'node:os';
 import { mkdtempSync, existsSync } from 'node:fs';
@@ -66,6 +66,24 @@ describe('ingestOne', () => {
 		const jobs = db.select().from(schema.ocrJobs).all();
 		expect(jobs).toHaveLength(2);
 		expect(jobs.every((j) => j.status === 'queued')).toBe(true);
+	});
+
+	it('ingests with the file flagged as missing when CHEFS returns 404', async () => {
+		const download = vi
+			.fn()
+			.mockRejectedValue(new ChefsClientError('NotFound', 'not found (404)', 404));
+		const res = await ingestOne(db, cfg, yesFixture, {
+			download,
+			attachmentsDir,
+			logger: stubLogger()
+		});
+		expect(res.outcome).toBe('ingested');
+		expect(download).toHaveBeenCalledTimes(2); // one attempt per file, no retry
+
+		const atts = db.select().from(schema.submissionAttachments).all();
+		expect(atts).toHaveLength(2);
+		expect(atts.every((a) => a.missingAt !== null)).toBe(true);
+		expect(db.select().from(schema.ocrJobs).all()).toHaveLength(0);
 	});
 
 	it('skips when the submission_uuid already exists', async () => {
@@ -161,5 +179,12 @@ describe('ingestOne', () => {
 });
 
 function stubLogger() {
-	return { info: vi.fn(), warn: vi.fn(), error: vi.fn(), child: () => stubLogger() } as any;
+	return {
+		trace: vi.fn(),
+		debug: vi.fn(),
+		info: vi.fn(),
+		warn: vi.fn(),
+		error: vi.fn(),
+		child: () => stubLogger()
+	} as any;
 }

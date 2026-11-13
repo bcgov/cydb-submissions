@@ -1,4 +1,3 @@
-import path from 'node:path';
 import type { OcrProvider, OcrAnalysis } from './types';
 import { OcrProviderError, OcrTimeoutError } from './types';
 
@@ -40,7 +39,13 @@ export class BcgovDiProvider implements OcrProvider {
 		this.fetch = opts.fetch ?? fetch;
 	}
 
-	async analyze(buf: Buffer, mime: string, fileName: string, submissionId?: number, assessmentIndex?: number| null): Promise<OcrAnalysis> {
+	async analyze(
+		buf: Buffer,
+		mime: string,
+		fileName: string,
+		submissionId?: number,
+		assessmentIndex?: number | null
+	): Promise<OcrAnalysis> {
 		const headers = { 'x-api-key': this.opts.apiKey, 'content-type': 'application/json' };
 		const uploadRes = await this.fetch(`${this.opts.baseUrl}/api/upload`, {
 			method: 'POST',
@@ -74,7 +79,13 @@ export class BcgovDiProvider implements OcrProvider {
 			if (status === 'failed' || status === 'error' || status === 'errored') {
 				throw new OcrProviderError('OcrAnalyzeFailed');
 			}
-			if (status && status !== 'ongoing_ocr' && status !== 'pending' && status !== 'queued' && status !== 'running') {
+			if (
+				status &&
+				status !== 'ongoing_ocr' &&
+				status !== 'pending' &&
+				status !== 'queued' &&
+				status !== 'running'
+			) {
 				break;
 			}
 		}

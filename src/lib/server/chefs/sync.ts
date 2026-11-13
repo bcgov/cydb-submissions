@@ -16,11 +16,26 @@ export interface SyncDeps {
 	logger: Logger;
 	failureThreshold?: number;
 	actorUserId?: string;
+	// When set, only submissions updated within this many days are requested (export preference.updatedMinDate).
+	ingestWindowDays?: number;
 }
 
 const FAILURE_KEY = 'chefs.failureCount';
 const HALTED_KEY = 'chefs.halted';
 const LAST_SYNC_KEY = 'chefs.lastSync';
+
+function withUpdatedMinDate(cfg: ChefsConfig, windowDays: number): ChefsConfig {
+	const existing = (cfg.apiParams.preference ?? {}) as Record<string, unknown>;
+	const windowStart = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000).toISOString();
+	// Never widen a stricter lower bound that is already configured.
+	const configured = typeof existing.updatedMinDate === 'string' ? existing.updatedMinDate : null;
+	const updatedMinDate =
+		configured && Date.parse(configured) > Date.parse(windowStart) ? configured : windowStart;
+	return {
+		...cfg,
+		apiParams: { ...cfg.apiParams, preference: { ...existing, updatedMinDate } }
+	};
+}
 
 export async function runOneSync(db: Db, cfg: ChefsConfig, deps: SyncDeps): Promise<SyncResult> {
 	const startedAt = new Date().toISOString();
@@ -37,7 +52,9 @@ export async function runOneSync(db: Db, cfg: ChefsConfig, deps: SyncDeps): Prom
 
 	let rawList: unknown[];
 	try {
-		rawList = await deps.list(cfg);
+		rawList = await deps.list(
+			deps.ingestWindowDays === undefined ? cfg : withUpdatedMinDate(cfg, deps.ingestWindowDays)
+		);
 	} catch (err) {
 		const count = (getSystemState<number>(db, FAILURE_KEY) ?? 0) + 1;
 		setSystemState(db, FAILURE_KEY, count);

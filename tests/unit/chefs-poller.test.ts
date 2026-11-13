@@ -3,8 +3,8 @@ import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import * as schema from '$lib/server/db/schema';
-import { startPoller } from '$lib/server/chefs/poller';
-import { setSystemState } from '$lib/server/ocr/system-state';
+import { MISSING_FILE_BACKFILL_KEY, startPoller } from '$lib/server/chefs/poller';
+import { getSystemState, setSystemState } from '$lib/server/ocr/system-state';
 import type { ChefsConfig } from '$lib/server/chefs/types';
 import path from 'node:path';
 import os from 'node:os';
@@ -37,6 +37,21 @@ afterEach(() => {
 });
 
 describe('startPoller', () => {
+	it('records the one-time missing-file backfill after the first clean sync', async () => {
+		const list = vi.fn().mockResolvedValue([]);
+		const handle = startPoller({
+			db,
+			getConfig: () => cfg,
+			logger: stubLogger(),
+			list,
+			download: vi.fn(),
+			attachmentsDir
+		});
+		await vi.advanceTimersByTimeAsync(0);
+		expect(getSystemState(db, MISSING_FILE_BACKFILL_KEY)).toMatchObject({ fetched: 0 });
+		await handle.stop();
+	});
+
 	it('runs an initial sync immediately, then on each tick', async () => {
 		const list = vi.fn().mockResolvedValue([]);
 		const download = vi.fn();

@@ -1,5 +1,5 @@
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import * as schema from './db/schema';
 import type { SubmissionMetadata } from './metadata';
 import type { SavedAttachment } from './storage';
@@ -77,7 +77,8 @@ export async function writeValidSubmission(
 					sizeBytes: a.sizeBytes,
 					mimeType: a.mimeType,
 					sha256: a.sha256,
-					assessmentIndex: a.assessmentIndex ?? null
+					assessmentIndex: a.assessmentIndex ?? null,
+					missingAt: a.missingAt ?? null
 				})
 				.run();
 		}
@@ -85,7 +86,12 @@ export async function writeValidSubmission(
 		const attachmentIds = tx
 			.select({ id: schema.submissionAttachments.id })
 			.from(schema.submissionAttachments)
-			.where(eq(schema.submissionAttachments.submissionId, submissionId))
+			.where(
+				and(
+					eq(schema.submissionAttachments.submissionId, submissionId),
+					isNull(schema.submissionAttachments.missingAt)
+				)
+			)
 			.all()
 			.map((r) => r.id);
 		enqueueAttachments(tx, attachmentIds);

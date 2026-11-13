@@ -287,7 +287,7 @@ Env vars:
 | `CHEFS_FILE_COMPONENTS`  | Comma-separated form-component keys that hold file uploads (default `simplefile`)              |
 | `CHEFS_API_PARAMS`       | JSON object of extra export filter params (e.g. `{"status":"COMPLETED"}`)                      |
 | `CHEFS_POLLER_ENABLED`   | `1` to start the poller                                                                        |
-| `CHEFS_POLL_INTERVAL_MS` | Poll cadence in ms (default 60000)                                                             |
+| `CHEFS_POLL_INTERVAL_MS` | Poll cadence in ms (default 300000)                                                            |
 | `CHEFS_INGEST_ONLY`      | (Legacy) when `1`, blocks the public form route — kept only for the dormant archive code path  |
 
 ### baseUrl SSRF allowlist

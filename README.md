@@ -113,7 +113,7 @@ rejects form POSTs (e.g. `/login`) with a 403 cross-site error. Two patterns:
 | `CHEFS_FILE_COMPONENTS`                               | Comma-separated file-upload component keys to download. Default `simplefile`.                                                  |
 | `CHEFS_API_PARAMS`                                    | JSON object of CHEFS export filter params (e.g. `{"status":"COMPLETED"}`).                                                     |
 | `CHEFS_POLLER_ENABLED`                                | Set to `1` to run the in-process CHEFS poller.                                                                                 |
-| `CHEFS_POLL_INTERVAL_MS`                              | Poll cadence in ms (default 60000).                                                                                            |
+| `CHEFS_POLL_INTERVAL_MS`                              | Poll cadence in ms (default 300000).                                                                                           |
 | `KEYWORD_JSON`                                        | Keywords used for categories display.                                                                                          |
 
 ### Local OCR development

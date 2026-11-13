@@ -14,7 +14,7 @@ const DEFAULTS: ChefsConfig = {
 	fileComponents: ['AttachAssessment'],
 	apiParams: {},
 	pollerEnabled: false,
-	pollIntervalMs: 60_000
+	pollIntervalMs: 300_000
 };
 
 const STATE_KEY = 'chefs.config';

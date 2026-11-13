@@ -80,6 +80,31 @@ describe('runOneSync', () => {
 		expect(getSystemState<{ finishedAt: string }>(db, 'chefs.lastSync')?.finishedAt).toBeTruthy();
 	});
 
+	it('requests only recently updated submissions when an ingest window is set', async () => {
+		const list = vi.fn().mockResolvedValue([]);
+		const download = vi.fn();
+		const before = Date.now();
+		await runOneSync(
+			db,
+			{ ...cfg, apiParams: { preference: { maxDate: 'x' }, other: 1 } },
+			{ list, download, attachmentsDir, logger: stubLogger(), ingestWindowDays: 7 }
+		);
+		const sent = list.mock.calls[0][0] as ChefsConfig;
+		const pref = sent.apiParams.preference as { updatedMinDate: string; maxDate: string };
+		const start = Date.parse(pref.updatedMinDate);
+		const week = 7 * 24 * 60 * 60 * 1000;
+		expect(start).toBeGreaterThanOrEqual(before - week);
+		expect(start).toBeLessThanOrEqual(Date.now() - week);
+		expect(pref.maxDate).toBe('x');
+		expect(sent.apiParams.other).toBe(1);
+	});
+
+	it('does not add a date filter when no ingest window is set', async () => {
+		const list = vi.fn().mockResolvedValue([]);
+		await runOneSync(db, cfg, { list, download: vi.fn(), attachmentsDir, logger: stubLogger() });
+		expect(list.mock.calls[0][0]).toBe(cfg);
+	});
+
 	it('rethrows the original error and increments failureCount', async () => {
 		const err = new ChefsClientError('Unauthorized', 'denied', 401);
 		const list = vi.fn().mockRejectedValue(err);

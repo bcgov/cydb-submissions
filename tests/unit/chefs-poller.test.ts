@@ -52,6 +52,24 @@ describe('startPoller', () => {
 		await handle.stop();
 	});
 
+	it('switches to the 7-day window after the first full poll even if it had ingest errors', async () => {
+		const list = vi.fn().mockResolvedValueOnce([null]).mockResolvedValue([]);
+		const handle = startPoller({
+			db,
+			getConfig: () => cfg,
+			logger: stubLogger(),
+			list,
+			download: vi.fn(),
+			attachmentsDir
+		});
+		await vi.advanceTimersByTimeAsync(0);
+		expect(getSystemState(db, MISSING_FILE_BACKFILL_KEY)).toMatchObject({ errors: 1 });
+		await vi.advanceTimersByTimeAsync(cfg.pollIntervalMs);
+		expect(list.mock.calls[0][0].apiParams.preference).toBeUndefined();
+		expect(list.mock.calls[1][0].apiParams.preference.updatedMinDate).toBeTypeOf('string');
+		await handle.stop();
+	});
+
 	it('runs an initial sync immediately, then on each tick', async () => {
 		const list = vi.fn().mockResolvedValue([]);
 		const download = vi.fn();

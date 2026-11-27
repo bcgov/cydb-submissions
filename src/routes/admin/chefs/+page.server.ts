@@ -12,6 +12,7 @@ import {
 } from '$lib/server/chefs/config';
 import { listSubmissions, downloadFile } from '$lib/server/chefs/client';
 import { runOneSync } from '$lib/server/chefs/sync';
+import { INGEST_WINDOW_DAYS } from '$lib/server/chefs/poller';
 import { logger } from '$lib/server/log';
 import { getSystemState, clearSystemState } from '$lib/server/ocr/system-state';
 import { isAllowedChefsBaseUrl } from '$lib/server/security/url-safety';
@@ -152,13 +153,15 @@ export const actions: Actions = {
 			return fail(403, { action: 'syncNow', error: 'CSRF token mismatch' });
 		}
 		const cfg = getEffectiveConfig(db, env as Record<string, string | undefined>);
+		const full = form.get('full') === '1';
 		try {
 			const res = await runOneSync(db, cfg, {
 				list: (c) => listSubmissions(c, { fetch }),
 				download: (fileId) => downloadFile(cfg, fileId, { fetch }, logger),
 				attachmentsDir: env.ATTACHMENTS_DIR ?? './attachments',
 				logger: locals.logger,
-				actorUserId: locals.user!.id
+				actorUserId: locals.user!.id,
+				ingestWindowDays: full ? undefined : INGEST_WINDOW_DAYS
 			});
 			return {
 				action: 'syncNow',

@@ -10,6 +10,7 @@ import { getSystemState, clearSystemState } from '$lib/server/ocr/system-state';
 import { redactForClient, getEffectiveConfig } from '$lib/server/chefs/config';
 import { listSubmissions, downloadFile } from '$lib/server/chefs/client';
 import { runOneSync } from '$lib/server/chefs/sync';
+import { INGEST_WINDOW_DAYS } from '$lib/server/chefs/poller';
 import type { SyncResult } from '$lib/server/chefs/types';
 import { logger } from '$lib/server/log';
 
@@ -109,7 +110,8 @@ export const actions: Actions = {
 				download: (fileId) => downloadFile(cfg, fileId, { fetch }, logger),
 				attachmentsDir: env.ATTACHMENTS_DIR ?? './attachments',
 				logger: locals.logger,
-				actorUserId: locals.user!.id
+				actorUserId: locals.user!.id,
+				ingestWindowDays: INGEST_WINDOW_DAYS
 			});
 			return {
 				action: 'chefsSyncNow',

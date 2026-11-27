@@ -50,14 +50,21 @@ export function startPoller(opts: PollerOpts): PollerHandle {
 				: undefined
 		})
 			.then((result) => {
-				if (result.errors.length > 0 || getSystemState(opts.db, MISSING_FILE_BACKFILL_KEY)) return;
+				if (getSystemState(opts.db, MISSING_FILE_BACKFILL_KEY)) return;
+				// A completed export is enough: requiring zero per-submission errors meant one
+				// persistent failure kept every poll a full export forever.
 				setSystemState(opts.db, MISSING_FILE_BACKFILL_KEY, {
 					ranAt: new Date().toISOString(),
 					fetched: result.fetched,
-					ingested: result.ingested
+					ingested: result.ingested,
+					errors: result.errors.length
 				});
 				opts.logger.info(
-					{ event: 'chefs_missing_file_backfill_done', ingested: result.ingested },
+					{
+						event: 'chefs_missing_file_backfill_done',
+						ingested: result.ingested,
+						errors: result.errors.length
+					},
 					'one-time full poll for previously failing (404) submissions complete'
 				);
 			})

@@ -158,6 +158,11 @@
 				<input type="hidden" name="csrf" value={page.data.csrfToken} />
 				<Button type="submit">Sync now</Button>
 			</form>
+			<form method="POST" action="?/syncNow" use:enhance class="inline">
+				<input type="hidden" name="csrf" value={page.data.csrfToken} />
+				<input type="hidden" name="full" value="1" />
+				<Button type="submit" variant="outline">Full sync (all submissions)</Button>
+			</form>
 
 			<div class="pt-3 text-sm text-gray-700">
 				<div>Consecutive failures: <code>{data.failureCount}</code></div>
